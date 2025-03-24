@@ -60,81 +60,78 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar - Collapsible on Desktop */}
-      <div 
-        className={`
-          ${isMobile ? 'fixed left-0 top-0 z-40' : 'sticky top-0'} 
-          ${isMobile && !isOpen ? '-translate-x-full' : 'translate-x-0'}
-          ${isCollapsed ? 'w-20' : 'w-64'} 
-          flex flex-col gap-5 justify-between h-screen bg-white shadow-lg
-          transition-all duration-300 ease-in-out
-        `}
+<div 
+  className={`
+    ${isMobile ? 'fixed left-0 top-0 z-[60]' : 'sticky top-0 z-30'} 
+    ${isMobile && !isOpen ? '-translate-x-full' : 'translate-x-0'}
+    ${isCollapsed ? 'w-20' : 'w-64'} 
+    flex flex-col justify-between min-h-screen bg-white shadow-lg
+    transition-all duration-300 ease-in-out
+  `}
+>
+
+  {/* Sidebar Header */}
+  <div className="p-3 border-b flex items-center justify-between">
+    {!isCollapsed && <img src={logo} alt="Logo" className="h-12 w-auto" />}
+    {!isMobile && (
+      <button 
+        className="p-2 rounded-md border border-gray-300"
+        onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        {/* Sidebar Header */}
-        <div className="p-3 border-b flex items-center justify-between">
-          {/* Logo */}
-          {!isCollapsed && <img src={logo} alt="Logo" className="h-12 w-auto" />}
-          
-          {/* Toggle Button for Desktop */}
-          {!isMobile && (
-            <button 
-              className="p-2 rounded-md border border-gray-300"
-              onClick={() => setIsCollapsed(!isCollapsed)}
+        <IoIosArrowBack size={20} className={`text-[#003366] transition-transform ${isCollapsed ? 'rotate-180' : 'rotate-0'}`} />
+      </button>
+    )}
+    {isMobile && isOpen && (
+      <button className="p-2 rounded-md" onClick={() => setIsOpen(false)}>
+        <div className='border-[#003366] border-[2px] rounded-lg p-1'>
+          <IoIosArrowBack size={20} className='text-[#003366]' />
+        </div>
+      </button>
+    )}
+  </div>
+
+  {/* School Name */}
+  {!isCollapsed && (
+    <button className='flex bg-[#fbfbfb] justify-center gap-1 items-center rounded-[10px] border m-3 px-[1px] py-[3px] w-[227px]'>
+      <img src="/6.svg" alt="" />
+      <p>Unity Secondary School</p>
+    </button>
+  )}
+
+  {/* Navigation Menu */}
+  <div className="flex flex-col flex-grow">
+    <nav className="mt-[10px]">
+      <ul className="space-y-0">
+        {menuItems.map((item) => (
+          <li key={item.path}>
+            <Link
+              to={item.path}
+              className={`flex items-center px-6 py-3 text-gray-700 transition-colors duration-200 ${
+                location.pathname === item.path
+                  ? 'bg-[#bfccd8] m-3 rounded-lg text-[#184674]'
+                  : 'hover:bg-gray-50 m-3 rounded-lg'
+              }`}
+              onClick={handleLinkClick}
             >
-              <IoIosArrowBack size={20} className={`text-[#003366] transition-transform ${isCollapsed ? 'rotate-180' : 'rotate-0'}`} />
-            </button>
-          )}
+              <span className="mr-3">{item.icon}</span>
+              {!isCollapsed && item.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
 
-          {/* Close button for Mobile */}
-          {isMobile && isOpen && (
-            <button className="p-2 rounded-md" onClick={() => setIsOpen(false)}>
-              <div className='border-[#003366] border-[2px] rounded-lg p-1'>
-                <IoIosArrowBack size={20} className='text-[#003366]' />
-              </div>
-            </button>
-          )}
-        </div>
-
-        {/* School Name (Hidden when Collapsed) */}
-        {!isCollapsed && (
-          <button className='flex bg-[#fbfbfb] justify-center gap-1 items-center rounded-[10px] border m-3 px-[1px] py-[3px] w-[227px]'>
-            <img src="/6.svg" alt="" />
-            <p>Unity Secondary School</p>
-          </button>
-        )}
-
-        {/* Navigation Menu */}
-        <nav className="mt-[10px]">
-          <ul className="space-y-0">
-            {menuItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center px-6 py-3 text-gray-700 transition-colors duration-200 ${
-                    location.pathname === item.path
-                      ? 'bg-[#bfccd8] m-3 rounded-lg text-[#184674]'
-                      : 'hover:bg-gray-50 m-3 rounded-lg'
-                  }`}
-                  onClick={handleLinkClick}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {!isCollapsed && item.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Logout Section */}
-        <div className="border-t border-[#e0e0e0] p-4 mt-10">
-          <div className="flex items-center px-4 gap-3">
-            <button className="rounded p-1 text-gray-600 hover:text-gray-900">
-              <CgLogOff size={20} />
-            </button>
-            {!isCollapsed && <h3 className="text-sm font-small">LogOut Account</h3>}
-          </div>
-        </div>
-      </div>
+  {/* Logout Section */}
+  <div className="border-t border-[#e0e0e0] p-4">
+    <div className="flex items-center px-4 gap-3">
+      <button className="rounded p-1 text-red-600 hover:text-gray-900">
+        <CgLogOff size={20} />
+      </button>
+      {!isCollapsed && <h3 className="text-sm font-small">LogOut Account</h3>}
+    </div>
+  </div>
+</div>
 
       {/* Content Spacer for Mobile View */}
       {isMobile && <div className="h-16 md:hidden"></div>}
