@@ -5,67 +5,34 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const localizer = momentLocalizer(moment);
 
+// Updated Dates to March 2025 (Week: 17th - 21st)
 const events = [
-  { title: "Mathematics", start: new Date(2024, 1, 5, 8, 0), end: new Date(2024, 1, 5, 9, 0) },
-  { title: "Mathematics", start: new Date(2024, 1, 6, 8, 0), end: new Date(2024, 1, 6, 9, 0) },
-  { title: "Mathematics", start: new Date(2024, 1, 7, 8, 0), end: new Date(2024, 1, 7, 9, 0) },
-  { title: "Mathematics", start: new Date(2024, 1, 8, 8, 0), end: new Date(2024, 1, 8, 9, 0) },
-  { title: "Mathematics", start: new Date(2024, 1, 9, 8, 0), end: new Date(2024, 1, 9, 9, 0) },
-
-  { title: "English", start: new Date(2024, 1, 5, 9, 0), end: new Date(2024, 1, 5, 10, 0) },
-  { title: "Civic Education", start: new Date(2024, 1, 6, 9, 0), end: new Date(2024, 1, 6, 10, 0) },
-  { title: "English", start: new Date(2024, 1, 7, 9, 0), end: new Date(2024, 1, 7, 10, 0) },
-  { title: "Civic Education", start: new Date(2024, 1, 8, 9, 0), end: new Date(2024, 1, 8, 10, 0) },
-  { title: "English", start: new Date(2024, 1, 9, 9, 0), end: new Date(2024, 1, 9, 10, 0) },
-
-  { title: "Social Studies", start: new Date(2024, 1, 5, 10, 0), end: new Date(2024, 1, 5, 11, 0) },
-  { title: "Social Studies", start: new Date(2024, 1, 6, 10, 0), end: new Date(2024, 1, 6, 11, 0) },
-  { title: "Civic Education", start: new Date(2024, 1, 7, 10, 0), end: new Date(2024, 1, 7, 11, 0) },
-  { title: "Social Studies", start: new Date(2024, 1, 8, 10, 0), end: new Date(2024, 1, 8, 11, 0) },
-  { title: "Civic Education", start: new Date(2024, 1, 9, 10, 0), end: new Date(2024, 1, 9, 11, 0) },
-
-  { title: "BREAK - TIME", start: new Date(2024, 1, 5, 11, 0), end: new Date(2024, 1, 5, 12, 0) },
-  { title: "BREAK - TIME", start: new Date(2024, 1, 6, 11, 0), end: new Date(2024, 1, 6, 12, 0) },
-  { title: "BREAK - TIME", start: new Date(2024, 1, 7, 11, 0), end: new Date(2024, 1, 7, 12, 0) },
-  { title: "BREAK - TIME", start: new Date(2024, 1, 8, 11, 0), end: new Date(2024, 1, 8, 12, 0) },
-  { title: "BREAK - TIME", start: new Date(2024, 1, 9, 11, 0), end: new Date(2024, 1, 9, 12, 0) },
-
-  { title: "Science", start: new Date(2024, 1, 5, 12, 0), end: new Date(2024, 1, 5, 13, 0) },
-  { title: "Science", start: new Date(2024, 1, 6, 12, 0), end: new Date(2024, 1, 6, 13, 0) },
-  { title: "Science", start: new Date(2024, 1, 7, 12, 0), end: new Date(2024, 1, 7, 13, 0) },
-  { title: "Science", start: new Date(2024, 1, 8, 12, 0), end: new Date(2024, 1, 8, 13, 0) },
-  { title: "Science", start: new Date(2024, 1, 9, 12, 0), end: new Date(2024, 1, 9, 13, 0) },
-
-  { title: "Arts & Craft", start: new Date(2024, 1, 5, 13, 0), end: new Date(2024, 1, 5, 14, 0) },
-  { title: "French", start: new Date(2024, 1, 6, 13, 0), end: new Date(2024, 1, 6, 14, 0) },
-  { title: "Arts & Craft", start: new Date(2024, 1, 7, 13, 0), end: new Date(2024, 1, 7, 14, 0) },
-  { title: "French", start: new Date(2024, 1, 8, 13, 0), end: new Date(2024, 1, 8, 14, 0) },
-  { title: "Arts & Craft", start: new Date(2024, 1, 9, 13, 0), end: new Date(2024, 1, 9, 14, 0) },
+  { title: "Mathematics", start: new Date(2025, 2, 17, 8, 0), end: new Date(2025, 2, 17, 10, 20) },
+  { title: "Mathematics", start: new Date(2025, 2, 18, 8, 0), end: new Date(2025, 2, 18, 9, 0) },
+  { title: "Mathematics", start: new Date(2025, 2, 19, 8, 0), end: new Date(2025, 2, 19, 9, 0) },
+  { title: "Mathematics", start: new Date(2025, 2, 20, 8, 0), end: new Date(2025, 2, 20, 9, 0) },
+  { title: "Mathematics", start: new Date(2025, 2, 21, 8, 0), end: new Date(2025, 2, 21, 9, 0) },
+  { title: "English", start: new Date(2025, 2, 18, 9, 0), end: new Date(2025, 2, 18, 10, 0) },
+  { title: "Civic Education", start: new Date(2025, 2, 18, 12, 0), end: new Date(2025, 2, 18, 13, 0) },
+  { title: "English", start: new Date(2025, 2, 19, 9, 0), end: new Date(2025, 2, 19, 10, 0) },
+  { title: "Civic Education", start: new Date(2025, 2, 20, 9, 0), end: new Date(2025, 2, 20, 10, 0) },
+  { title: "English", start: new Date(2025, 2, 21, 9, 0), end: new Date(2025, 2, 21, 10, 0) },
 ];
 
-// Color mapping for different subjects
 const subjectColors = {
-  "Mathematics": "#4285F4", // Blue
-  "English": "#34A853", // Green
-  "Civic Education": "#FBBC05", // Yellow
-  "Social Studies": "#EA4335", // Red
-  "BREAK - TIME": "#9E9E9E", // Gray
-  "Science": "#673AB7", // Purple
-  "Arts & Craft": "#FF9800", // Orange
-  "French": "#00BCD4", // Cyan
+  "Mathematics": "#4285F4",
+  "English": "#34A853",
+  "Civic Education": "#FBBC05",
+  "BREAK - TIME": "#9E9E9E",
 };
 
-// Enhanced events with additional details
 const enhancedEvents = events.map(event => ({
   ...event,
-  subject: event.title,
-  backgroundColor: subjectColors[event.title] || "#039BE5", // Default blue if not found
+  backgroundColor: subjectColors[event.title] || "#039BE5",
 }));
 
 function AttendanceTimetable() {
-  // Custom components for the calendar
   const components = {
-    // Custom event component
     event: ({ event }) => (
       <div className="h-full w-full flex flex-col justify-center p-1">
         <div className="font-bold text-sm">{event.title}</div>
@@ -74,97 +41,40 @@ function AttendanceTimetable() {
         </div>
       </div>
     ),
-    // Custom time slot label
-    timeGutterHeader: () => <div className="text-center font-semibold p-1">Time</div>,
-    // Custom day header
-    timeSlotWrapper: ({ value, children }) => {
-      return <div className="rbc-time-slot font-medium">{children}</div>;
-    },
-    // Custom header for days
     header: ({ date, localizer }) => {
-      const dayName = localizer.format(date, 'dddd');
-      const dayNumber = localizer.format(date, 'D');
+      const isMobile = window.innerWidth < 768;
+      const dayName = isMobile ? localizer.format(date, 'ddd') : localizer.format(date, 'dddd');
+
       return (
-        <div className="flex flex-col items-center py-2">
+        <div className={`flex flex-col items-center py-2 ${isMobile ? 'text-gray-400' : 'text-gray-600'}`}>
           <div className="font-bold">{dayName}</div>
-          <div className="text-sm opacity-75">{dayNumber}</div>
         </div>
       );
-    }
-  };
-
-  // Custom formats
-  const formats = {
-    timeGutterFormat: (date, culture, localizer) =>
-      localizer.format(date, 'h:mm A', culture),
-    dayFormat: (date, culture, localizer) =>
-      localizer.format(date, 'ddd', culture),
+    },
   };
 
   return (
     <div style={{ padding: "10px", background: "#fff", borderRadius: "8px" }}>
       <style>
         {`
-          /* Custom styles for the calendar */
-          .rbc-time-view {
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-          }
-          
-          .rbc-timeslot-group {
-            min-height: 80px !important;
-            border-bottom: 1px solid #f3f4f6;
-          }
-          
-          .rbc-header {
-            font-weight: 600;
-            background-color: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
-          }
-          
-          .rbc-label {
-            font-weight: 500;
-            color: #6b7280;
-          }
-          
-          .rbc-event {
-            border-radius: 6px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            border: none !important;
-            padding: 2px !important;
-          }
-          
           .rbc-day-slot .rbc-event {
-            border-left: 4px solid rgba(0,0,0,0.2) !important;
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
           }
 
-          .rbc-day-slot .rbc-events-container {
-            margin-right: 0 !important;
+          .rbc-header {
+            font-weight: 600;
+            background-color: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
           }
-          
-          .rbc-time-content {
-            border-top: 1px solid #e5e7eb;
-          }
-          
-          .rbc-time-content > * + * > * {
-            border-left: 1px solid #f3f4f6;
-          }
-          
-          .rbc-today {
-            background-color: #f0f9ff;
-          }
-          
-          /* Break time styling */
-          .rbc-event.break-time {
-            background-color: #f3f4f6 !important;
-            color: #6b7280 !important;
-            font-style: italic;
+
+          @media (max-width: 768px) {
+            .rbc-header {
+              font-size: 12px;
+              color: gray;
+            }
           }
         `}
       </style>
@@ -178,13 +88,11 @@ function AttendanceTimetable() {
         timeslots={1}
         step={60}
         toolbar={false}
-        min={new Date(2024, 1, 1, 8, 0)}
-        max={new Date(2024, 1, 1, 14, 0)}
+        min={new Date(2025, 2, 17, 8, 0)}
+        max={new Date(2025, 2, 17, 14, 0)}
         style={{ height: 600 }}
         components={components}
-        formats={formats}
         eventPropGetter={(event) => ({
-          className: event.title === "BREAK - TIME" ? "break-time" : "",
           style: {
             backgroundColor: event.backgroundColor,
           },

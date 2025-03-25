@@ -1,12 +1,9 @@
 import React, { useState } from "react";
-import { TbCalendarMonth, TbFileDownload } from "react-icons/tb";
+import { TbCalendarMonth, TbFileDownload, TbPlus } from "react-icons/tb";
 import { IoMdTime } from "react-icons/io";
 import { AiOutlineCheckCircle, AiOutlineCloseCircle } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
-import { MdArrowBackIos } from "react-icons/md";
-import { MdArrowForwardIos } from "react-icons/md";
-
-
+import { MdArrowBackIos, MdArrowForwardIos } from "react-icons/md";
 
 function RequestLeave() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -31,57 +28,65 @@ function RequestLeave() {
   const totalPages = Math.ceil(leaveRequests.length / rowsPerPage);
   const currentRequests = leaveRequests.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
+  const StatusBadge = ({ status }) => (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+        status === "Approved"
+          ? "bg-green-50 text-green-700"
+          : status === "Pending"
+          ? "bg-yellow-50 text-yellow-700"
+          : "bg-red-50 text-red-700"
+      }`}
+    >
+      {status === "Approved" && <AiOutlineCheckCircle className="h-3.5 w-3.5" />}
+      {status === "Pending" && <IoMdTime className="h-3.5 w-3.5" />}
+      {status === "Failed" && <AiOutlineCloseCircle className="h-3.5 w-3.5" />}
+      {status}
+    </span>
+  );
+
   return (
-    <div className="flex min-h-screen p-6 flex-col gap-6">
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 py-4 sm:py-6 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-[25px] font-semibold">Request Student Absence</h1>
-          <p className="text-[#aaaaaa]">Submit a leave request for your child's upcoming absence</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Request Student Absence</h1>
+          <p className="text-gray-500 text-sm sm:text-base mt-1">Submit a leave request for your child's upcoming absence</p>
         </div>
         <button
-          className="flex gap-1 items-center text-white bg-[#003366] py-[10px] px-[15px] rounded-lg shadow-lg transition-transform hover:scale-105"
           onClick={() => navigate("/leaveform")}
+          className="fixed sm:relative bottom-6 right-6 sm:bottom-auto sm:right-auto z-10 sm:z-0 bg-[#003366] text-white rounded-full sm:rounded-lg shadow-lg sm:shadow-sm hover:bg-[#002855] transition-colors w-14 h-14 sm:w-auto sm:h-auto flex items-center justify-center sm:px-4 sm:py-2 sm:gap-2"
         >
-          <TbCalendarMonth className="h-[24px] w-[24px]"/> New Request
+          <TbPlus className="h-6 w-6 sm:hidden" />
+          <TbCalendarMonth className="hidden sm:block h-5 w-5" />
+          <span className="hidden sm:inline">New Request</span>
         </button>
       </div>
 
-      <div className="bg-white p-2 rounded-[10px]">
-        <table className="w-full text-gray-500">
-          <thead>
+      {/* Desktop View */}
+      <div className="hidden sm:block bg-white rounded-lg shadow-sm overflow-hidden">
+        <table className="w-full text-sm text-gray-500">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="p-3 font-semibold text-black text-left">Request Date</th>
-              <th className="p-3 font-semibold text-black text-left">Leave Period</th>
-              <th className="p-3 font-semibold text-black text-left">Type</th>
-              <th className="p-3 font-semibold text-black text-left">Status</th>
-              <th className="p-3 font-semibold text-black text-left">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Date</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Period</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-200">
             {currentRequests.map((req, index) => (
-              <tr key={index} className="border-t">
-                <td className="p-3">{req.requestDate}</td>
-                <td className="p-3">{req.leavePeriod}</td>
-                <td className="p-3">{req.type}</td>
-                <td className="p-3">
-                  <span
-                    className={`inline-flex items-center gap-2 px-2 py-1 text-sm font-semibold rounded-lg ${
-                      req.status === "Approved"
-                        ? "bg-[#e5f6f0] text-[#00513D]"
-                        : req.status === "Pending"
-                        ? "bg-[#FFF4E5] text-[#815B1D]"
-                        : "bg-[#FFE5E5] text-[#B42318]"
-                    }`}
-                  >
-                    {req.status === "Approved" && <AiOutlineCheckCircle size={16} />}
-                    {req.status === "Pending" && <IoMdTime size={16} />}
-                    {req.status === "Failed" && <AiOutlineCloseCircle size={16} />}
-                    {req.status}
-                  </span>
+              <tr key={index} className="hover:bg-gray-50">
+                <td className="px-4 py-3 whitespace-nowrap">{req.requestDate}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{req.leavePeriod}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{req.type}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <StatusBadge status={req.status} />
                 </td>
-                <td className="p-3">
-                  <button className="flex text-[#141111] items-center gap-2 border px-3 py-1 rounded-lg hover:bg-gray-100">
-                    <TbFileDownload /> Download
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#003366]">
+                    <TbFileDownload className="h-4 w-4" />
+                    <span>Download</span>
                   </button>
                 </td>
               </tr>
@@ -90,44 +95,80 @@ function RequestLeave() {
         </table>
       </div>
 
+      {/* Mobile View - Cards */}
+      <div className="sm:hidden space-y-4">
+        {currentRequests.map((req, index) => (
+          <div key={index} className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{req.requestDate}</p>
+                <p className="text-xs text-gray-500 mt-1">{req.leavePeriod}</p>
+              </div>
+              <StatusBadge status={req.status} />
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <span className="text-sm text-gray-500">{req.type}</span>
+              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700">
+                <TbFileDownload className="h-4 w-4" />
+                <span>Download</span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Pagination Controls */}
-      <div className="bg-white p-4 rounded-[10px] flex justify-between items-center">
-        <div className="flex gap-16 items-center ">
-          <div className="">
-          <span>Rows per page</span>
-          <select
-            className="rounded px-2 py-1"
-            value={rowsPerPage}
-            onChange={(e) => setRowsPerPage(Number(e.target.value))}
-          >
-            {[5, 10, 20, 50].map((num) => (
-              <option key={num} value={num}>{num}</option>
-            ))}
-          </select>
-        </div>
-        <span className="text-[#979797]">
-          Showing {currentPage * rowsPerPage - rowsPerPage + 1} - {Math.min(currentPage * rowsPerPage, leaveRequests.length)} of {leaveRequests.length}
-        </span>
+      <div className="bg-white rounded-lg shadow-sm border-t border-gray-200 px-4 py-3 sm:px-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Rows per page</span>
+              <select
+                className="rounded-md border-gray-300 py-1 pl-2 pr-8 text-sm focus:border-[#003366] focus:outline-none focus:ring-1 focus:ring-[#003366]"
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              >
+                {[5, 10, 20, 50].map((num) => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+            </div>
+            <span className="text-sm text-gray-700">
+              Showing {currentPage * rowsPerPage - rowsPerPage + 1} - {Math.min(currentPage * rowsPerPage, leaveRequests.length)} of {leaveRequests.length}
+            </span>
           </div>
           
-        <div className="flex items-center gap-2">
-          <select
-            className="border rounded p-[5px]"
-            value={currentPage}
-            onChange={(e) => setCurrentPage(Number(e.target.value))}
-          >
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-              <option key={num} value={num}>{num}</option>
-            ))}
-          </select>
-          <span>of page {totalPages}</span>
-          
-          <button disabled={currentPage === 1} className="px-3 py-1 rounded-lg disabled:opacity-50" onClick={() => setCurrentPage(currentPage - 1)}>
-            <MdArrowBackIos size={20} />
-          </button>
-          <button disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg disabled:opacity-50" onClick={() => setCurrentPage(currentPage + 1)}>
-            <MdArrowForwardIos size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <select
+                className="rounded-md border-gray-300 py-1 pl-2 pr-8 text-sm focus:border-[#003366] focus:outline-none focus:ring-1 focus:ring-[#003366]"
+                value={currentPage}
+                onChange={(e) => setCurrentPage(Number(e.target.value))}
+              >
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+              <span className="text-sm text-gray-700">of {totalPages}</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <button 
+                disabled={currentPage === 1} 
+                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                onClick={() => setCurrentPage(currentPage - 1)}
+              >
+                <MdArrowBackIos className="h-5 w-5 text-gray-500" />
+              </button>
+              <button 
+                disabled={currentPage === totalPages} 
+                className="p-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                onClick={() => setCurrentPage(currentPage + 1)}
+              >
+                <MdArrowForwardIos className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

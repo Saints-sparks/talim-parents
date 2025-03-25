@@ -31,8 +31,12 @@ function Result() {
   };
 
   const calculateTotalOverallScore = () => {
-    return resultData.reduce((acc, record) => acc + (record.totalScore || parseFloat(calculateTotalScore(record.testScore, record.examScore))), 0);
+    const total = resultData.reduce((acc, record) => 
+      acc + (record.totalScore || parseFloat(calculateTotalScore(record.testScore, record.examScore))), 0
+    );
+    return total.toFixed(2); // ✅ Rounds to 2 decimal places
   };
+  
 
   // Function to export data as CSV
   const exportToCSV = () => {

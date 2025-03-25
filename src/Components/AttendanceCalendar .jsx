@@ -22,7 +22,6 @@ const generateGroupedAttendance = () => {
     let status = isAbsent ? "Absent" : "Present";
     let backgroundColor = isAbsent ? "#F5EBEB" : "#e5ebf0";
 
-    // Check if it's start of a new group or end of current group
     let isGroupStart = status !== previousStatus;
     let nextDate = new Date(currentDate);
     nextDate.setDate(currentDate.getDate() + 1);
@@ -53,96 +52,86 @@ const getStatusForDate = (date) => {
 
 const AttendanceCalendar = () => {
   const [events, setEvents] = useState(generateGroupedAttendance());
-  const [calendarHeight, setCalendarHeight] = useState(600);
+  const [calendarHeight, setCalendarHeight] = useState(500);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Check window size on mount and resize
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      
-      // Adjust height based on screen size
-      if (mobile) {
-        setCalendarHeight(400); // Smaller height on mobile
-      } else {
-        setCalendarHeight(600); // Original height on desktop
-      }
+      setCalendarHeight(mobile ? 350 : 500);
     };
 
-    // Set initial values
     handleResize();
-
-    // Add event listener
     window.addEventListener('resize', handleResize);
-    
-    // Clean up
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const components = {
-    dateCellWrapper: (props) => {
-      const isToday = moment(props.value).isSame(moment(), 'day');
+    dateCellWrapper: ({ value, children }) => {
+      const isToday = moment(value).isSame(moment(), 'day');
       
       return (
         <div className="rbc-day-bg relative h-full">
-          <div className="absolute top-2 left-2 text-sm font-medium">
-            {props.value.getDate()}
+          <div className={`absolute ${isMobile ? 'top-1 left-1 text-xs' : 'top-2 left-2 text-sm'} font-medium`}>
+            {value.getDate()}
           </div>
           {isToday && (
-            <div className="absolute top-2 right-2 text-xs border border-blue-500 px-2 py-0.5 rounded-md">
+            <div className={`absolute ${isMobile ? 'top-1 right-1 text-[10px] px-1' : 'top-2 right-2 text-xs px-2'} border border-blue-500 py-0.5 rounded-md`}>
               Today
             </div>
           )}
-          {props.children}
+          {children}
         </div>
       );
     },
-    // Override header cells to use Tailwind classes
     header: ({ label }) => (
-      <div className="text-xs md:text-sm font-semibold uppercase p-1 md:p-2">
-        {isMobile ? label.substring(0, 1) : label}
+      <div className="text-xs font-semibold uppercase p-1">
+        {isMobile ? label.charAt(0) : label.substring(0, 3)}
       </div>
     )
   };
 
-  // Custom styles with responsive adjustments
-  const customStyles = {
-    '.rbc-date-cell': {
-      textAlign: 'left !important',
-      padding: '8px !important'
-    },
-    '.rbc-row-bg': {
-      marginTop: isMobile ? '16px' : '24px'
-    },
-    '.rbc-date-cell > a': {
-      display: 'none !important'
-    },
-    '.rbc-row-content': {
-      marginTop: isMobile ? '16px' : '24px'
-    },
-    '.rbc-button-link': {
-      display: 'none !important'
-    },
-    '.rbc-month-view': {
-      fontSize: isMobile ? '12px !important' : '14px !important'
-    },
-    '.rbc-header': {
-      padding: isMobile ? '2px !important' : '4px !important'
-    },
-    '.rbc-month-row': {
-      minHeight: isMobile ? '80px !important' : '100px !important'
-    }
-  };
-
   return (
-    <div className="bg-white p-2 md:p-4 rounded-[10px] overflow-x-auto">
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <style>
-        {Object.entries(customStyles)
-          .map(([selector, styles]) => `${selector} { ${Object.entries(styles)
-            .map(([prop, value]) => `${prop}: ${value}`)
-            .join('; ')} }`)
-          .join('\n')}
+        {`
+          .rbc-calendar {
+            min-height: ${calendarHeight}px;
+          }
+          .rbc-month-view {
+            font-size: ${isMobile ? '12px' : '14px'};
+          }
+          .rbc-header {
+            padding: ${isMobile ? '2px' : '4px'};
+          }
+          .rbc-month-row {
+            min-height: ${isMobile ? '60px' : '80px'} !important;
+          }
+          .rbc-date-cell {
+            text-align: left !important;
+            padding: 4px !important;
+          }
+          .rbc-row-content {
+            margin-top: ${isMobile ? '12px' : '20px'};
+          }
+          .rbc-event {
+            padding: ${isMobile ? '1px 2px' : '2px 5px'};
+          }
+          .rbc-button-link {
+            display: none !important;
+          }
+          @media (max-width: 640px) {
+            .rbc-toolbar {
+              flex-direction: column;
+              align-items: stretch;
+              margin-bottom: 10px;
+            }
+            .rbc-toolbar-label {
+              margin: 6px 0;
+            }
+          }
+        `}
       </style>
       <Calendar
         localizer={localizer}
@@ -161,20 +150,19 @@ const AttendanceCalendar = () => {
           style: {
             backgroundColor: event.backgroundColor,
             color: event.title ? "#000" : "transparent",
-            borderRadius: event.isGroupStart ? "8px 0 0 8px" : 
-                        event.isGroupEnd ? "0 8px 8px 0" : "0",
-            padding: isMobile ? "2px" : "5px",
+            borderRadius: event.isGroupStart ? "4px 0 0 4px" : 
+                         event.isGroupEnd ? "0 4px 4px 0" : "0",
+            padding: isMobile ? "2px" : "4px",
             textAlign: "center",
-            minWidth: isMobile ? "100px" : "160px",
-            minHeight: isMobile ? "20px" : "30px",
+            minHeight: isMobile ? "18px" : "24px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             marginLeft: event.isGroupStart ? "1px" : "-1px",
             marginRight: event.isGroupEnd ? "1px" : "-1px",
             zIndex: event.title ? "1" : "0",
-            marginTop: isMobile ? "16px" : "24px",
-            fontSize: isMobile ? "11px" : "14px"
+            fontSize: isMobile ? "10px" : "12px",
+            fontWeight: "500"
           },
         })}
       />
