@@ -1,6 +1,8 @@
 import MessagesSidebar from '../Components/MessagesSidebar';
+import ChatDetailsModal from '../Components/ChatDetailsModal';
 import React, { useState, useRef } from 'react';
-import { FaPhone, FaVideo, FaSearch, FaPaperclip, FaMicrophone, FaPaperPlane, FaArrowLeft,  FaStop } from 'react-icons/fa';
+import { FaPhone, FaVideo, FaSearch, FaPaperclip, FaMicrophone, FaPaperPlane, FaArrowLeft,  FaStop,  FaEllipsisV, FaTrash, FaReply, FaDownload } from 'react-icons/fa';
+
 
 function Messages() {
   const [selectedChat, setSelectedChat] = useState(null);
@@ -16,6 +18,31 @@ function Messages() {
 const [filePreview, setFilePreview] = useState(null);
 const [fileCaption, setFileCaption] = useState("");
 const [showFilePreview, setShowFilePreview] = useState(false);
+const [selectedMessage, setSelectedMessage] = useState(null);
+const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+const [replyingTo, setReplyingTo] = useState(null);
+const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+const handleRightClick = (e, msg) => {
+  e.preventDefault();
+  setSelectedMessage(msg);
+  setMenuPosition({ x: e.clientX, y: e.clientY });
+};
+
+const handleDeleteMessage = (id) => {
+  setMessages(messages.filter((msg) => msg.id !== id));
+  setSelectedMessage(null);
+};
+
+const handleReplyMessage = (msg) => {
+  setReplyingTo(msg);
+  setSelectedMessage(null);
+};
+
+const handleForwardMessage = (msg) => {
+  alert(`Forwarding message: ${msg.text}`);
+  setSelectedMessage(null);
+};
 
   const handleStartRecording = async () => {
     try {
@@ -135,54 +162,15 @@ const [showFilePreview, setShowFilePreview] = useState(false);
     setShowSidebar(false);
   };
   
-  {showFilePreview && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-4 rounded-lg shadow-lg max-w-md w-full">
-        <h3 className="text-lg font-semibold mb-2">Preview File</h3>
-  
-        {selectedFile.type.startsWith("image/") && (
-          <img src={filePreview} alt="Preview" className="w-full rounded-lg" />
-        )}
-        {selectedFile.type.startsWith("video/") && (
-          <video controls className="w-full rounded-lg">
-            <source src={filePreview} type={selectedFile.type} />
-            Your browser does not support the video tag.
-          </video>
-        )}
-        {selectedFile.type.startsWith("audio/") && (
-          <audio controls className="w-full">
-            <source src={filePreview} type={selectedFile.type} />
-            Your browser does not support the audio element.
-          </audio>
-        )}
-  
-        <textarea
-          placeholder="Add a caption..."
-          value={fileCaption}
-          onChange={(e) => setFileCaption(e.target.value)}
-          className="w-full p-2 mt-2 border rounded-md focus:ring-1 focus:ring-cyan-800 focus:border-transparent"
-        ></textarea>
-  
-        <div className="flex justify-end space-x-2 mt-3">
-          <button onClick={handleCancelFile} className="text-gray-500 hover:text-red-600">
-            Cancel
-          </button>
-          <button onClick={sendFileMessage} className="bg-blue-500 text-white px-4 py-1 rounded-md hover:bg-blue-600">
-            Send
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
   
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className={`fixed md:static md:flex bg-white w-full md:w-[300px] lg:w-[350px] h-full z-50 transform transition-transform duration-300 ease-in-out ${
-        showSidebar ? 'translate-x-0' : '-translate-x-full'
-      } md:translate-x-0`}>
-        <MessagesSidebar setSelectedChat={handleChatSelect} />
-      </div>
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    {/* Sidebar */}
+    <div className={`fixed inset-y-0 left-0 md:static bg-white w-screen md:w-[300px] lg:w-[350px] h-full z-50 transform transition-transform duration-300 ease-in-out ${
+      showSidebar ? 'translate-x-0' : '-translate-x-full'
+    } md:translate-x-0 overflow-y-auto`}>
+      <MessagesSidebar setSelectedChat={handleChatSelect} />
+    </div>
 
       {/* Main Chat Section */}
       <div className="flex-1 flex flex-col w-full md:w-auto">
@@ -197,11 +185,12 @@ const [showFilePreview, setShowFilePreview] = useState(false);
                 >
                   <FaArrowLeft className="w-5 h-5" />
                 </button>
-                <img 
-                  src={selectedChat.profilePic} 
-                  alt="Profile" 
-                  className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover"
-                />
+                 <img
+            src={selectedChat.profilePic}
+            alt="Profile"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover cursor-pointer"
+            onClick={() => setShowDetailsModal(true)}
+          />
                 <div className="min-w-0">
                   <h3 className="text-base md:text-lg font-semibold truncate pr-2">
                     {selectedChat.name}
@@ -217,56 +206,110 @@ const [showFilePreview, setShowFilePreview] = useState(false);
                 <FaSearch className="text-gray-500 cursor-pointer hover:text-cyan-800/50 w-4 h-4 md:w-5 md:h-5" />
               </div>
             </div>
+ {/* Chat Details Modal */}
+ {showDetailsModal && (
+        <ChatDetailsModal chat={selectedChat} onClose={() => setShowDetailsModal(false)} />
+      )}
 
-            {/* Messages Section */}
-            <div className="flex-1 p-3 md:p-6 overflow-y-auto space-y-3 bg-gray-50">
-              {messages.length > 0 ? (
-                messages.map((msg) => (
-                  <div 
-                    key={msg.id} 
-                    className={`p-2 md:p-3 max-w-[85%] md:max-w-[70%] rounded-lg ${
-                      msg.sender === 'user' 
-                        ? 'bg-cyan-800/50 text-white ml-auto' 
-                        : 'bg-white text-black shadow-sm'
-                    }`}
-                  >
-                {msg.type === 'file' ? (
-  <>
-    {msg.fileType.startsWith('image/') ? (
-      <img src={msg.fileURL} alt="Uploaded file" className="rounded-lg max-w-full h-auto" />
-    ) : msg.fileType.startsWith('video/') ? (
-      <video controls className="rounded-lg max-w-full">
-        <source src={msg.fileURL} type={msg.fileType} />
-        Your browser does not support the video tag.
-      </video>
-    ) : msg.fileType.startsWith('audio/') ? (
-      <audio controls className="w-full">
-        <source src={msg.fileURL} type={msg.fileType} />
-        Your browser does not support the audio element.
-      </audio>
-    ) : (
-      <a href={msg.fileURL} download={msg.fileName} className="text-blue-300 underline break-all hover:text-blue-200">
-        📎 {msg.fileName}
-      </a>
-    )}
-  </>
-) : (
-  <p className="break-words text-sm md:text-base">{msg.text}</p>
-)}
-
-                    <small className="text-xs opacity-70 block mt-1">{msg.timestamp}</small>
-                  </div>
-                ))
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-400 text-sm md:text-base text-center">
-                    No messages yet. Start the conversation!
-                  </p>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+   <div className="flex-1 p-3 md:p-6 overflow-y-auto space-y-3 bg-gray-50 relative">
+      {messages.map((msg) => (
+        <div 
+          key={msg.id} 
+          onContextMenu={(e) => handleRightClick(e, msg)}
+          className={`relative p-2 md:p-3 max-w-[85%] md:max-w-[70%] rounded-lg ${
+            msg.sender === "user" 
+              ? "bg-cyan-800/50 text-white ml-auto" 
+              : "bg-white text-black shadow-sm"
+          }`}
+        >
+          {/* Show reply context above the message */}
+          {msg.replyTo && (
+            <div className="text-xs text-gray-500 bg-gray-200 p-1 rounded mb-1">
+              Replying to: "{msg.replyTo.text}"
             </div>
+          )}
 
+          {msg.type === "file" ? (
+            <>
+              {msg.fileType.startsWith("image/") ? (
+                <img src={msg.fileURL} alt="Uploaded file" className="rounded-lg max-w-full h-auto" />
+              ) : msg.fileType.startsWith("video/") ? (
+                <video controls className="rounded-lg max-w-full">
+                  <source src={msg.fileURL} type={msg.fileType} />
+                  Your browser does not support the video tag.
+                </video>
+              ) : msg.fileType.startsWith("audio/") ? (
+                <audio controls className="w-full">
+                  <source src={msg.fileURL} type={msg.fileType} />
+                  Your browser does not support the audio element.
+                </audio>
+              ) : (
+                <a href={msg.fileURL} download={msg.fileName} className="text-blue-300 underline break-all hover:text-blue-200">
+                  📎 {msg.fileName}
+                </a>
+              )}
+            </>
+          ) : (
+            <p className="break-words text-sm md:text-base">{msg.text}</p>
+          )}
+
+          <small className="text-xs opacity-70 block mt-1">{msg.timestamp}</small>
+
+          {/* Vertical Menu Icon */}
+          <button onClick={(e) => handleRightClick(e, msg)} className="absolute top-2 right-2 text-gray-500">
+            <FaEllipsisV />
+          </button>
+        </div>
+      ))}
+
+      {/* Message Options Menu */}
+      {selectedMessage && (
+        <div
+          className="absolute bg-white shadow-md rounded-lg p-2 z-50"
+          style={{ top: menuPosition.y, left: menuPosition.x }}
+        >
+          <button onClick={() => handleReplyMessage(selectedMessage)} className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
+            <FaReply className="text-gray-600" /> <span>Reply</span>
+          </button>
+          <button onClick={() => handleForwardMessage(selectedMessage)} className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
+            <FaPaperPlane className="text-gray-600" /> <span>Forward</span>
+          </button>
+          <button onClick={() => handleDeleteMessage(selectedMessage.id)} className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full text-red-500">
+            <FaTrash /> <span>Delete</span>
+          </button>
+          {selectedMessage.type === "file" && (
+            <button className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
+              <FaDownload className="text-gray-600" /> <span>Download</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Reply Box (Shows only if replyingTo is set) */}
+      {replyingTo && (
+        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gray-200 flex items-center">
+          <span className="text-xs text-gray-600 mr-2">Replying to: "{replyingTo.text}"</span>
+          <input 
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your reply..."
+            className="flex-1 p-2 border rounded"
+          />
+          <button 
+            className="ml-2 bg-cyan-800 text-white px-3 py-1 rounded"
+            onClick={() => {
+              setMessages([...messages, { id: Date.now(), sender: "user", text: newMessage, replyTo: replyingTo }]);
+              setReplyingTo(null);
+              setNewMessage("");
+              sendMessage();
+            }}
+          >
+            <FaPaperPlane className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+    </div>
             {/* Message Input */}
             <div className="bg-white p-3 md:p-4 border-t">
               <div className="flex items-center space-x-2 md:space-x-3 max-w-[1200px] mx-auto">
@@ -291,19 +334,18 @@ const [showFilePreview, setShowFilePreview] = useState(false);
             onChange={handleFileChange}
           />
 
-
-                <input 
-                  type="text" 
-                  placeholder="Type a message..." 
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  className="flex-1 p-2 md:p-3 rounded-md text-sm md:text-base focus:ring-1 focus:ring-cyan-800 focus:border-transparent bg-gray-50"
-                />
+  <input 
+      type="text" 
+      placeholder="Type a message..." 
+      value={newMessage}
+      onChange={(e) => setNewMessage(e.target.value)}
+      onKeyDown={handleKeyPress}
+      className="flex-1 p-2 md:p-3 rounded-md text-sm md:text-base focus:ring-1 focus:ring-cyan-800 focus:border-transparent bg-gray-50"
+    />
 
                 <button 
                   onClick={sendMessage}
-                  className="p-2 text-blue-500 hover:bg-blue-50 rounded-full transition-colors"
+                  className="p-2 text-cyan-800/50 hover:bg-blue-50 rounded-full transition-colors"
                 >
                   <FaPaperPlane className="w-5 h-5" />
                 </button>
