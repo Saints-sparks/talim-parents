@@ -1,6 +1,6 @@
 import MessagesSidebar from '../Components/MessagesSidebar';
 import ChatDetailsModal from '../Components/ChatDetailsModal';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FaPhone, FaVideo, FaSearch, FaPaperclip, FaMicrophone, FaPaperPlane, FaArrowLeft,  FaStop,  FaEllipsisV, FaTrash, FaReply, FaDownload } from 'react-icons/fa';
 
 
@@ -22,12 +22,27 @@ const [selectedMessage, setSelectedMessage] = useState(null);
 const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 const [replyingTo, setReplyingTo] = useState(null);
 const [showDetailsModal, setShowDetailsModal] = useState(false);
+const [openDropdownId, setOpenDropdownId] = useState(null);
 
-const handleRightClick = (e, msg) => {
-  e.preventDefault();
-  setSelectedMessage(msg);
-  setMenuPosition({ x: e.clientX, y: e.clientY });
+// Function to toggle dropdown
+const toggleDropdown = (messageId) => {
+  setOpenDropdownId(openDropdownId === messageId ? null : messageId);
 };
+
+// Function to close dropdown when clicking outside
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (!event.target.closest(".message-options-dropdown")) {
+      setOpenDropdownId(null);
+    }
+  };
+
+  document.addEventListener("click", handleClickOutside);
+  return () => {
+    document.removeEventListener("click", handleClickOutside);
+  };
+}, []);
+
 
 const handleDeleteMessage = (id) => {
   setMessages(messages.filter((msg) => msg.id !== id));
@@ -212,78 +227,132 @@ const handleForwardMessage = (msg) => {
       )}
 
    <div className="flex-1 p-3 md:p-6 overflow-y-auto space-y-3 bg-gray-50 relative">
-      {messages.map((msg) => (
-        <div 
-          key={msg.id} 
-          onContextMenu={(e) => handleRightClick(e, msg)}
-          className={`relative p-2 md:p-3 max-w-[85%] md:max-w-[70%] rounded-lg ${
-            msg.sender === "user" 
-              ? "bg-cyan-800/50 text-white ml-auto" 
-              : "bg-white text-black shadow-sm"
-          }`}
+   {messages.map((msg) => (
+  <div 
+    key={msg.id} 
+    className={`relative p-2 md:p-3 max-w-[85%] md:max-w-[70%] rounded-lg ${
+      msg.sender === "user" ? "bg-cyan-800/50 text-white ml-auto" : "bg-white text-black shadow-sm"
+    }`}
+  >
+    {/* Reply Context */}
+    {msg.replyTo && (
+      <div className="text-xs text-gray-500 bg-gray-200 p-1 rounded mb-1">
+        "{msg.replyTo.text}"
+      </div>
+    )}
+
+    {/* Message Content */}
+    {msg.type === "file" ? (
+      <>
+        {msg.fileType.startsWith("image/") ? (
+          <img src={msg.fileURL} alt="Uploaded file" className="rounded-lg max-w-full h-auto" />
+        ) : msg.fileType.startsWith("video/") ? (
+          <video controls className="rounded-lg max-w-full">
+            <source src={msg.fileURL} type={msg.fileType} />
+            Your browser does not support the video tag.
+          </video>
+        ) : msg.fileType.startsWith("audio/") ? (
+          <audio controls className="w-full">
+            <source src={msg.fileURL} type={msg.fileType} />
+            Your browser does not support the audio element.
+          </audio>
+        ) : (
+          <a href={msg.fileURL} download={msg.fileName} className="text-blue-300 underline break-all hover:text-blue-200">
+            📎 {msg.fileName}
+          </a>
+        )}
+      </>
+    ) : (
+      <p className="break-words text-sm md:text-base">{msg.text}</p>
+    )}
+
+    <small className="text-xs opacity-70 block mt-1">{msg.timestamp}</small>
+
+    {/* Vertical Menu Button */}
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        toggleDropdown(msg.id);
+      }} 
+      className="absolute top-2 right-2 text-gray-500"
+    >
+      <FaEllipsisV />
+    </button>
+
+    {/* Message Options Dropdown */}
+    {openDropdownId === msg.id && (
+      <div 
+        className="absolute text-gray-600 bg-white shadow-md rounded-lg p-2 z-50 message-options-dropdown"
+        style={{ right: 0, top: "100%", minWidth: "150px" }}
+      >
+        <button
+          onClick={() => handleReplyMessage(msg)}
+          className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full"
         >
-          {/* Show reply context above the message */}
-          {msg.replyTo && (
-            <div className="text-xs text-gray-500 bg-gray-200 p-1 rounded mb-1">
-              Replying to: "{msg.replyTo.text}"
-            </div>
-          )}
-
-          {msg.type === "file" ? (
-            <>
-              {msg.fileType.startsWith("image/") ? (
-                <img src={msg.fileURL} alt="Uploaded file" className="rounded-lg max-w-full h-auto" />
-              ) : msg.fileType.startsWith("video/") ? (
-                <video controls className="rounded-lg max-w-full">
-                  <source src={msg.fileURL} type={msg.fileType} />
-                  Your browser does not support the video tag.
-                </video>
-              ) : msg.fileType.startsWith("audio/") ? (
-                <audio controls className="w-full">
-                  <source src={msg.fileURL} type={msg.fileType} />
-                  Your browser does not support the audio element.
-                </audio>
-              ) : (
-                <a href={msg.fileURL} download={msg.fileName} className="text-blue-300 underline break-all hover:text-blue-200">
-                  📎 {msg.fileName}
-                </a>
-              )}
-            </>
-          ) : (
-            <p className="break-words text-sm md:text-base">{msg.text}</p>
-          )}
-
-          <small className="text-xs opacity-70 block mt-1">{msg.timestamp}</small>
-
-          {/* Vertical Menu Icon */}
-          <button onClick={(e) => handleRightClick(e, msg)} className="absolute top-2 right-2 text-gray-500">
-            <FaEllipsisV />
-          </button>
-        </div>
-      ))}
-
-      {/* Message Options Menu */}
-      {selectedMessage && (
-        <div
-          className="absolute bg-white shadow-md rounded-lg p-2 z-50"
-          style={{ top: menuPosition.y, left: menuPosition.x }}
+          <FaReply className="text-gray-600" /> <span>Reply</span>
+        </button>
+        <button
+          onClick={() => handleForwardMessage(msg)}
+          className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full"
         >
-          <button onClick={() => handleReplyMessage(selectedMessage)} className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
-            <FaReply className="text-gray-600" /> <span>Reply</span>
+          <FaPaperPlane className="text-gray-600" /> <span>Forward</span>
+        </button>
+        <button
+          onClick={() => handleDeleteMessage(msg.id)}
+          className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full text-red-500"
+        >
+          <FaTrash /> <span>Delete</span>
+        </button>
+        {msg.type === "file" && (
+          <button className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
+            <FaDownload className="text-gray-600" /> <span>Download</span>
           </button>
-          <button onClick={() => handleForwardMessage(selectedMessage)} className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
-            <FaPaperPlane className="text-gray-600" /> <span>Forward</span>
-          </button>
-          <button onClick={() => handleDeleteMessage(selectedMessage.id)} className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full text-red-500">
-            <FaTrash /> <span>Delete</span>
-          </button>
-          {selectedMessage.type === "file" && (
-            <button className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
-              <FaDownload className="text-gray-600" /> <span>Download</span>
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
+    )}
+  </div>
+))}
+
+    {/* Message Options Menu */}
+{selectedMessage && (
+ <div
+ className="absolute bg-white shadow-md rounded-lg p-2 z-50"
+ style={{
+   top: menuPosition.y,
+   left: Math.min(menuPosition.x, window.innerWidth - 200), // Ensure it doesn’t go off-screen
+   minWidth: "150px",
+   maxWidth: "200px",
+   transform: "translateX(-50%)", // Centering relative to the clicked point
+   whiteSpace: "nowrap",
+ }}
+>
+
+    <button
+      onClick={() => handleReplyMessage(selectedMessage)}
+      className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full"
+    >
+      <FaReply className="text-gray-600" /> <span>Reply</span>
+    </button>
+    <button
+      onClick={() => handleForwardMessage(selectedMessage)}
+      className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full"
+    >
+      <FaPaperPlane className="text-gray-600" /> <span>Forward</span>
+    </button>
+    <button
+      onClick={() => handleDeleteMessage(selectedMessage.id)}
+      className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full text-red-500"
+    >
+      <FaTrash /> <span>Delete</span>
+    </button>
+    {selectedMessage.type === "file" && (
+      <button className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
+        <FaDownload className="text-gray-600" /> <span>Download</span>
+      </button>
+    )}
+  </div>
+)}
+
 
       {/* Reply Box (Shows only if replyingTo is set) */}
       {replyingTo && (

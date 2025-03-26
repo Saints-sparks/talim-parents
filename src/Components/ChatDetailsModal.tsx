@@ -18,92 +18,92 @@ const ChatDetailsModal: React.FC<ChatDetailsModalProps> = ({ chat, onClose }) =>
 
   // Function to Render Selected Tab Content
   const renderContent = () => {
+    const renderEmptyState = (image: string, text: string) => (
+      <div className="flex flex-col items-center justify-center mt-6">
+        <img src={image} alt={text} className="w-40 h-40 object-contain" />
+        <p className="mt-4 text-gray-500">{text}</p>
+      </div>
+    );
+  
     switch (selectedTab) {
       case "classmates":
-        return (
+        return classmates.length > 0 ? (
           <div>
             <h3 className="text-lg font-semibold mb-3">Classmates</h3>
             <ul>
-              {classmates.length > 0 ? (
-                classmates.map((member: any, index: number) => (
-                  <li key={index} className="p-2 border-b">
-                    {member.name}
-                  </li>
-                ))
-              ) : (
-                <p>No classmates found.</p>
-              )}
+              {classmates.map((member: any, index: number) => (
+                <li key={index} className="p-2 border-b">{member.name}</li>
+              ))}
             </ul>
           </div>
+        ) : (
+          renderEmptyState("/not.svg", "No classmates found.")
         );
+  
       case "images":
-        return (
+        return images.length > 0 ? (
           <div>
             <h3 className="text-lg font-semibold mb-3">Images</h3>
             <div className="grid grid-cols-3 gap-2">
-              {images.length > 0 ? (
-                images.map((img: any, index: number) => (
-                  <img key={index} src={img.url} alt="Chat Image" className="w-full h-24 object-cover rounded" />
-                ))
-              ) : (
-                <p>No images found.</p>
-              )}
+              {images.map((img: any, index: number) => (
+                <img key={index} src={img.url} alt="Chat Image" className="w-full h-24 object-cover rounded" />
+              ))}
             </div>
           </div>
+        ) : (
+          renderEmptyState("/no-img.jpg", "No images found.")
         );
+  
       case "videos":
-        return (
+        return videos.length > 0 ? (
           <div>
             <h3 className="text-lg font-semibold mb-3">Videos</h3>
-            {videos.length > 0 ? (
-              videos.map((video: any, index: number) => (
-                <video key={index} controls className="w-full h-40">
-                  <source src={video.url} type="video/mp4" />
-                </video>
-              ))
-            ) : (
-              <p>No videos found.</p>
-            )}
+            {videos.map((video: any, index: number) => (
+              <video key={index} controls className="w-full h-40">
+                <source src={video.url} type="video/mp4" />
+              </video>
+            ))}
           </div>
+        ) : (
+          renderEmptyState("/no-vids.jpg", "No videos found.")
         );
+  
       case "links":
-        return (
+        return links.length > 0 ? (
           <div>
             <h3 className="text-lg font-semibold mb-3">Links</h3>
             <ul>
-              {links.length > 0 ? (
-                links.map((link: any, index: number) => (
-                  <li key={index} className="p-2 border-b">
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                      {link.url}
-                    </a>
-                  </li>
-                ))
-              ) : (
-                <p>No links found.</p>
-              )}
+              {links.map((link: any, index: number) => (
+                <li key={index} className="p-2 border-b">
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                    {link.url}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
+        ) : (
+          renderEmptyState("/no-links.jpg", "No links found.")
         );
+  
       case "documents":
-        return (
+        return documents.length > 0 ? (
           <div>
             <h3 className="text-lg font-semibold mb-3">Documents</h3>
             <ul>
-              {documents.length > 0 ? (
-                documents.map((doc: any, index: number) => (
-                  <li key={index} className="p-2 border-b">
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-blue-600">
-                      {doc.name}
-                    </a>
-                  </li>
-                ))
-              ) : (
-                <p>No documents found.</p>
-              )}
+              {documents.map((doc: any, index: number) => (
+                <li key={index} className="p-2 border-b">
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                    {doc.name}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
+        ) : (
+          renderEmptyState("/no-docs.jpg", "No documents found.")
         );
+  
       default:
         return (
           <div>
@@ -113,6 +113,7 @@ const ChatDetailsModal: React.FC<ChatDetailsModalProps> = ({ chat, onClose }) =>
         );
     }
   };
+  
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
