@@ -1,14 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { CiSearch } from "react-icons/ci";
 import { TbCalendarMonth } from "react-icons/tb";
 import { IoIosNotificationsOutline, IoIosArrowDown } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import logo from "/public/ava.svg";
+import { dummyNotifications } from "../data/notifications";
+import NotificationsModal from "../Components/NotificationsModal";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [selectedWard, setSelectedWard] = useState("Sandra Eze");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showModal, setShowModal] = useState(false); 
+  const [notifications] = useState(dummyNotifications);
+  const notificationRef = useRef(null);
+
+  // Filter only unread notifications for the modal
+  const unreadNotifications = notifications.filter((n) => !n.isRead);
+  const unreadCount = unreadNotifications.length;
 
   const wards = ["Sandra Eze", "Michael Eze", "John Eze"];
 
@@ -18,8 +27,61 @@ const Navbar = () => {
     month: "short",
   });
 
+  // Close modal when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowModal(false);
+      }
+    };
+  
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const NotificationButton = () => {
+    const navigate = useNavigate();
+  
+    const handleNotificationClick = (event) => {
+      event.stopPropagation(); // Prevent closing modal immediately when clicking
+      setShowModal((prev) => !prev);
+    };
+  
+    const handleNavigateToNotifications = () => {
+      navigate("/notifications"); // Change this to the correct route
+    };
+  
+    return (
+      <div className="relative" ref={notificationRef}>
+        <button
+          onClick={(event) => {
+            handleNotificationClick(event);
+            handleNavigateToNotifications(); // Navigate when clicking the icon
+          }}
+          className="relative text-2xl bg-white py-2 px-2 rounded-lg hover:opacity-75 transition-opacity"
+        >
+          <IoIosNotificationsOutline />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+  
+        {showModal && (
+          <div className="fixed sm:absolute top-16 right-0 sm:right-0 z-[999] w-full sm:w-80 bg-white border shadow-lg rounded-lg">
+            <NotificationsModal 
+              closeModal={() => setShowModal(false)} 
+              unreadNotifications={unreadNotifications} 
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <nav className="border-b bg-white w-full">
+    <nav className="border-b bg-white w-full relative z-10">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Desktop View - Single Row */}
         <div className="hidden sm:flex items-center justify-between w-full">
@@ -44,12 +106,7 @@ const Navbar = () => {
             </div>
 
             {/* Notifications */}
-            <button
-              onClick={() => navigate("/notifications")}
-              className="text-2xl bg-white py-2 px-2 rounded-lg hover:opacity-75 transition-opacity"
-            >
-              <IoIosNotificationsOutline />
-            </button>
+            <NotificationButton />
 
             {/* Profile */}
             <div className="flex items-center space-x-4">
@@ -102,13 +159,7 @@ const Navbar = () => {
               <TbCalendarMonth className="text-[#6f6f6f] h-[24px] w-[24px]" />
             </div>
 
-            {/* Notifications */}
-            <button
-              onClick={() => navigate("/notifications")}
-              className="text-2xl bg-white py-2 px-2 rounded-lg hover:opacity-75 transition-opacity"
-            >
-              <IoIosNotificationsOutline />
-            </button>
+            <NotificationButton />
 
             {/* Profile */}
             <div className="flex items-center space-x-4">
