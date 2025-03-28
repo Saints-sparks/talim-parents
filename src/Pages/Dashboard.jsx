@@ -67,7 +67,7 @@ function Dashboard() {
                     <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{box.number}</h2>
                   </div>
                   {box.percentage && (
-                    <div className={`flex items-center ${box.color} gap-2 px-3 py-1.5 rounded-lg self-start mt-4 text-sm font-medium`}>
+                    <div className={`flex items-center ${box.color} gap-2 px-3 py-1.5 rounded-lg self-end mt-4 text-sm font-medium`}>
                       {box.icon}
                       <span>{box.percentage}</span>
                     </div>

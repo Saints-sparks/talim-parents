@@ -2,6 +2,7 @@ import MessagesSidebar from '../Components/MessagesSidebar';
 import ChatDetailsModal from '../Components/ChatDetailsModal';
 import React, { useState, useRef, useEffect } from 'react';
 import { FaPhone, FaVideo, FaSearch, FaPaperclip, FaMicrophone, FaPaperPlane, FaArrowLeft,  FaStop,  FaEllipsisV, FaTrash, FaReply, FaDownload } from 'react-icons/fa';
+import { IoIosArrowDown } from "react-icons/io";
 
 
 function Messages() {
@@ -14,15 +15,15 @@ function Messages() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const mediaRecorderRef = useRef(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-const [filePreview, setFilePreview] = useState(null);
-const [fileCaption, setFileCaption] = useState("");
-const [showFilePreview, setShowFilePreview] = useState(false);
-const [selectedMessage, setSelectedMessage] = useState(null);
-const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+const [, setSelectedMessage] = useState(null);
 const [replyingTo, setReplyingTo] = useState(null);
 const [showDetailsModal, setShowDetailsModal] = useState(false);
 const [openDropdownId, setOpenDropdownId] = useState(null);
+const [filePreview, setFilePreview] = useState(null);
+const [showFilePreview, setShowFilePreview] = useState(false);
+const [selectedFile, setSelectedFile] = useState(null);
+
+
 
 // Function to toggle dropdown
 const toggleDropdown = (messageId) => {
@@ -121,31 +122,6 @@ const handleForwardMessage = (msg) => {
       e.preventDefault();
       sendMessage();
     }
-  };
-
-  const handleCancelFile = () => {
-    setSelectedFile(null);
-    setFilePreview(null);
-    setFileCaption("");
-    setShowFilePreview(false);
-  };
-  
-  const sendFileMessage = () => {
-    if (!selectedFile) return;
-  
-    const newMsg = {
-      id: messages.length + 1,
-      sender: "user",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      type: "file",
-      text: fileCaption.trim(),
-      fileType: selectedFile.type,
-      fileURL: filePreview,
-      fileName: selectedFile.name,
-    };
-  
-    setMessages([...messages, newMsg]);
-    handleCancelFile(); // Clear preview after sending
   };
 
   // Function to handle file selection and display in chat
@@ -265,10 +241,9 @@ const handleForwardMessage = (msg) => {
     ) : (
       <p className="break-words text-sm md:text-base">{msg.text}</p>
     )}
-
     <small className="text-xs opacity-70 block mt-1">{msg.timestamp}</small>
 
-    {/* Vertical Menu Button */}
+    {/* Dropdown Menu Button */}
     <button 
       onClick={(e) => {
         e.stopPropagation();
@@ -276,7 +251,7 @@ const handleForwardMessage = (msg) => {
       }} 
       className="absolute top-2 right-2 text-gray-500"
     >
-      <FaEllipsisV />
+      <IoIosArrowDown />
     </button>
 
     {/* Message Options Dropdown */}
@@ -312,48 +287,6 @@ const handleForwardMessage = (msg) => {
     )}
   </div>
 ))}
-
-    {/* Message Options Menu */}
-{selectedMessage && (
- <div
- className="absolute bg-white shadow-md rounded-lg p-2 z-50"
- style={{
-   top: menuPosition.y,
-   left: Math.min(menuPosition.x, window.innerWidth - 200), // Ensure it doesn’t go off-screen
-   minWidth: "150px",
-   maxWidth: "200px",
-   transform: "translateX(-50%)", // Centering relative to the clicked point
-   whiteSpace: "nowrap",
- }}
->
-
-    <button
-      onClick={() => handleReplyMessage(selectedMessage)}
-      className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full"
-    >
-      <FaReply className="text-gray-600" /> <span>Reply</span>
-    </button>
-    <button
-      onClick={() => handleForwardMessage(selectedMessage)}
-      className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full"
-    >
-      <FaPaperPlane className="text-gray-600" /> <span>Forward</span>
-    </button>
-    <button
-      onClick={() => handleDeleteMessage(selectedMessage.id)}
-      className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full text-red-500"
-    >
-      <FaTrash /> <span>Delete</span>
-    </button>
-    {selectedMessage.type === "file" && (
-      <button className="flex items-center space-x-2 p-2 hover:bg-gray-100 w-full">
-        <FaDownload className="text-gray-600" /> <span>Download</span>
-      </button>
-    )}
-  </div>
-)}
-
-
       {/* Reply Box (Shows only if replyingTo is set) */}
       {replyingTo && (
         <div className="absolute bottom-0 left-0 right-0 p-3 bg-gray-200 flex items-center">
@@ -411,14 +344,12 @@ const handleForwardMessage = (msg) => {
       onKeyDown={handleKeyPress}
       className="flex-1 p-2 md:p-3 rounded-md text-sm md:text-base focus:ring-1 focus:ring-cyan-800 focus:border-transparent bg-gray-50"
     />
-
                 <button 
                   onClick={sendMessage}
                   className="p-2 text-cyan-800/50 hover:bg-blue-50 rounded-full transition-colors"
                 >
                   <FaPaperPlane className="w-5 h-5" />
                 </button>
-
                 <button 
               onClick={isRecording ? handleStopRecording : handleStartRecording}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"

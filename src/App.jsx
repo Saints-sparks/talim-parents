@@ -11,6 +11,7 @@ import Timetable from './Pages/Timetable';
 import Messages from './Pages/Messages';
 import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
+import NotificationDetail from './Pages/NotificationDetail';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/leaveform" element={<LeaveForm />} />
                 <Route path="/notifications" element={<Notifications />} />
+                <Route path="/notifications/:id" element={<NotificationDetail />} />
 
               </Routes>
             </div>

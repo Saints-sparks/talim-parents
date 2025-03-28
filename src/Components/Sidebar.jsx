@@ -31,6 +31,15 @@ export default function Sidebar() {
     if (isMobile) setIsOpen(false);
   };
 
+  const handleLogout = () => {
+    // Clear stored session data
+    sessionStorage.clear(); // If using sessionStorage
+    localStorage.removeItem("user"); // If using localStorage
+
+    // Redirect to login page
+    navigate("/login");
+  };  
+  
   const menuItems = [
     { path: '/dashboard', name: 'Dashboard', icon: <RiHome5Line className='text-[24px]'/> },
     { path: '/timetable', name: 'Timetable', icon: <IoMdTime className='text-[24px]'/> },
@@ -124,13 +133,17 @@ export default function Sidebar() {
 
   {/* Logout Section */}
   <div className="border-t border-[#e0e0e0] p-4">
-    <div className="flex items-center px-4 gap-3">
-      <button className="rounded p-1 text-red-600 hover:text-gray-900">
-        <CgLogOff size={20} />
-      </button>
-      {!isCollapsed && <h3 className="text-sm font-small">LogOut Account</h3>}
+      <div className="flex items-center px-4 gap-3">
+        <button
+          className="rounded p-1 text-red-600 hover:text-gray-900"
+          onClick={handleLogout}
+        >
+          <CgLogOff size={20} />
+        </button>
+        {!isCollapsed && <h3 className="text-sm font-small">Logout Account</h3>}
+      </div>
     </div>
-  </div>
+  
 </div>
 
       {/* Content Spacer for Mobile View */}
