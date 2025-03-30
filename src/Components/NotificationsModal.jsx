@@ -18,11 +18,11 @@ const NotificationsModal = ({ closeModal, unreadNotifications }) => {
   };
 
   return (
-    <div className="absolute top-12 right-2 bg-white border shadow-lg rounded-lg w-80 z-[999]">
+    <div className="absolute top-3 right-[2px] left-20 bg-white border shadow-md rounded-lg w-80 z-[999]">
       {/* Header */}
-      <div className="flex justify-between items-center px-4 py-3 border-b bg-gray-100 rounded-t-lg">
+      <div className="flex justify-between items-center px-4 py-3 border-b rounded-t-lg">
         <h3 className="font-semibold text-lg">
-          Notifications <span className="text-blue-500">({unreadNotifications.length} new)</span>
+          Notifications <span className="text-sky-900 rounded-full text-md py-[3px] bg-sky-400/20 px-2">{unreadNotifications.length} new</span>
         </h3>
         <button 
           onClick={closeModal} 
