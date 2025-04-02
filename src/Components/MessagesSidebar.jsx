@@ -1,27 +1,7 @@
 import React, { useState } from "react";
 import { FaSearch, FaCheckDouble } from 'react-icons/fa';
 import { IoIosArrowDown } from "react-icons/io";
-
-const chats = [
-  {
-    id: 1,
-    name: 'Mrs. Yetunde Adebayo',
-    time: '4:00pm',
-    message: 'typing...',
-    status: 'typing',
-    profilePic: 'https://www.gravatar.com/avatar/2c7d99fe281ecd3bcd65ab915bac6dd5?s=250',
-  },
-  {
-    id: 2,
-    name: 'John Doe',
-    time: '2:45pm',
-    message: 'See you tomorrow!',
-    status: 'sent',
-    profilePic: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
-  },
-];
-
- 
+import { chats} from "../data/chats";
 
 function MessagesSidebar({ setSelectedChat }) {
     const [selectedFilter, setSelectedFilter] = useState("All");
