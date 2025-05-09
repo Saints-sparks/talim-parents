@@ -2,8 +2,8 @@ import { useState } from 'react';
 import axios from 'axios';
 
 // Base URL for your backend API
-export const API_URL = 'http://localhost:5000';
-// const API_URL = 'http://talimbe-v2-li38.onrender.com';
+export const API_BASE_URL = 'http://localhost:5000';
+// const API_BASE_URL = 'http://talimbe-v2-li38.onrender.com';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -15,7 +15,7 @@ export const useAuth = () => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
         // deviceToken,
@@ -44,7 +44,7 @@ export const useAuth = () => {
   const register = async (email, password, role, schoolId, firstName, lastName, phoneNumber) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/auth/register`, {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         email,
         password,
         role,
@@ -65,7 +65,7 @@ export const useAuth = () => {
     setLoading(true);
     try {
       await axios.post(
-        `${API_URL}/logout`,
+        `${API_BASE_URL}/logout`,
         {},
         {
           headers: {
@@ -87,7 +87,7 @@ export const useAuth = () => {
 
   const refreshTokenHandler = async () => {
     try {
-      const response = await axios.post(`${API_URL}/refresh-token`, {
+      const response = await axios.post(`${API_BASE_URL}/refresh-token`, {
         refreshToken,
       });
       const { access_token, refresh_token } = response.data;
@@ -103,7 +103,7 @@ export const useAuth = () => {
   const getProfile = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/profile/${user?.userId}`, {
+      const response = await axios.get(`${API_BASE_URL}/profile/${user?.userId}`, {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
@@ -120,7 +120,7 @@ export const useAuth = () => {
     setLoading(true);
     try {
       const response = await axios.put(
-        `${API_URL}/profile/update/`,
+        `${API_BASE_URL}/profile/update/`,
         updatedData,
         {
           headers: {
@@ -139,7 +139,7 @@ export const useAuth = () => {
   const forgotPassword = async (email) => {
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/forgot-password`, { email });
+      await axios.post(`${API_BASE_URL}/forgot-password`, { email });
       setLoading(false);
     } catch (err) {
       setError('Password reset failed');

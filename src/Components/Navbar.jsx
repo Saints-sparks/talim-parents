@@ -4,16 +4,18 @@ import { TbCalendarMonth } from "react-icons/tb";
 import { IoIosNotificationsOutline, IoIosArrowDown } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import logo from "/public/ava.svg";
-import { dummyNotifications } from "../data/notifications";
 import NotificationsModal from "../Components/NotificationsModal";
+import useNotifications from "../hooks/useNotifications"; // Importing the custom hook
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [selectedWard, setSelectedWard] = useState("Sandra Eze");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showModal, setShowModal] = useState(false); 
-  const [notifications] = useState(dummyNotifications);
+  const [showModal, setShowModal] = useState(false);
   const notificationRef = useRef(null);
+
+  // Use the useNotifications hook to fetch notifications
+  const { notifications, loading, error } = useNotifications();
 
   // Filter only unread notifications for the modal
   const unreadNotifications = notifications.filter((n) => !n.isRead);
@@ -34,23 +36,21 @@ const Navbar = () => {
         setShowModal(false);
       }
     };
-  
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const NotificationButton = () => {
-    const navigate = useNavigate();
-  
     const handleNotificationClick = (event) => {
       event.stopPropagation(); // Prevent closing modal immediately when clicking
       setShowModal((prev) => !prev);
     };
-  
+
     const handleNavigateToNotifications = () => {
       navigate("/notifications"); // Change this to the correct route
     };
-  
+
     return (
       <div className="relative" ref={notificationRef}>
         <button
@@ -67,7 +67,7 @@ const Navbar = () => {
             </span>
           )}
         </button>
-  
+
         {showModal && (
           <div className="fixed sm:absolute top-16 right-0 sm:right-0 z-[999] w-full sm:w-80 bg-white border shadow-lg rounded-lg">
             <NotificationsModal 

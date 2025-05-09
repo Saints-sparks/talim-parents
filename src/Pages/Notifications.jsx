@@ -1,15 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
-import { dummyNotifications } from "../data/notifications";
+import { useNotifications } from "../hooks/useNotifications"; // Importing the custom hook
 
 function Notifications() {
-  const [notifications, setNotifications] = useState(dummyNotifications);
+  const { notifications, loading, error } = useNotifications();
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Filter unread notifications
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  // Filter notifications based on search query and selected filter (all or unread)
   const filteredNotifications = notifications.filter((n) => {
     const matchesFilter = filter === "all" || (filter === "unread" && !n.isRead);
     const matchesSearch =
@@ -18,6 +20,7 @@ function Notifications() {
     return matchesFilter && matchesSearch;
   });
 
+  // Mark all notifications as read
   const markAllAsRead = () => {
     setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
   };

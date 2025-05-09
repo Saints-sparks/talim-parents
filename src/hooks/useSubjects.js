@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth, API_URL } from './useAuth';
+import { useAuth, API_BASE_URL } from '../services/auth.services';
 
 export const useSubjects = () => {
   const { authToken } = useAuth();
@@ -13,7 +13,7 @@ export const useSubjects = () => {
   const createSubject = async (subjectData) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/subjects/create`, subjectData, {
+      const response = await axios.post(`${API_BASE_URL}/subjects/create`, subjectData, {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
@@ -21,7 +21,7 @@ export const useSubjects = () => {
       setSubjects((prevSubjects) => [...prevSubjects, response.data]);
       setTotalSubjects(prev => prev + 1);
       setLoading(false);
-      return response.data;
+      return response.data;``
     } catch (err) {
       setError('Failed to create subject');
       setLoading(false);
@@ -33,7 +33,7 @@ export const useSubjects = () => {
   const getAllSubjects = async (page = 1, limit = 10) => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/subjects/all`, {
+      const response = await axios.get(`${API_BASE_URL}/subjects/all`, {
         params: { page, limit },
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -53,7 +53,7 @@ export const useSubjects = () => {
   const getSubjectById = async (id) => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/subjects/${id}`, {
+      const response = await axios.get(`${API_BASE_URL}/subjects/${id}`, {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
@@ -76,7 +76,7 @@ export const useSubjects = () => {
   const updateSubject = async (id, updatedData) => {
     setLoading(true);
     try {
-      const response = await axios.put(`${API_URL}/subjects/update/${id}`, updatedData, {
+      const response = await axios.put(`${API_BASE_URL}/subjects/update/${id}`, updatedData, {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
@@ -99,7 +99,7 @@ export const useSubjects = () => {
   const deleteSubject = async (id) => {
     setLoading(true);
     try {
-      await axios.delete(`${API_URL}/subjects/delete/${id}`, {
+      await axios.delete(`${API_BASE_URL}/subjects/delete/${id}`, {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
@@ -121,7 +121,7 @@ export const useSubjects = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/subjects-courses/by-school`, {
+      const response = await axios.get(`${API_BASE_URL}/subjects-courses/by-school`, {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },

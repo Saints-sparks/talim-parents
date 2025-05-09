@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth'; // Importing the useAuth hook to access the login function
+import { useAuth } from './services/auth.services'; // Importing the useAuth hook to access the login function
 import logo from './assets/logo.svg';
 
 function Login() {
