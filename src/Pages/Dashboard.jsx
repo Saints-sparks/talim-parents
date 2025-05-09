@@ -1,45 +1,41 @@
-import React from 'react';
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { LuArrowUp, LuArrowDown } from "react-icons/lu";
 import { IoIosArrowDown } from "react-icons/io";
 import AttendanceCalendar from '../Components/AttendanceCalendar ';
-
-const boxes = [
-  {
-    number: 15,
-    text: "Subjects Enrolled",
-  },
-  {
-    number: "85%",
-    text: "Grade Score",
-    percentage: '15%',
-    icon: <LuArrowUp className="text-green-600" />,
-    color: 'bg-[#e5ebf0]'
-  },
-  {
-    number: "85%",
-    text: "Attendance Percentage",
-    percentage: '15%',
-    icon: <LuArrowDown className="text-red-600" />,
-    color: 'bg-[#F5EBEB]'
-  }
-];
-
-const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-
-const years = Array.from({ length: 5 }, (_, i) => 2021 + i);
+import { useSubjects } from '../hooks/useSubjects';
 
 function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("January");
   const [selectedYear, setSelectedYear] = useState(2025);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const { totalSubjects, loading, error } = useSubjects();
 
+  // Memoize boxes to prevent unnecessary re-renders
+  const boxes = useMemo(() => [
+    {
+      number: loading ? "..." : error ? "Error" : totalSubjects,
+      text: "Subjects Enrolled",
+    },
+    {
+      number: "85%",
+      text: "Grade Score",
+      percentage: '15%',
+      icon: <LuArrowUp className="text-green-600" />,
+      color: 'bg-[#e5ebf0]'
+    },
+    {
+      number: "85%",
+      text: "Attendance Percentage",
+      percentage: '15%',
+      icon: <LuArrowDown className="text-red-600" />,
+      color: 'bg-[#F5EBEB]'
+    }
+  ], [loading, error, totalSubjects]);
+
+  // Handle dropdown outside clicks
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".dropdown")) {
+      if (!(event.target.closest(".dropdown"))) {
         setOpenDropdown(null);
       }
     };
@@ -48,6 +44,17 @@ function Dashboard() {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
+  const handleDropdownToggle = (type) => {
+    setOpenDropdown(openDropdown === type ? null : type);
+  };
+
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const years = Array.from({ length: 5 }, (_, i) => 2021 + i);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
@@ -55,6 +62,12 @@ function Dashboard() {
         <section className="space-y-4">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Overview</h1>
           
+          {error && (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+              <p>Error loading subjects: {error}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {boxes.map((box, index) => (
               <div
@@ -64,7 +77,9 @@ function Dashboard() {
                 <div className="flex flex-col h-full justify-between">
                   <div>
                     <p className="text-gray-500 text-sm mb-1">{box.text}</p>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{box.number}</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                      {box.number}
+                    </h2>
                   </div>
                   {box.percentage && (
                     <div className={`flex items-center ${box.color} gap-2 px-3 py-1.5 rounded-lg self-end mt-4 text-sm font-medium`}>
@@ -91,7 +106,7 @@ function Dashboard() {
               <div className="relative dropdown">
                 <button
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                  onClick={() => setOpenDropdown(openDropdown === "month" ? null : "month")}
+                  onClick={() => handleDropdownToggle("month")}
                 >
                   <span className="min-w-[80px] text-left">{selectedMonth}</span>
                   <IoIosArrowDown className={`transition-transform duration-200 ${openDropdown === "month" ? "rotate-180" : ""}`} />
@@ -119,7 +134,7 @@ function Dashboard() {
               <div className="relative dropdown">
                 <button
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                  onClick={() => setOpenDropdown(openDropdown === "year" ? null : "year")}
+                  onClick={() => handleDropdownToggle("year")}
                 >
                   <span className="min-w-[60px] text-left">{selectedYear}</span>
                   <IoIosArrowDown className={`transition-transform duration-200 ${openDropdown === "year" ? "rotate-180" : ""}`} />

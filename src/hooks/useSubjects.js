@@ -1,17 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth, API_URL } from './useAuth'; // Import the useAuth hook
-
+import { useAuth, API_URL } from './useAuth';
 
 export const useSubjects = () => {
-  const { authToken } = useAuth(); // Get the authToken from useAuth hook
+  const { authToken } = useAuth();
   const [subjects, setSubjects] = useState([]);
-  const [totalSubjects, setTotalSubjects] = useState<number>(0);
+  const [totalSubjects, setTotalSubjects] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-
-
 
   // Create a new subject
   const createSubject = async (subjectData) => {
@@ -19,14 +15,17 @@ export const useSubjects = () => {
     try {
       const response = await axios.post(`${API_URL}/subjects/create`, subjectData, {
         headers: {
-          Authorization: `Bearer ${authToken}`, // Add the token in the Authorization header
+          Authorization: `Bearer ${authToken}`,
         },
       });
       setSubjects((prevSubjects) => [...prevSubjects, response.data]);
+      setTotalSubjects(prev => prev + 1);
       setLoading(false);
+      return response.data;
     } catch (err) {
       setError('Failed to create subject');
       setLoading(false);
+      throw err;
     }
   };
 
@@ -37,14 +36,16 @@ export const useSubjects = () => {
       const response = await axios.get(`${API_URL}/subjects/all`, {
         params: { page, limit },
         headers: {
-          Authorization: `Bearer ${authToken}`, // Add the token in the Authorization header
+          Authorization: `Bearer ${authToken}`,
         },
       });
       setSubjects(response.data.data);
       setLoading(false);
+      return response.data;
     } catch (err) {
       setError('Failed to fetch subjects');
       setLoading(false);
+      throw err;
     }
   };
 
@@ -54,7 +55,7 @@ export const useSubjects = () => {
     try {
       const response = await axios.get(`${API_URL}/subjects/${id}`, {
         headers: {
-          Authorization: `Bearer ${authToken}`, // Add the token in the Authorization header
+          Authorization: `Bearer ${authToken}`,
         },
       });
       setSubjects((prevSubjects) =>
@@ -63,9 +64,11 @@ export const useSubjects = () => {
         )
       );
       setLoading(false);
+      return response.data;
     } catch (err) {
       setError('Failed to fetch subject');
       setLoading(false);
+      throw err;
     }
   };
 
@@ -75,7 +78,7 @@ export const useSubjects = () => {
     try {
       const response = await axios.put(`${API_URL}/subjects/update/${id}`, updatedData, {
         headers: {
-          Authorization: `Bearer ${authToken}`, // Add the token in the Authorization header
+          Authorization: `Bearer ${authToken}`,
         },
       });
       setSubjects((prevSubjects) =>
@@ -84,9 +87,11 @@ export const useSubjects = () => {
         )
       );
       setLoading(false);
+      return response.data;
     } catch (err) {
       setError('Failed to update subject');
       setLoading(false);
+      throw err;
     }
   };
 
@@ -96,45 +101,49 @@ export const useSubjects = () => {
     try {
       await axios.delete(`${API_URL}/subjects/delete/${id}`, {
         headers: {
-          Authorization: `Bearer ${authToken}`, // Add the token in the Authorization header
+          Authorization: `Bearer ${authToken}`,
         },
       });
       setSubjects((prevSubjects) =>
         prevSubjects.filter((subject) => subject._id !== id)
       );
+      setTotalSubjects(prev => prev - 1);
       setLoading(false);
     } catch (err) {
       setError('Failed to delete subject');
       setLoading(false);
+      throw err;
     }
   };
 
-// Get subjects by school
+  // Get subjects by school
+  const getSubjectsBySchool = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_URL}/subjects-courses/by-school`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      setSubjects(response.data);
+      setTotalSubjects(response.data.length);
+      setLoading(false);
+      return response.data;
+    } catch (err) {
+      setError('Failed to get subjects by school');
+      setLoading(false);
+      throw err;
+    }
+  };
 
-const getSubjectsBySchool = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const response = await axios.get(`${API_URL}/courses/school`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
-    setSubjects(response.data);
-    setTotalSubjects(response.data.length); // Set the total count of subjects
-    setLoading(false);
-  } catch (err) {
-    setError('Failed to get subjects by school');
-    setLoading(false);
-  }
-};
+  useEffect(() => {
+    getSubjectsBySchool();
+  }, []);
 
-// Call this function when needed, for example in useEffect
-useEffect(() => {
-  getSubjectsBySchool();
-}, []);
   return {
     subjects,
+    totalSubjects,
     loading,
     error,
     createSubject,
@@ -142,7 +151,7 @@ useEffect(() => {
     getSubjectById,
     updateSubject,
     deleteSubject,
-    getSubjectsBySchool
-    
+    getSubjectsBySchool,
+    refetch: getSubjectsBySchool
   };
 };

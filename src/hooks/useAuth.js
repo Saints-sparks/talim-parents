@@ -2,7 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 
 // Base URL for your backend API
-const API_URL = 'http://localhost:5000';
+export const API_URL = 'http://localhost:5000';
 // const API_URL = 'http://talimbe-v2-li38.onrender.com';
 
 export const useAuth = () => {
