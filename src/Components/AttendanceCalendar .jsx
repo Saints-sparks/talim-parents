@@ -1,59 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
+import { useAttendance } from "../hooks/useAttendance"; // Import custom hook
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const localizer = momentLocalizer(moment);
 
-const generateGroupedAttendance = () => {
-  let today = new Date();
-  let startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-  let events = [];
-  let previousStatus = null;
-
-  for (let i = 0; i < 30; i++) {
-    let currentDate = new Date(startDate);
-    currentDate.setDate(startDate.getDate() + i);
-
-    if (currentDate > today) break;
-
-    let isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-    let isAbsent = Math.random() < 0.2 && !isWeekend;
-    let status = isAbsent ? "Absent" : "Present";
-    let backgroundColor = isAbsent ? "#F5EBEB" : "#e5ebf0";
-
-    let isGroupStart = status !== previousStatus;
-    let nextDate = new Date(currentDate);
-    nextDate.setDate(currentDate.getDate() + 1);
-    let nextStatus = getStatusForDate(nextDate);
-    let isGroupEnd = status !== nextStatus;
-
-    events.push({
-      title: isGroupStart ? status : "",
-      start: currentDate,
-      end: currentDate,
-      allDay: true,
-      backgroundColor,
-      isGroupStart,
-      isGroupEnd
-    });
-
-    previousStatus = status;
-  }
-
-  return events;
-};
-
-const getStatusForDate = (date) => {
-  let isWeekend = date.getDay() === 0 || date.getDay() === 6;
-  let isAbsent = Math.random() < 0.2 && !isWeekend;
-  return isAbsent ? "Absent" : "Present";
-};
-
-const AttendanceCalendar = () => {
-  const [events, setEvents] = useState(generateGroupedAttendance());
+const AttendanceCalendar = ({ studentId }) => {
+  const { attendanceData, loading, error, getAttendanceById } = useAttendance(); // Using custom hook
   const [calendarHeight, setCalendarHeight] = useState(500);
   const [isMobile, setIsMobile] = useState(false);
+
+// Fetch attendance data on component mount (only once)
+useEffect(() => {
+  getAttendanceById("67d71540ff7f5cd71e70931f");
+}, []); // Empty dependency array ensures it runs only once when the component is mounted
 
   useEffect(() => {
     const handleResize = () => {
@@ -65,12 +26,60 @@ const AttendanceCalendar = () => {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, []); // Only runs once on mount
+
+  if (loading) {
+    return <div>Loading attendance data...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
+  const generateGroupedAttendance = () => {
+    if (!attendanceData || !attendanceData.records) return [];
+
+    let events = [];
+    let previousStatus = null;
+
+    attendanceData.records.forEach((record) => {
+      const currentDate = new Date(record.date); // Assuming `date` field exists
+      const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+      const status = record.status === "absent" ? "Absent" : "Present"; // Assuming `status` field exists
+      const backgroundColor = status === "Absent" ? "#F5EBEB" : "#e5ebf0";
+
+      let isGroupStart = status !== previousStatus;
+      let nextDate = new Date(currentDate);
+      nextDate.setDate(currentDate.getDate() + 1);
+      let nextStatus = getStatusForDate(nextDate);
+      let isGroupEnd = status !== nextStatus;
+
+      events.push({
+        title: isGroupStart ? status : "",
+        start: currentDate,
+        end: currentDate,
+        allDay: true,
+        backgroundColor,
+        isGroupStart,
+        isGroupEnd,
+      });
+
+      previousStatus = status;
+    });
+
+    return events;
+  };
+
+  const getStatusForDate = (date) => {
+    let isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    return Math.random() < 0.2 && !isWeekend ? "Absent" : "Present";
+  };
+
+  const events = generateGroupedAttendance();
 
   const components = {
     dateCellWrapper: ({ value, children }) => {
       const isToday = moment(value).isSame(moment(), 'day');
-      
       return (
         <div className="rbc-day-bg relative h-full">
           <div className={`absolute ${isMobile ? 'top-1 left-1 text-xs' : 'top-2 left-2 text-sm'} font-medium`}>
@@ -89,50 +98,11 @@ const AttendanceCalendar = () => {
       <div className="text-xs font-semibold uppercase p-1">
         {isMobile ? label.charAt(0) : label.substring(0, 3)}
       </div>
-    )
+    ),
   };
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <style>
-        {`
-          .rbc-calendar {
-            min-height: ${calendarHeight}px;
-          }
-          .rbc-month-view {
-            font-size: ${isMobile ? '12px' : '14px'};
-          }
-          .rbc-header {
-            padding: ${isMobile ? '2px' : '4px'};
-          }
-          .rbc-month-row {
-            min-height: ${isMobile ? '60px' : '80px'} !important;
-          }
-          .rbc-date-cell {
-            text-align: left !important;
-            padding: 4px !important;
-          }
-          .rbc-row-content {
-            margin-top: ${isMobile ? '12px' : '20px'};
-          }
-          .rbc-event {
-            padding: ${isMobile ? '1px 2px' : '2px 5px'};
-          }
-          .rbc-button-link {
-            display: none !important;
-          }
-          @media (max-width: 640px) {
-            .rbc-toolbar {
-              flex-direction: column;
-              align-items: stretch;
-              margin-bottom: 10px;
-            }
-            .rbc-toolbar-label {
-              margin: 6px 0;
-            }
-          }
-        `}
-      </style>
       <Calendar
         localizer={localizer}
         events={events}
@@ -144,7 +114,7 @@ const AttendanceCalendar = () => {
         toolbar={false}
         formats={{
           dateFormat: 'D',
-          dayFormat: 'ddd'
+          dayFormat: 'ddd',
         }}
         eventPropGetter={(event) => ({
           style: {
@@ -162,7 +132,7 @@ const AttendanceCalendar = () => {
             marginRight: event.isGroupEnd ? "1px" : "-1px",
             zIndex: event.title ? "1" : "0",
             fontSize: isMobile ? "10px" : "12px",
-            fontWeight: "500"
+            fontWeight: "500",
           },
         })}
       />
