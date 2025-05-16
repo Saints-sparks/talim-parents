@@ -105,14 +105,14 @@ function MessageInput({
 
 export default MessageInput;
 
-// Sample user with image message:
-export const sampleImageMessage = {
-  id: 10,
-  sender: "Daniel Okoro",
-  profilePic: "/images/users/daniel-okoro.png", // Replace with actual profile image path
-  type: "file",
-  fileType: "image",
-  fileURL: "/images/uploads/everyday-english.png", // Replace with actual image path
-  text: "Good evening, students.\nPlease make sure to inform your parents about the Everyday English textbook.\nHave a lovely weekend!",
-  timestamp: "3:10 PM"
-};
+// // Sample user with image message:
+// export const sampleImageMessage = {
+//   id: 10,
+//   sender: "Daniel Okoro",
+//   profilePic: "/images/users/daniel-okoro.png", // Replace with actual profile image path
+//   type: "file",
+//   fileType: "image",
+//   fileURL: "/images/uploads/everyday-english.png", // Replace with actual image path
+//   text: "Good evening, students.\nPlease make sure to inform your parents about the Everyday English textbook.\nHave a lovely weekend!",
+//   timestamp: "3:10 PM"
+// };
