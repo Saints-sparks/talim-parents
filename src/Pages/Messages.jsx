@@ -1,5 +1,5 @@
 import MessagesSidebar from '../Components/MessagesSidebar';
-import ChatDetailsModal from '../Components/ChatDetailsModal'
+import ChatDetailsModal from '../Components/ChatDetailsModal';
 import React, { useState, useRef, useEffect } from 'react';
 import ChatHeader from '../Components/ChatHeader';
 import MessageList from '../Components/MessageList';
@@ -13,87 +13,58 @@ function Messages() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
-  const [selectedMessage, setSelectedMessage] = useState(null);
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
-  const [showFilePreview, setShowFilePreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileCaption, setFileCaption] = useState('');
-
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState({
+    images: [],
+    videos: [],
+    documents: [],
+  });
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
 
+  // Simulate messages for testing
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest(".message-options-dropdown")) {
-        setOpenDropdownId(null);
-      }
-    };
-
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
+    const dummyMessages = [
+      {
+        id: 1,
+        sender: "user",
+        text: "Hi everyone! Don't forget, the creative writing assignment is due tomorrow.",
+        timestamp: "3:10 PM",
+        type: "text",
+      },
+      {
+        id: 2,
+        sender: "teacher",
+        text: "Good evening, students. Please make sure to inform your parents about the Everyday English textbook.",
+        timestamp: "3:15 PM",
+        type: "text",
+      },
+      {
+        id: 3,
+        sender: "user",
+        fileURL: "https://via.placeholder.com/150", // Image URL
+        timestamp: "3:20 PM",
+        type: "file",
+        fileType: "image",
+      },
+      {
+        id: 4,
+        sender: "teacher",
+        fileURL: "https://via.placeholder.com/150", // Video URL
+        timestamp: "3:25 PM",
+        type: "file",
+        fileType: "video",
+      },
+    ];
+    setMessages(dummyMessages);
   }, []);
 
-  const toggleDropdown = (messageId) => {
-    setOpenDropdownId(openDropdownId === messageId ? null : messageId);
-  };
-
-  const handleDeleteMessage = (id) => {
-    setMessages(messages.filter((msg) => msg.id !== id));
-    setSelectedMessage(null);
-  };
-
-  const handleReplyMessage = (msg) => {
-    setReplyingTo(msg);
-    setSelectedMessage(null);
-  };
-
-  const handleForwardMessage = (msg) => {
-    alert(`Forwarding message: ${msg.text}`);
-    setSelectedMessage(null);
-  };
-
-  const handleStartRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      let audioChunks = [];
-  
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-  
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
-        setAudioBlob(audioBlob);
-      };
-  
-      mediaRecorder.start();
-      mediaRecorderRef.current = mediaRecorder;
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Error accessing microphone:", error);
-    }
-  };
-  
-  const handleStopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-  
   const sendMessage = (withFile = false) => {
-    if (isRecording) {
-      handleStopRecording();
-      return;
-    }
-
     if (!withFile && newMessage.trim() === '' && !audioBlob) return;
 
     let newMsg = {
@@ -125,34 +96,15 @@ function Messages() {
         text: newMessage.trim(),
       };
     }
-  
+
     setMessages([...messages, newMsg]);
     setNewMessage('');
     setAudioBlob(null);
     setSelectedFile(null);
     setFilePreview(null);
-    setShowFilePreview(false);
     setFileCaption('');
-  
+
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !showFilePreview) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const fileURL = URL.createObjectURL(file);
-      setSelectedFile(file);
-      setFilePreview(fileURL);
-      setShowFilePreview(true);
-      setFileCaption('');
-    }
   };
 
   const handleChatSelect = (chat) => {
@@ -160,11 +112,25 @@ function Messages() {
     setShowSidebar(false);
   };
 
-  const handleCancelFilePreview = () => {
-    setSelectedFile(null);
-    setFilePreview(null);
-    setShowFilePreview(false);
-    setFileCaption('');
+  const handleFileChange = (e, type) => {
+    const file = e.target.files[0];
+    const fileURL = URL.createObjectURL(file);
+
+    console.log("File selected: ", file.name, type);
+
+    setUploadedFiles((prev) => ({
+      ...prev,
+      [type]: [...prev[type], { fileURL, name: file.name, type: file.type }],
+    }));
+
+    setFilePreview(fileURL);
+    setSelectedFile(file);
+    setShowModal(false); // Close modal after selecting file
+  };
+
+  const handleOpenModal = (type) => {
+    setModalType(type);
+    setShowModal(true);
   };
 
   return (
@@ -181,52 +147,28 @@ function Messages() {
             <ChatHeader 
               selectedChat={selectedChat}
               setShowSidebar={setShowSidebar}
-              setShowDetailsModal={setShowDetailsModal}
             />
-
-            {showDetailsModal && (
-              <ChatDetailsModal 
-                chat={selectedChat} 
-                onClose={() => setShowDetailsModal(false)} 
-              />
-            )}
 
             <MessageList
               messages={messages}
-              openDropdownId={openDropdownId}
-              toggleDropdown={toggleDropdown}
-              handleReplyMessage={handleReplyMessage}
-              handleForwardMessage={handleForwardMessage}
-              handleDeleteMessage={handleDeleteMessage}
-              replyingTo={replyingTo}
               newMessage={newMessage}
               setNewMessage={setNewMessage}
-              setMessages={setMessages}
-              setReplyingTo={setReplyingTo}
               sendMessage={sendMessage}
+              filePreview={filePreview}
+              setFilePreview={setFilePreview}
+              selectedFile={selectedFile}
+              setSelectedFile={setSelectedFile}
+              fileCaption={fileCaption}
+              setFileCaption={setFileCaption}
+              messagesEndRef={messagesEndRef}
             />
-
-            {showFilePreview && selectedFile && (
-              <FilePreview
-                file={selectedFile}
-                filePreview={filePreview}
-                caption={fileCaption}
-                setCaption={setFileCaption}
-                onSend={() => sendMessage(true)}
-                onCancel={handleCancelFilePreview}
-              />
-            )}
 
             <MessageInput
               fileInputRef={fileInputRef}
-              handleFileChange={handleFileChange}
               newMessage={newMessage}
               setNewMessage={setNewMessage}
-              handleKeyPress={handleKeyPress}
               sendMessage={() => sendMessage(false)}
-              isRecording={isRecording}
-              handleStartRecording={handleStartRecording}
-              handleStopRecording={handleStopRecording}
+              handleOpenModal={handleOpenModal}
             />
           </>
         ) : (
@@ -245,6 +187,28 @@ function Messages() {
           </div>
         )}
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-md w-96">
+            <h3 className="text-lg font-semibold mb-4">{modalType}</h3>
+            <input
+              type="file"
+              accept={modalType === "Images" ? "image/*" : modalType === "Videos" ? "video/*" : "application/pdf"}
+              onChange={(e) => handleFileChange(e, modalType.toLowerCase())}
+              ref={fileInputRef}
+            />
+            <div className="mt-4">
+              <button
+                onClick={() => setShowModal(false)}
+                className="bg-red-500 text-white py-1 px-4 rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
