@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth, API_BASE_URL } from '../services/auth.services';
+import { API_BASE_URL } from '../config/api';
+import { useAuth } from '../services/auth.services';
 
 export const useSubjects = () => {
   const { authToken } = useAuth();

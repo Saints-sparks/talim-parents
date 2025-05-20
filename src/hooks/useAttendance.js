@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { API_BASE_URL } from '../services/auth.services'; // Importing the base URL for the backend
-
+import { API_BASE_URL } from '../config/api';
 export const useAttendance = () => {
   const [attendanceData, setAttendanceData] = useState(null);
   const [loading, setLoading] = useState(false);

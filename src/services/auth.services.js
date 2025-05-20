@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import axios from 'axios';
+import {API_ENDPOINTS} from '../config/api';
 
-// Base URL for your backend API
-export const API_BASE_URL = 'http://localhost:5000';
-// const API_BASE_URL = 'http://talimbe-v2-li38.onrender.com';
+
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -15,7 +14,7 @@ export const useAuth = () => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const response = await axios.post(`${API_ENDPOINTS.LOGIN}`, {
         email,
         password,
         // deviceToken,
@@ -44,7 +43,7 @@ export const useAuth = () => {
   const register = async (email, password, role, schoolId, firstName, lastName, phoneNumber) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
+      const response = await axios.post(`${API_ENDPOINTS.REGISTER}`, {
         email,
         password,
         role,
@@ -65,7 +64,7 @@ export const useAuth = () => {
     setLoading(true);
     try {
       await axios.post(
-        `${API_BASE_URL}/logout`,
+        `${API_ENDPOINTS.LOGOUT}`,
         {},
         {
           headers: {
@@ -87,7 +86,7 @@ export const useAuth = () => {
 
   const refreshTokenHandler = async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/refresh-token`, {
+      const response = await axios.post(`${API_ENDPOINTS.REGISTER}`, {
         refreshToken,
       });
       const { access_token, refresh_token } = response.data;
