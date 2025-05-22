@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { IoIosArrowDown } from "react-icons/io";
-import AttendanceCalendar from '../Components/AttendanceCalendar ';
+import AttendanceCalendar from '../Components/AttendanceCalendar';
 
 // List of months and years
 const months = [

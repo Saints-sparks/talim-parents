@@ -5,7 +5,7 @@ import { IoMdTime } from "react-icons/io";
 import { AiOutlineCheckCircle, AiOutlineCloseCircle } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
 import { MdArrowBackIos, MdArrowForwardIos } from "react-icons/md";
-import { useLeaveRequest } from "../hooks/useLeaveRequests";
+
 
 function RequestLeave() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -19,43 +19,9 @@ function RequestLeave() {
   // Use the hook that has the backend API functions
   const { getLeaveRequestsByChild, cancelRequest } = useLeaveRequest();
 
-  // TODO: Replace with actual logged-in child's ID or prop
-  const childId = "64aef4d2c7d2b7a91d12eabc"; // example
 
-  // Fetch leave requests from backend for the child
-  useEffect(() => {
-    let isMounted = true; // Track if component is mounted
-    
-    async function fetchLeaveRequests() {
-      try {
-        if (isMounted) {
-          setLoadingRequests(true);
-          setErrorRequests(null);
-        }
-        
-        const requests = await getLeaveRequestsByChild(childId);
-        
-        if (isMounted) {
-          setLeaveRequests(requests);
-          setLoadingRequests(false);
-        }
-      } catch (error) {
-        if (isMounted) {
-          setErrorRequests("Failed to load leave requests.");
-          setLoadingRequests(false);
-        }
-      }
-    }
-    
-    fetchLeaveRequests();
 
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      cancelRequest(); // Cancel any ongoing request
-    };
-  }, [childId]); // Removed getLeaveRequestsByChild from dependencies
-
+  //
   // Rest of your component remains the same...
   const totalPages = Math.ceil(leaveRequests.length / rowsPerPage);
   const currentRequests = leaveRequests.slice(

@@ -5,7 +5,8 @@ import { IoIosNotificationsOutline, IoIosArrowDown } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import logo from "/public/ava.svg";
 import NotificationsModal from "../Components/NotificationsModal";
-import useNotifications from "../hooks/useNotifications"; // Importing the custom hook
+import { useNotifications } from "../hooks/useNotifications";  // Import your notifications hook
+import { toast } from "react-hot-toast";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -14,11 +15,18 @@ const Navbar = () => {
   const [showModal, setShowModal] = useState(false);
   const notificationRef = useRef(null);
 
-  // Use the useNotifications hook to fetch notifications
-  const { notifications, loading, error } = useNotifications();
+  // Use the notifications hook
+  const { notifications, isLoading, error } = useNotifications();
 
-  // Filter only unread notifications for the modal
-  const unreadNotifications = notifications.filter((n) => !n.isRead);
+  // Handle error from notifications
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
+  // Extract unread notifications safely
+  const unreadNotifications = notifications?.data?.filter((n) => !n.readBy || n.readBy.length === 0) || [];
   const unreadCount = unreadNotifications.length;
 
   const wards = ["Sandra Eze", "Michael Eze", "John Eze"];
@@ -48,7 +56,7 @@ const Navbar = () => {
     };
 
     const handleNavigateToNotifications = () => {
-      navigate("/notifications"); // Change this to the correct route
+      navigate("/notifications");
     };
 
     return (
@@ -56,9 +64,11 @@ const Navbar = () => {
         <button
           onClick={(event) => {
             handleNotificationClick(event);
-            handleNavigateToNotifications(); // Navigate when clicking the icon
+            handleNavigateToNotifications();
           }}
           className="relative text-2xl bg-white py-2 px-2 rounded-lg hover:opacity-75 transition-opacity"
+          aria-label="Notifications"
+          title="Notifications"
         >
           <IoIosNotificationsOutline />
           {unreadCount > 0 && (

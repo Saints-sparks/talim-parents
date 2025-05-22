@@ -12,7 +12,7 @@ import Messages from './Pages/Messages';
 import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
 import NotificationDetail from './Pages/NotificationDetail';
-import ProtectedRoute from './Pages/ProtectedRoute';
+
 
 function App() {
   return (
@@ -23,7 +23,7 @@ function App() {
           <Route
             path="/*"
             element={
-              <ProtectedRoute> {/* ✅ Wrap the entire app in guard */}
+            
                 <div className="flex min-h-screen bg-[#f8f8f8]">
                   <Sidebar />
                   <div className="flex-1 flex flex-col">
@@ -43,7 +43,7 @@ function App() {
                     </div>
                   </div>
                 </div>
-              </ProtectedRoute>
+             
             }
           />
         </Routes>
