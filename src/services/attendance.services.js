@@ -10,7 +10,7 @@ export const getAttendanceByStudentId = async (studentId) => {
     if (!studentId) throw new Error('Student ID is required');
 
     const response = await axios.get(
-      `${API_BASE_URL}/attendance/${studentId}`,
+      `${API_BASE_URL}/attendance/dashboard/${studentId}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
