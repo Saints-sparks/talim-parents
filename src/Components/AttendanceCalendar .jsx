@@ -1,21 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
-import { useAttendance } from "../hooks/useAttendance"; // Import custom hook
+import { useAttendance } from "../hooks/useAttendance";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const localizer = momentLocalizer(moment);
 
-const AttendanceCalendar = ({ studentId }) => {
-  const { attendanceData, loading, error, getAttendanceById } = useAttendance(); // Using custom hook
+const AttendanceCalendar = () => {
+  const { attendanceData, loading, error, getAttendanceById } = useAttendance();
   const [calendarHeight, setCalendarHeight] = useState(500);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [students, setStudents] = useState([]);
 
-// Fetch attendance data on component mount (only once)
-useEffect(() => {
-  getAttendanceById("67d71540ff7f5cd71e70931f");
-}, []); // Empty dependency array ensures it runs only once when the component is mounted
+  // Load students from localStorage only once
+  useEffect(() => {
+    const storedStudents = localStorage.getItem('parent_students');
+    if (storedStudents) {
+      try {
+        const parsedStudents = JSON.parse(storedStudents);
+        setStudents(parsedStudents);
+        if (parsedStudents.length > 0 && !selectedStudent) {
+          setSelectedStudent(parsedStudents[0]._id);
+        }
+      } catch (err) {
+        console.error('Failed to parse stored students:', err);
+      }
+    }
+  }, []); // Empty dependency array to run only once
 
+  // Fetch attendance when selected student changes
+  useEffect(() => {
+    if (selectedStudent) {
+      getAttendanceById(selectedStudent);
+    }
+  }, [selectedStudent, getAttendanceById]);
+
+  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -26,56 +47,30 @@ useEffect(() => {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []); // Only runs once on mount
+  }, []);
 
-  if (loading) {
-    return <div>Loading attendance data...</div>;
-  }
+  const handleStudentChange = (e) => {
+    setSelectedStudent(e.target.value);
+  };
 
-  if (error) {
-    return <div>{error}</div>;
-  }
-
-  const generateGroupedAttendance = () => {
+  // Memoize the event generation
+  const generateGroupedAttendance = useCallback(() => {
     if (!attendanceData || !attendanceData.records) return [];
 
-    let events = [];
-    let previousStatus = null;
-
-    attendanceData.records.forEach((record) => {
-      const currentDate = new Date(record.date); // Assuming `date` field exists
-      const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-      const status = record.status === "absent" ? "Absent" : "Present"; // Assuming `status` field exists
+    return attendanceData.records.map((record) => {
+      const currentDate = new Date(record.date);
+      const status = record.status === "absent" ? "Absent" : "Present";
       const backgroundColor = status === "Absent" ? "#F5EBEB" : "#e5ebf0";
 
-      let isGroupStart = status !== previousStatus;
-      let nextDate = new Date(currentDate);
-      nextDate.setDate(currentDate.getDate() + 1);
-      let nextStatus = getStatusForDate(nextDate);
-      let isGroupEnd = status !== nextStatus;
-
-      events.push({
-        title: isGroupStart ? status : "",
+      return {
+        title: status,
         start: currentDate,
         end: currentDate,
         allDay: true,
         backgroundColor,
-        isGroupStart,
-        isGroupEnd,
-      });
-
-      previousStatus = status;
+      };
     });
-
-    return events;
-  };
-
-  const getStatusForDate = (date) => {
-    let isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    return Math.random() < 0.2 && !isWeekend ? "Absent" : "Present";
-  };
-
-  const events = generateGroupedAttendance();
+  }, [attendanceData]);
 
   const components = {
     dateCellWrapper: ({ value, children }) => {
@@ -101,41 +96,79 @@ useEffect(() => {
     ),
   };
 
+  if (loading && !attendanceData) {
+    return <div className="p-4">Loading attendance data...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 text-red-600 rounded">
+        Error: {error}
+        {error.includes('404') && (
+          <p className="mt-2">Attendance data not found for this student.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (students.length === 0) {
+    return <div className="p-4">No students found. Please contact your school administrator.</div>;
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <Calendar
-        localizer={localizer}
-        events={events}
-        startAccessor="start"
-        endAccessor="end"
-        views={["month"]}
-        style={{ height: calendarHeight }}
-        components={components}
-        toolbar={false}
-        formats={{
-          dateFormat: 'D',
-          dayFormat: 'ddd',
-        }}
-        eventPropGetter={(event) => ({
-          style: {
-            backgroundColor: event.backgroundColor,
-            color: event.title ? "#000" : "transparent",
-            borderRadius: event.isGroupStart ? "4px 0 0 4px" : 
-                         event.isGroupEnd ? "0 4px 4px 0" : "0",
-            padding: isMobile ? "2px" : "4px",
-            textAlign: "center",
-            minHeight: isMobile ? "18px" : "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginLeft: event.isGroupStart ? "1px" : "-1px",
-            marginRight: event.isGroupEnd ? "1px" : "-1px",
-            zIndex: event.title ? "1" : "0",
-            fontSize: isMobile ? "10px" : "12px",
-            fontWeight: "500",
-          },
-        })}
-      />
+      <div className="p-4 border-b">
+        <label htmlFor="student-select" className="block text-sm font-medium text-gray-700 mb-1">
+          Select Student
+        </label>
+        <select
+          id="student-select"
+          value={selectedStudent || ''}
+          onChange={handleStudentChange}
+          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        >
+          {students.map((student) => (
+            <option key={student._id} value={student._id}>
+              {student.firstName} {student.lastName}
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      {attendanceData?.records?.length > 0 ? (
+        <Calendar
+          localizer={localizer}
+          events={generateGroupedAttendance()}
+          startAccessor="start"
+          endAccessor="end"
+          views={["month"]}
+          style={{ height: calendarHeight }}
+          components={components}
+          toolbar={false}
+          formats={{
+            dateFormat: 'D',
+            dayFormat: 'ddd',
+          }}
+          eventPropGetter={(event) => ({
+            style: {
+              backgroundColor: event.backgroundColor,
+              color: "#000",
+              padding: isMobile ? "2px" : "4px",
+              textAlign: "center",
+              minHeight: isMobile ? "18px" : "24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: isMobile ? "10px" : "12px",
+              fontWeight: "500",
+            },
+          })}
+        />
+      ) : (
+        <div className="p-4 text-center text-gray-500">
+          No attendance records found for the selected student.
+        </div>
+      )}
     </div>
   );
 };

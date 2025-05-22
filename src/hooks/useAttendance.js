@@ -1,28 +1,28 @@
-import { useState } from 'react';
-import axios from 'axios';
-import { API_BASE_URL } from '../services/auth.services'; // Importing the base URL for the backend
+// hooks/useAttendance.js
+import { useState, useCallback } from 'react';
+import { getAttendanceByStudentId } from '../services/attendance.services';
 
 export const useAttendance = () => {
   const [attendanceData, setAttendanceData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [authToken] = useState(localStorage.getItem('access_token')); // Getting the token from localStorage
 
-  const getAttendanceById = async (studentId) => {
+  // Memoize the getAttendanceById function
+  const getAttendanceById = useCallback(async (studentId) => {
+    if (!studentId) return;
+    
     setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/attendance/${studentId}`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`, // Using the authorization token
-        },
-      });
-      setAttendanceData(response.data);
-      setLoading(false);
+      const data = await getAttendanceByStudentId(studentId);
+      setAttendanceData(data);
     } catch (err) {
-      setError('Failed to fetch attendance data');
+      setError(err.message || 'Failed to fetch attendance data');
+      setAttendanceData(null);
+    } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return {
     attendanceData,
