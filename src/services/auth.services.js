@@ -77,7 +77,7 @@ export const useAuth = () => {
     setLoading(true);
     try {
       await axios.post(
-        `${API_BASE_URL}/logout`,
+        `${API_BASE_URL}/auth/logout`,
         {},
         {
           headers: {
@@ -88,6 +88,9 @@ export const useAuth = () => {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('school_id');
+      localStorage.removeItem('parent_id');
+      localStorage.removeItem('parent_students');
+      localStorage.removeItem('notifications');
       setAuthToken(null);
       setRefreshToken(null);
       setSchoolId(null);
