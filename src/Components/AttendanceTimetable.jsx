@@ -2,169 +2,192 @@ import React, { useState, useEffect } from "react";
 import { Calendar, momentLocalizer, Views } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import { useTimetable } from "../hooks/useTimetable";
+import { FiAlertCircle, FiClock, FiCalendar, FiPlus } from "react-icons/fi";
 
 const localizer = momentLocalizer(moment);
 
-const events = [
-  { title: "Mathematics", start: new Date(2025, 2, 26, 8, 0), end: new Date(2025, 2, 26, 10, 20) },
-  { title: "Mathematics", start: new Date(2025, 3, 1, 8, 0), end: new Date(2025, 3, 1, 9, 0) },
-  { title: "Mathematics", start: new Date(2025, 2, 27, 8, 0), end: new Date(2025, 2, 27, 9, 0) },
-  { title: "Mathematics", start: new Date(2025, 2, 20, 8, 0), end: new Date(2025, 2, 20, 9, 0) },
-  { title: "Mathematics", start: new Date(2025, 2, 21, 8, 0), end: new Date(2025, 2, 21, 9, 0) },
-  { title: "English", start: new Date(2025, 2, 28, 9, 0), end: new Date(2025, 2, 28, 10, 0) },
-  { title: "Civic Education", start: new Date(2025, 2, 28, 12, 0), end: new Date(2025, 2, 28, 13, 0) },
-  { title: "English", start: new Date(2025, 2, 27, 9, 0), end: new Date(2025, 2, 27, 10, 0) },
-  { title: "Civic Education", start: new Date(2025, 2, 20, 9, 0), end: new Date(2025, 2, 20, 10, 0) },
-  { title: "English", start: new Date(2025, 2, 25, 9, 0), end: new Date(2025, 2, 25, 10, 0) },
-];
-
-const subjectColors = {
-  "Mathematics": "#4285F4",
-  "English": "#34A853",
-  "Civic Education": "#FBBC05",
-  "BREAK - TIME": "#9E9E9E",
-};
-
-const enhancedEvents = events.map(event => ({
-  ...event,
-  textColor: subjectColors[event.title] || "#000000",
-}));
-
 const TimeGutterHeader = () => (
-  <div className="text-center font-bold p-1 text-xs sm:text-sm">Time</div>
+  <div className="text-center font-bold p-1 text-xs sm:text-sm" style={{ color: '#003366' }}>
+    Time
+  </div>
 );
 
-const getMobileTitle = (title) => {
-  const abbreviations = {
-    "Mathematics": "Math",
-    "English": "Eng",
-    "Civic Education": "Civic",
-    "BREAK - TIME": "Break",
+const EventComponent = ({ event, isMobile }) => {
+  const subject = event.resource?.subject || 
+                 event.resource?.course || 
+                 event.title || 
+                 "Class";
+
+  const timeDisplay = event.resource?.time || 
+                    `${moment(event.start).format("h:mm A")} - ${moment(event.end).format("h:mm A")}`;
+
+  const className = event.resource?.class || "";
+
+  const getMobileTitle = (title) => {
+    const abbreviations = {
+      "Mathematics": "Math",
+      "English": "Eng",
+      "Verbal Reasoning": "VR",
+      "Elementary schematics": "ES",
+      "BREAK - TIME": "Break",
+    };
+    return abbreviations[title] || title.slice(0, 3);
   };
-  return abbreviations[title] || title;
+
+  return (
+    <div className="h-full w-full p-1" style={{ backgroundColor: 'white' }}>
+      <div className="font-bold text-xs sm:text-sm truncate" style={{ color: '#003366' }}>
+        {isMobile ? getMobileTitle(subject) : subject}
+      </div>
+      <div className="text-[10px] sm:text-xs truncate" style={{ color: '#003366', opacity: 0.9 }}>
+        {timeDisplay}
+      </div>
+      {className && (
+        <div className="text-[10px] sm:text-xs truncate" style={{ color: '#003366', opacity: 0.7 }}>
+          {className}
+        </div>
+      )}
+    </div>
+  );
 };
 
 function AttendanceTimetable() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const parentStudents = JSON.parse(localStorage.getItem("parent_students") || "[]");
+
+  const {
+    events,
+    loading,
+    error,
+    getTimetableByClass,
+  } = useTimetable();
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    if (parentStudents.length > 0 && !selectedStudent) {
+      setSelectedStudent(parentStudents[0]._id);
+    }
+  }, [parentStudents, selectedStudent]);
+
+  const selectedStudentData = parentStudents.find((s) => s._id === selectedStudent);
+  const classId = selectedStudentData?.classId?._id;
+
+  useEffect(() => {
+    if (classId) {
+      getTimetableByClass(classId);
+    }
+  }, [classId]);
+
   const components = {
-    event: ({ event }) => (
-      <div
-        className="h-full w-full flex flex-col justify-center text-center p-1 overflow-hidden rounded shadow-sm transition-all duration-200 hover:shadow-md"
-        style={{ 
-          color: event.textColor,
-          backgroundColor: `${event.textColor}10`
-        }}
-      >
-        <div className="font-bold text-xs sm:text-sm truncate w-full">
-          {isMobile ? getMobileTitle(event.title) : event.title}
-        </div>
-        <div className="text-[10px] sm:text-xs opacity-90 truncate w-full">
-          {moment(event.start).format("h:mm")} - {moment(event.end).format("h:mm")}
-        </div>
-      </div>
-    ),
+    event: (props) => <EventComponent {...props} isMobile={isMobile} />,
     timeGutterHeader: TimeGutterHeader,
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+        <p className="text-gray-600">Loading timetable data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-md mx-auto bg-white">
+        <div className="flex flex-col items-center text-center">
+          <div className="p-3 bg-red-100 mb-4">
+            <FiAlertCircle className="text-red-500 text-2xl" />
+          </div>
+          <h3 className="text-lg font-medium mb-2" style={{ color: '#003366' }}>Unable to load timetable</h3>
+          <p className="mb-4" style={{ color: '#003366' }}>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-2 sm:p-4 bg-white rounded-lg shadow-sm">
-      <style>
-        {`
-          .rbc-calendar {
-            min-height: 400px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          }
-          
-          .rbc-header {
-            padding: 8px 4px;
-            font-weight: 600;
-            font-size: ${isMobile ? '12px' : '14px'};
-            text-transform: ${isMobile ? 'uppercase' : 'none'};
-          }
-          
-          .rbc-time-header-content {
-            border-left: 1px solid #ddd;
-          }
-          
-          .rbc-timeslot-group {
-            min-height: ${isMobile ? '60px' : '80px'};
-          }
-          
-          .rbc-time-slot {
-            font-size: ${isMobile ? '11px' : '13px'};
-          }
-          
-          .rbc-day-slot .rbc-event {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            background-color: white !important;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            padding: ${isMobile ? '2px' : '4px'};
-            overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-          }
-          
-          .rbc-time-content {
-            border-top: 1px solid #ddd;
-          }
-          
-          .rbc-time-gutter .rbc-timeslot-group {
-            border-right: 1px solid #ddd;
-          }
-          
-          @media (max-width: 640px) {
-            .rbc-time-gutter {
-              font-size: 11px;
-            }
-            
-            .rbc-day-slot .rbc-event-content {
-              font-size: 10px;
-              line-height: 1.2;
-            }
-          }
-        `}
-      </style>
-      <Calendar
-        localizer={localizer}
-        events={enhancedEvents}
-        startAccessor="start"
-        endAccessor="end"
-        views={[Views.WORK_WEEK]}
-        defaultView={Views.WORK_WEEK}
-        timeslots={1}
-        step={60}
-        toolbar={false}
-        min={new Date(2025, 2, 17, 8, 0)}
-        max={new Date(2025, 2, 17, 14, 0)}
-        style={{ height: isMobile ? 500 : 600 }}
-        components={components}
-        eventPropGetter={() => ({
-          style: { backgroundColor: "white" },
-        })}
-        formats={{
-          timeGutterFormat: (date, culture, localizer) =>
-            isMobile 
-              ? localizer.format(date, "ha", culture) 
-              : localizer.format(date, "h:mm A", culture),
-          dayFormat: (date, culture, localizer) =>
-            isMobile
-              ? localizer.format(date, "ddd", culture)
-              : localizer.format(date, "dddd", culture),
-        }}
-      />
+    <div className="p-2 sm:p-4 bg-white">
+      <div className="mb-4">
+        <label htmlFor="student-select" className="block text-sm font-medium mb-1" style={{ color: '#003366' }}>
+          Select Student:
+        </label>
+        <select
+          id="student-select"
+          value={selectedStudent || ""}
+          onChange={(e) => setSelectedStudent(e.target.value)}
+          className="block w-full p-2 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          style={{ color: '#003366' }}
+        >
+          {parentStudents.map((student) => (
+            <option key={student._id} value={student._id} style={{ color: '#003366' }}>
+              {student.userId.firstName} {student.userId.lastName} - {student.classId?.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {events.length > 0 ? (
+        <Calendar
+          localizer={localizer}
+          events={events}
+          startAccessor="start"
+          endAccessor="end"
+          views={[Views.WORK_WEEK]}
+          defaultView={Views.WORK_WEEK}
+          defaultDate={new Date()}
+          min={new Date(0, 0, 0, 7, 0, 0)}
+          max={new Date(0, 0, 0, 17, 0, 0)}
+          timeslots={1}
+          step={30}
+          toolbar={true}
+          style={{ 
+            height: isMobile ? 500 : 600,
+            color: '#003366'
+          }}
+          components={components}
+          eventPropGetter={(event) => ({
+            style: {
+              backgroundColor: 'white',
+              padding: '2px',
+              margin: '0',
+              border: 'none'
+            },
+          })}
+          formats={{
+            timeGutterFormat: 'h:mm A',
+            dayFormat: (date, culture, localizer) =>
+              isMobile
+                ? localizer.format(date, 'ddd', culture)
+                : localizer.format(date, 'dddd', culture),
+          }}
+        />
+      ) : (
+        <div className="bg-blue-50 border border-blue-100 p-6 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 mb-4">
+            <FiCalendar className="h-6 w-6" style={{ color: '#003366' }} />
+          </div>
+          <h3 className="text-lg font-medium mb-1" style={{ color: '#003366' }}>
+            No Timetable Available
+          </h3>
+          <p style={{ color: '#003366' }}>
+            There's no timetable set for {selectedStudentData?.userId.firstName || "this student"} yet.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
