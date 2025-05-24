@@ -1,99 +1,150 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Calendar, momentLocalizer } from "react-big-calendar";
+import React, { useState, useEffect } from "react";
 import moment from "moment";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAttendance } from "../hooks/useAttendance";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-
-const localizer = momentLocalizer(moment);
 
 const AttendanceCalendar = () => {
   const { attendanceData, loading, error, getAttendanceById } = useAttendance();
-  const [calendarHeight, setCalendarHeight] = useState(500);
-  const [isMobile, setIsMobile] = useState(false);
+  const [currentDate, setCurrentDate] = useState(moment());
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [students, setStudents] = useState([]);
 
-  // Load students from localStorage only once
+  // Fetch students from localStorage
   useEffect(() => {
     const storedStudents = localStorage.getItem('parent_students');
     if (storedStudents) {
       try {
         const parsedStudents = JSON.parse(storedStudents);
         setStudents(parsedStudents);
-        if (parsedStudents.length > 0 && !selectedStudent) {
+        if (parsedStudents.length > 0) {
           setSelectedStudent(parsedStudents[0]._id);
         }
       } catch (err) {
-        console.error('Failed to parse stored students:', err);
+        console.error('Error loading students:', err);
       }
     }
-  }, []); // Empty dependency array to run only once
+  }, []);
 
-  // Fetch attendance when selected student changes
+  // Fetch attendance data when student changes
   useEffect(() => {
     if (selectedStudent) {
       getAttendanceById(selectedStudent);
     }
   }, [selectedStudent, getAttendanceById]);
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      setCalendarHeight(mobile ? 350 : 500);
-    };
+  const handlePrevMonth = () => {
+    setCurrentDate(currentDate.clone().subtract(1, 'month'));
+  };
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const handleNextMonth = () => {
+    setCurrentDate(currentDate.clone().add(1, 'month'));
+  };
 
   const handleStudentChange = (e) => {
     setSelectedStudent(e.target.value);
   };
 
-  // Memoize the event generation
-  const generateGroupedAttendance = useCallback(() => {
-    if (!attendanceData || !attendanceData.records) return [];
+  // Calculate attendance stats from API data
+  const getAttendanceStats = () => {
+    if (!attendanceData || !attendanceData.records) {
+      return { present: 0, absent: 0, percentage: 0 };
+    }
 
-    return attendanceData.records.map((record) => {
-      const currentDate = new Date(record.date);
-      const status = record.status === "absent" ? "Absent" : "Present";
-      const backgroundColor = status === "Absent" ? "#F5EBEB" : "#e5ebf0";
-
-      return {
-        title: status,
-        start: currentDate,
-        end: currentDate,
-        allDay: true,
-        backgroundColor,
-      };
+    // Filter out weekend records
+    const weekdayRecords = attendanceData.records.filter(record => {
+      const day = moment(record.date).day();
+      return day !== 0 && day !== 6; // 0 = Sunday, 6 = Saturday
     });
-  }, [attendanceData]);
 
-  const components = {
-    dateCellWrapper: ({ value, children }) => {
-      const isToday = moment(value).isSame(moment(), 'day');
-      return (
-        <div className="rbc-day-bg relative h-full">
-          <div className={`absolute ${isMobile ? 'top-1 left-1 text-xs' : 'top-2 left-2 text-sm'} font-medium`}>
-            {value.getDate()}
-          </div>
+    const present = weekdayRecords.filter(r => r.status === 'present').length;
+    const absent = weekdayRecords.filter(r => r.status === 'absent').length;
+    const total = present + absent;
+    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+    
+    return { present, absent, percentage };
+  };
+
+  const attendanceStats = getAttendanceStats();
+
+  // Format attendance data for calendar display
+  const formatAttendanceData = () => {
+    if (!attendanceData || !attendanceData.records) return {};
+    
+    return attendanceData.records.reduce((acc, record) => {
+      const day = moment(record.date).day();
+      // Skip weekends
+      if (day === 0 || day === 6) return acc;
+      
+      acc[record.date] = record.status;
+      return acc;
+    }, {});
+  };
+
+  const formattedAttendance = formatAttendanceData();
+
+  // Render calendar days
+  const renderCalendarDays = () => {
+    const startOfMonth = currentDate.clone().startOf('month');
+    const daysInMonth = currentDate.daysInMonth();
+    const firstDayOfMonth = startOfMonth.day();
+    
+    const days = [];
+    let currentWeek = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 1; i < firstDayOfMonth; i++) {
+      currentWeek.push(<div key={`empty-start-${i}`} className="h-20 border border-gray-200"></div>);
+    }
+    
+    // Add cells for each day of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = currentDate.clone().date(i);
+      const dayOfWeek = date.day();
+      
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+      
+      const dateStr = date.format('YYYY-MM-DD');
+      const status = formattedAttendance[dateStr];
+      const isToday = date.isSame(moment(), 'day');
+      
+      currentWeek.push(
+        <div 
+          key={`day-${i}`} 
+          className="h-20 border border-gray-200 p-2 relative"
+        >
+          <span className="font-medium">{i}</span>
           {isToday && (
-            <div className={`absolute ${isMobile ? 'top-1 right-1 text-[10px] px-1' : 'top-2 right-2 text-xs px-2'} border border-blue-500 py-0.5 rounded-md`}>
+            <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">
               Today
+            </span>
+          )}
+          {status && (
+            <div 
+              className={`mt-1 text-center text-sm font-medium rounded px-1 ${
+                status === 'present' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}
+            >
+              {status === 'present' ? 'Present' : 'Absent'}
             </div>
           )}
-          {children}
         </div>
       );
-    },
-    header: ({ label }) => (
-      <div className="text-xs font-semibold uppercase p-1">
-        {isMobile ? label.charAt(0) : label.substring(0, 3)}
-      </div>
-    ),
+      
+      // Start new row after Friday (day 5)
+      if (dayOfWeek === 5 || i === daysInMonth) {
+        days.push(
+          <div key={`week-${i}`} className="grid grid-cols-5 gap-0">
+            {currentWeek}
+          </div>
+        );
+        currentWeek = [];
+      }
+    }
+    
+    return days;
   };
 
   if (loading && !attendanceData) {
@@ -104,15 +155,12 @@ const AttendanceCalendar = () => {
     return (
       <div className="p-4 bg-red-50 text-red-600 rounded">
         Error: {error}
-        {error.includes('404') && (
-          <p className="mt-2">Attendance data not found for this student.</p>
-        )}
       </div>
     );
   }
 
   if (students.length === 0) {
-    return <div className="p-4">No students found. Please contact your school administrator.</div>;
+    return <div className="p-4">No students found.</div>;
   }
 
   return (
@@ -129,46 +177,66 @@ const AttendanceCalendar = () => {
         >
           {students.map((student) => (
             <option key={student._id} value={student._id}>
-              {student.firstName} {student.lastName}
+              {student.userId?.firstName} {student.userId?.lastName}
+              {student.classId?.name && ` - ${student.classId.name}`}
             </option>
           ))}
         </select>
       </div>
       
-      {attendanceData?.records?.length > 0 ? (
-        <Calendar
-          localizer={localizer}
-          events={generateGroupedAttendance()}
-          startAccessor="start"
-          endAccessor="end"
-          views={["month"]}
-          style={{ height: calendarHeight }}
-          components={components}
-          toolbar={false}
-          formats={{
-            dateFormat: 'D',
-            dayFormat: 'ddd',
-          }}
-          eventPropGetter={(event) => ({
-            style: {
-              backgroundColor: event.backgroundColor,
-              color: "#000",
-              padding: isMobile ? "2px" : "4px",
-              textAlign: "center",
-              minHeight: isMobile ? "18px" : "24px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: isMobile ? "10px" : "12px",
-              fontWeight: "500",
-            },
-          })}
-        />
-      ) : (
-        <div className="p-4 text-center text-gray-500">
-          No attendance records found for the selected student.
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-4">
+          <button 
+            onClick={handlePrevMonth}
+            className="p-1 rounded-full hover:bg-gray-100"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h3 className="font-medium text-gray-700">
+            {currentDate.format('MMMM YYYY')}
+          </h3>
+          <button 
+            onClick={handleNextMonth}
+            className="p-1 rounded-full hover:bg-gray-100"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
-      )}
+        
+        {/* Weekday headers */}
+        <div className="grid grid-cols-5 gap-0 mb-1">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
+            <div key={day} className="text-center text-xs font-bold uppercase text-gray-500 pb-2">
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        {/* Calendar days grid */}
+        <div className="space-y-0">
+          {renderCalendarDays()}
+        </div>
+      </div>
+      
+      {/* Attendance stats */}
+      <div className="p-4 border-t">
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="text-sm text-gray-500">Attendance Percentage</div>
+            <div className="text-2xl font-bold">{attendanceStats.percentage}%</div>
+          </div>
+          <div className="flex space-x-6">
+            <div className="text-center">
+              <div className="text-sm text-gray-500">Present</div>
+              <div className="text-lg font-bold text-blue-600">{attendanceStats.present}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-500">Absent</div>
+              <div className="text-lg font-bold text-red-600">{attendanceStats.absent}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
