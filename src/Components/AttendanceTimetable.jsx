@@ -1,99 +1,87 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, momentLocalizer, Views } from "react-big-calendar";
-import moment from "moment";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-import { useTimetable } from "../hooks/useTimetable";
-import { FiAlertCircle, FiClock, FiCalendar, FiPlus } from "react-icons/fi";
 
-const localizer = momentLocalizer(moment);
+function AttendanceTimetable({ timetables, loading, error }) {
+  const timeSlots = ["8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM"];
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-const TimeGutterHeader = () => (
-  <div className="text-center font-bold p-1 text-xs sm:text-sm" style={{ color: '#003366' }}>
-    Time
-  </div>
-);
-
-const EventComponent = ({ event, isMobile }) => {
-  const subject = event.resource?.subject || 
-                 event.resource?.course || 
-                 event.title || 
-                 "Class";
-
-  const timeDisplay = event.resource?.time || 
-                    `${moment(event.start).format("h:mm A")} - ${moment(event.end).format("h:mm A")}`;
-
-  const className = event.resource?.class || "";
-
-  const getMobileTitle = (title) => {
-    const abbreviations = {
-      "Mathematics": "Math",
-      "English": "Eng",
-      "Verbal Reasoning": "VR",
-      "Elementary schematics": "ES",
-      "BREAK - TIME": "Break",
-    };
-    return abbreviations[title] || title.slice(0, 3);
-  };
-
-  return (
-    <div className="h-full w-full p-1" style={{ backgroundColor: 'white' }}>
-      <div className="font-bold text-xs sm:text-sm truncate" style={{ color: '#003366' }}>
-        {isMobile ? getMobileTitle(subject) : subject}
-      </div>
-      <div className="text-[10px] sm:text-xs truncate" style={{ color: '#003366', opacity: 0.9 }}>
-        {timeDisplay}
-      </div>
-      {className && (
-        <div className="text-[10px] sm:text-xs truncate" style={{ color: '#003366', opacity: 0.7 }}>
-          {className}
-        </div>
-      )}
-    </div>
-  );
-};
-
-function AttendanceTimetable() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const parentStudents = JSON.parse(localStorage.getItem("parent_students") || "[]");
-
-  const {
-    events,
-    loading,
-    error,
-    getTimetableByClass,
-  } = useTimetable();
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (parentStudents.length > 0 && !selectedStudent) {
-      setSelectedStudent(parentStudents[0]._id);
-    }
-  }, [parentStudents, selectedStudent]);
-
-  const selectedStudentData = parentStudents.find((s) => s._id === selectedStudent);
-  const classId = selectedStudentData?.classId?._id;
-
-  useEffect(() => {
-    if (classId) {
-      getTimetableByClass(classId);
-    }
-  }, [classId]);
-
-  const components = {
-    event: (props) => <EventComponent {...props} isMobile={isMobile} />,
-    timeGutterHeader: TimeGutterHeader,
+  const timeToDecimal = (timeStr) => {
+    if (!timeStr) return 8;
+    let [time, modifier] = timeStr.split(" ");
+    if (!modifier)
+      modifier = time.includes("AM") || time.includes("PM") ? time.slice(-2) : null;
+    time = time.replace(/AM|PM/, "");
+    let [hours, minutes] = time.split(":").map(Number);
+    minutes = minutes || 0;
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+    return hours + minutes / 60;
   };
 
+  const hourHeight = 72;
+  const timetableStartHour = 8;
+
+  const getTopPosition = (timeStr) => {
+    return (timeToDecimal(timeStr) - timetableStartHour) * hourHeight;
+  };
+
+  const getBlockHeight = (start, end) => {
+    return (timeToDecimal(end) - timeToDecimal(start)) * hourHeight;
+  };
+
+  const formatCurrentTimeLabel = () => {
+    return currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const currentTimeDecimal = currentTime.getHours() + currentTime.getMinutes() / 60;
+  
+  const renderClassBlock = (event, day, index) => {
+    const startTime = event.startTime || event.startTIme || "";
+    const endTime = event.endTime || "";
+  
+    const top = getTopPosition(startTime);
+    const height = getBlockHeight(startTime, endTime);
+  
+    const isBreak = event.subject?.toLowerCase().includes("break");
+  
+    return (
+      <div
+        key={`${day}-${index}`}
+        className={`absolute left-1 right-1 bg-white rounded-lg shadow-md p-2 cursor-default select-none
+          ${isBreak ? "bg-gray-100 text-gray-600 font-semibold" : "text-gray-900"}`}
+        style={{
+          top: top + 4,
+          height: height - 8,
+          zIndex: isBreak ? 0 : 10,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          textAlign: "center",
+        }}
+        title={`${event.subject} (${startTime} - ${endTime})`}
+      >
+        <div className="text-sm font-semibold whitespace-normal break-words">
+          {event.subject || "No Subject"}
+        </div>
+        <div className="text-xs text-gray-400 mt-0.5">
+          {startTime && endTime ? `${startTime} - ${endTime}` : "Time not available"}
+        </div>
+      </div>
+    );
+  };
+  
+  
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mb-4"></div>
         <p className="text-gray-600">Loading timetable data...</p>
       </div>
     );
@@ -101,16 +89,22 @@ function AttendanceTimetable() {
 
   if (error) {
     return (
-      <div className="p-6 max-w-md mx-auto bg-white">
+      <div className="p-6 max-w-md mx-auto bg-gray-100 rounded-lg shadow">
         <div className="flex flex-col items-center text-center">
-          <div className="p-3 bg-red-100 mb-4">
-            <FiAlertCircle className="text-red-500 text-2xl" />
-          </div>
-          <h3 className="text-lg font-medium mb-2" style={{ color: '#003366' }}>Unable to load timetable</h3>
-          <p className="mb-4" style={{ color: '#003366' }}>{error}</p>
+          <svg
+            className="text-red-500 text-3xl mb-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="text-lg font-medium mb-2 text-gray-900">Unable to load timetable</h3>
+          <p className="mb-4 text-gray-600">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Refresh Page
           </button>
@@ -120,74 +114,93 @@ function AttendanceTimetable() {
   }
 
   return (
-    <div className="p-2 sm:p-4 bg-white">
-      <div className="mb-4">
-        <label htmlFor="student-select" className="block text-sm font-medium mb-1" style={{ color: '#003366' }}>
-          Select Student:
-        </label>
-        <select
-          id="student-select"
-          value={selectedStudent || ""}
-          onChange={(e) => setSelectedStudent(e.target.value)}
-          className="block w-full p-2 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          style={{ color: '#003366' }}
-        >
-          {parentStudents.map((student) => (
-            <option key={student._id} value={student._id} style={{ color: '#003366' }}>
-              {student.userId.firstName} {student.userId.lastName} - {student.classId?.name}
-            </option>
-          ))}
-        </select>
+    <div className="bg-gray-100 rounded-lg shadow border border-gray-200 p-6 relative select-none">
+      {/* Header Row */}
+      <div className="grid grid-cols-6 border-b border-gray-200 mb-4">
+        <div className="py-3 text-sm font-semibold text-center border-r border-gray-200 text-gray-700">
+          Time
+        </div>
+        {days.map((day) => (
+          <div
+            key={day}
+            className="py-3 text-sm font-semibold text-center border-r last:border-r-0 border-gray-200 text-gray-700"
+          >
+            {day}
+          </div>
+        ))}
       </div>
 
-      {events.length > 0 ? (
-        <Calendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          views={[Views.WORK_WEEK]}
-          defaultView={Views.WORK_WEEK}
-          defaultDate={new Date()}
-          min={new Date(0, 0, 0, 7, 0, 0)}
-          max={new Date(0, 0, 0, 17, 0, 0)}
-          timeslots={1}
-          step={30}
-          toolbar={true}
-          style={{ 
-            height: isMobile ? 500 : 600,
-            color: '#003366'
-          }}
-          components={components}
-          eventPropGetter={(event) => ({
-            style: {
-              backgroundColor: 'white',
-              padding: '2px',
-              margin: '0',
-              border: 'none'
-            },
-          })}
-          formats={{
-            timeGutterFormat: 'h:mm A',
-            dayFormat: (date, culture, localizer) =>
-              isMobile
-                ? localizer.format(date, 'ddd', culture)
-                : localizer.format(date, 'dddd', culture),
-          }}
-        />
-      ) : (
-        <div className="bg-blue-50 border border-blue-100 p-6 text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 mb-4">
-            <FiCalendar className="h-6 w-6" style={{ color: '#003366' }} />
-          </div>
-          <h3 className="text-lg font-medium mb-1" style={{ color: '#003366' }}>
-            No Timetable Available
-          </h3>
-          <p style={{ color: '#003366' }}>
-            There's no timetable set for {selectedStudentData?.userId.firstName || "this student"} yet.
-          </p>
+      {/* Time slots and days columns */}
+      <div className="grid grid-cols-6 relative min-h-[504px]">
+        {/* Time Column */}
+        <div className="border-r border-gray-200">
+          {timeSlots.map((time) => (
+            <div
+              key={time}
+              className="h-[72px] flex items-center justify-center text-xs text-gray-500 border-b border-gray-200 font-medium"
+            >
+              {time}
+            </div>
+          ))}
         </div>
-      )}
+
+       {/* Day Columns */}
+        {days.map((day) => (
+          <div key={day} className="relative border-r border-gray-200 last:border-r-0">
+            {timeSlots.map((_, idx) => (
+              <div key={idx} className="h-[72px] border-b border-gray-200" />
+            ))}
+
+            {timetables[day]?.map((event, i) => renderClassBlock(event, day, i))}
+          </div>
+        ))}
+
+        {/* Break Time spanning all day columns */}
+        <div
+          className="absolute bg-white text-gray-600 font-semibold rounded-lg shadow p-2 select-none flex flex-col justify-center items-center text-center"
+          style={{
+            top: getTopPosition("12:00 PM") + 4,
+            height: getBlockHeight("12:00 PM", "1:00 PM") - 8,
+            zIndex: 0,
+            left: "calc(100% / 6)",  // start after the Time column (which is 1/6th)
+            right: 0,                // stretch to the right edge
+          }}
+        >
+          BREAK - TIME
+          <div className="text-xs mt-0.5">12:00 PM - 1:00 PM</div>
+        </div>
+
+
+
+        {/* Current Time Line */}
+        {currentTimeDecimal >= 8 && currentTimeDecimal <= 14 && (
+          <>
+            <div
+              className="absolute left-0 right-0 border-t-2 border-blue-600"
+              style={{
+                top: (currentTimeDecimal - timetableStartHour) * hourHeight,
+                zIndex: 30,
+              }}
+            />
+            <div
+              className="absolute left-0 -translate-x-full pr-3 bg-white text-blue-600 font-semibold text-xs select-none"
+              style={{
+                top: (currentTimeDecimal - timetableStartHour) * hourHeight - 9,
+                zIndex: 30,
+              }}
+            >
+              {formatCurrentTimeLabel()}
+            </div>
+            <div
+              className="absolute left-0 w-3 h-3 rounded-full bg-blue-600 -translate-x-1/2"
+              style={{
+                top: (currentTimeDecimal - timetableStartHour) * hourHeight - 5,
+                zIndex: 31,
+              }}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

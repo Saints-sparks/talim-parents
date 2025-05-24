@@ -24,3 +24,27 @@ export const getAttendanceByStudentId = async (studentId) => {
     throw error;
   }
 };
+
+
+
+export const markAttendance = async () => {
+  try {
+    const accessToken = localStorage.getItem('access_token');
+    
+    if (!accessToken) throw new Error('No access token found');
+  
+    const response = await axios.get(
+      `${API_BASE_URL}/attendance`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to mark attendance:', error);
+    throw error;
+  }
+};
