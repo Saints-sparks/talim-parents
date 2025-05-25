@@ -1,159 +1,110 @@
-import { useState, useEffect, useCallback } from 'react';
-import leaveRequestService from '../services/leaveRequest.services';
+import { useState } from 'react';
+import {
+  createLeaveRequest,
+  getLeaveRequestsByChild,
+  getLeaveRequestsByTeacher,
+  getLeaveRequestById,
+  updateLeaveRequestStatus,
+  deleteLeaveRequest,
+} from '../services/leaveRequest.services';
 
-export const useLeaveRequests = (authToken) => {
-  const [leaveRequests, setLeaveRequests] = useState([]);
+export const useLeaveRequest = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentRequest, setCurrentRequest] = useState(null);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [currentLeaveRequest, setCurrentLeaveRequest] = useState(null);
 
-  // Create a new leave request
-  const createLeaveRequest = useCallback(
-    async (data) => {
-      setLoading(true);
-      try {
-        const response = await leaveRequestService.createLeaveRequest(data, authToken);
-        setLeaveRequests((prev) => [...prev, response]);
-        setLoading(false);
-        return response;
-      } catch (err) {
-        setError(err);
-        setLoading(false);
-        throw err;
-      }
-    },
-    [authToken]
-  );
+  const handleError = (error) => {
+    setError(error.response?.data?.message || error.message || 'Unknown error');
+    setLoading(false);
+    throw error;
+  };
 
-  // Get a single leave request by ID
-  const getLeaveRequest = useCallback(
-    async (id) => {
-      setLoading(true);
-      try {
-        const response = await leaveRequestService.getLeaveRequestById(id, authToken);
-        setCurrentRequest(response);
-        setLoading(false);
-        return response;
-      } catch (err) {
-        setError(err);
-        setLoading(false);
-        throw err;
-      }
-    },
-    [authToken]
-  );
+  const fetchLeaveRequestsByChild = async (childId) => {
+    console.log("Fetching leave requests for childId:", childId);  // log before fetch
+    setLoading(true);
+    try {
+      const data = await getLeaveRequestsByChild(childId);
+      console.log("Leave requests fetched:", data);  // log after fetch
+      setLeaveRequests(data);
+      setError(null);
+      setLoading(false);
+      return data;
+    } catch (error) {
+      return handleError(error);
+    }
+  };
+  
+  const fetchLeaveRequestsByTeacher = async (teacherId) => {
+    setLoading(true);
+    try {
+      const data = await getLeaveRequestsByTeacher(teacherId);
+      setLeaveRequests(data);
+      setError(null);
+      setLoading(false);
+      return data;
+    } catch (error) {
+      return handleError(error);
+    }
+  };
 
-  // Update leave request status
-  const updateLeaveRequestStatus = useCallback(
-    async (id, statusData) => {
-      setLoading(true);
-      try {
-        const response = await leaveRequestService.updateLeaveRequestStatus(
-          id,
-          statusData,
-          authToken
-        );
-        setLeaveRequests((prev) =>
-          prev.map((req) => (req._id === id ? response : req))
-        );
-        if (currentRequest?._id === id) {
-          setCurrentRequest(response);
-        }
-        setLoading(false);
-        return response;
-      } catch (err) {
-        setError(err);
-        setLoading(false);
-        throw err;
-      }
-    },
-    [authToken, currentRequest]
-  );
+  const fetchLeaveRequestById = async (id) => {
+    setLoading(true);
+    try {
+      const data = await getLeaveRequestById(id);
+      setCurrentLeaveRequest(data);
+      setError(null);
+      setLoading(false);
+      return data;
+    } catch (error) {
+      return handleError(error);
+    }
+  };
 
-  // Get leave requests by student (child)
-  const getLeaveRequestsByChild = useCallback(
-    async (childId) => {
-      setLoading(true);
-      try {
-        const response = await leaveRequestService.getLeaveRequestsByChild(
-          childId,
-          authToken
-        );
-        setLeaveRequests(response);
-        setLoading(false);
-        return response;
-      } catch (err) {
-        setError(err);
-        setLoading(false);
-        throw err;
-      }
-    },
-    [authToken]
-  );
+  const updateStatus = async (id, statusData) => {
+    setLoading(true);
+    try {
+      const data = await updateLeaveRequestStatus(id, statusData);
+      setError(null);
+      setLoading(false);
+      return data;
+    } catch (error) {
+      return handleError(error);
+    }
+  };
 
-  // Get leave requests by teacher
-  const getLeaveRequestsByTeacher = useCallback(
-    async (teacherId) => {
-      setLoading(true);
-      try {
-        const response = await leaveRequestService.getLeaveRequestsByTeacher(
-          teacherId,
-          authToken
-        );
-        setLeaveRequests(response);
-        setLoading(false);
-        return response;
-      } catch (err) {
-        setError(err);
-        setLoading(false);
-        throw err;
-      }
-    },
-    [authToken]
-  );
+  const createNewLeaveRequest = async (leaveRequestData) => {
+    setLoading(true);
+    try {
+      const result = await createLeaveRequest(leaveRequestData);
+      setLoading(false);
+      return result;
+    } catch (error) {
+      return handleError(error);
+    }
+  };
 
-  // Delete a leave request
-  const deleteLeaveRequest = useCallback(
-    async (id) => {
-      setLoading(true);
-      try {
-        await leaveRequestService.deleteLeaveRequest(id, authToken);
-        setLeaveRequests((prev) => prev.filter((req) => req._id !== id));
-        if (currentRequest?._id === id) {
-          setCurrentRequest(null);
-        }
-        setLoading(false);
-      } catch (err) {
-        setError(err);
-        setLoading(false);
-        throw err;
-      }
-    },
-    [authToken, currentRequest]
-  );
-
-  // Clear current leave request
-  const clearCurrentRequest = useCallback(() => {
-    setCurrentRequest(null);
-  }, []);
-
-  // Clear error
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  const removeLeaveRequest = async (id) => {
+    setLoading(true);
+    try {
+      const result = await deleteLeaveRequest(id);
+      setLoading(false);
+      return result;
+    } catch (error) {
+      return handleError(error);
+    }
+  };
 
   return {
-    leaveRequests,
-    currentRequest,
     loading,
     error,
-    createLeaveRequest,
-    getLeaveRequest,
-    updateLeaveRequestStatus,
-    getLeaveRequestsByChild,
-    getLeaveRequestsByTeacher,
-    deleteLeaveRequest,
-    clearCurrentRequest,
-    clearError,
+    leaveRequests,
+    currentLeaveRequest,
+    fetchLeaveRequestsByChild,
+    fetchLeaveRequestsByTeacher,
+    fetchLeaveRequestById,
+    updateStatus,
+    createNewLeaveRequest,
+    removeLeaveRequest,
   };
 };
