@@ -7,7 +7,7 @@ function AttendanceTimetable({ timetables, loading, error }) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000); // update every minute
     return () => clearInterval(interval);
   }, []);
 
@@ -40,16 +40,16 @@ function AttendanceTimetable({ timetables, loading, error }) {
   };
 
   const currentTimeDecimal = currentTime.getHours() + currentTime.getMinutes() / 60;
-  
+
   const renderClassBlock = (event, day, index) => {
-    const startTime = event.startTime || event.startTIme || "";
+    const startTime = event.startTime || "";
     const endTime = event.endTime || "";
-  
+
     const top = getTopPosition(startTime);
     const height = getBlockHeight(startTime, endTime);
-  
+
     const isBreak = event.subject?.toLowerCase().includes("break");
-  
+
     return (
       <div
         key={`${day}-${index}`}
@@ -76,8 +76,7 @@ function AttendanceTimetable({ timetables, loading, error }) {
       </div>
     );
   };
-  
-  
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
@@ -144,7 +143,7 @@ function AttendanceTimetable({ timetables, loading, error }) {
           ))}
         </div>
 
-       {/* Day Columns */}
+        {/* Day Columns */}
         {days.map((day) => (
           <div key={day} className="relative border-r border-gray-200 last:border-r-0">
             {timeSlots.map((_, idx) => (
@@ -162,44 +161,51 @@ function AttendanceTimetable({ timetables, loading, error }) {
             top: getTopPosition("12:00 PM") + 4,
             height: getBlockHeight("12:00 PM", "1:00 PM") - 8,
             zIndex: 0,
-            left: "calc(100% / 6)",  // start after the Time column (which is 1/6th)
-            right: 0,                // stretch to the right edge
+            left: "calc(100% / 6)", // start after the Time column (which is 1/6th)
+            right: 0, // stretch to the right edge
           }}
         >
           BREAK - TIME
           <div className="text-xs mt-0.5">12:00 PM - 1:00 PM</div>
         </div>
 
-
-
-        {/* Current Time Line */}
-        {currentTimeDecimal >= 8 && currentTimeDecimal <= 14 && (
-          <>
-            <div
-              className="absolute left-0 right-0 border-t-2 border-blue-600"
-              style={{
-                top: (currentTimeDecimal - timetableStartHour) * hourHeight,
-                zIndex: 30,
-              }}
-            />
-            <div
-              className="absolute left-0 -translate-x-full pr-3 bg-white text-blue-600 font-semibold text-xs select-none"
-              style={{
-                top: (currentTimeDecimal - timetableStartHour) * hourHeight - 9,
-                zIndex: 30,
-              }}
-            >
-              {formatCurrentTimeLabel()}
-            </div>
-            <div
-              className="absolute left-0 w-3 h-3 rounded-full bg-blue-600 -translate-x-1/2"
-              style={{
-                top: (currentTimeDecimal - timetableStartHour) * hourHeight - 5,
-                zIndex: 31,
-              }}
-            />
-          </>
-        )}
+       {/* Current Time Line */}
+{/* Current Time Line */}
+{currentTimeDecimal >= timetableStartHour && currentTimeDecimal <= 14 && (
+  <>
+    {/* Bolder blue horizontal line - properly aligned with time slot baseline */}
+    <div
+      className="absolute left-0 right-0 border-blue-600"
+      style={{
+        borderTopWidth: "3px",
+        top: (currentTimeDecimal - timetableStartHour) * hourHeight + 36, // 36px = half of 72px slot height minus half of text height
+        zIndex: 30,
+      }}
+    />
+    {/* Time label on left */}
+    <div
+      className="absolute left-0 -translate-x-full pr-3 bg-white text-blue-600 font-semibold text-xs select-none rounded"
+      style={{
+        top: (currentTimeDecimal - timetableStartHour) * hourHeight + 30,
+        zIndex: 31,
+        padding: "2px 6px",
+        minWidth: "38px",
+        textAlign: "center",
+        boxShadow: "0 0 5px rgba(0, 112, 244, 0.4)",
+      }}
+    >
+      {formatCurrentTimeLabel()}
+    </div>
+    {/* Blue circle dot */}
+    <div
+      className="absolute left-0 w-3 h-3 rounded-full bg-blue-600 -translate-x-1/2"
+      style={{
+        top: (currentTimeDecimal - timetableStartHour) * hourHeight + 34.5,
+        zIndex: 32,
+      }}
+    />
+  </>
+)}
       </div>
     </div>
   );

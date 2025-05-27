@@ -15,17 +15,18 @@ export const useLeaveRequest = () => {
   const [currentLeaveRequest, setCurrentLeaveRequest] = useState(null);
 
   const handleError = (error) => {
+    console.error("Leave Request Error:", error);
     setError(error.response?.data?.message || error.message || 'Unknown error');
     setLoading(false);
     throw error;
   };
 
   const fetchLeaveRequestsByChild = async (childId) => {
-    console.log("Fetching leave requests for childId:", childId);  // log before fetch
+    console.log("Fetching leave requests for childId:", childId);
     setLoading(true);
     try {
       const data = await getLeaveRequestsByChild(childId);
-      console.log("Leave requests fetched:", data);  // log after fetch
+      console.log("Leave requests fetched:", data);
       setLeaveRequests(data);
       setError(null);
       setLoading(false);
@@ -34,7 +35,7 @@ export const useLeaveRequest = () => {
       return handleError(error);
     }
   };
-  
+
   const fetchLeaveRequestsByTeacher = async (teacherId) => {
     setLoading(true);
     try {

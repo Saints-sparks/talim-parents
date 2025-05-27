@@ -19,64 +19,67 @@ function LeaveForm() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Handle file selection
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file) setSelectedFile(file.name);
+    if (file) setSelectedFile(file);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-  
+    setSuccessMessage(null);
+
     // Validate required fields
     if (!startDate || !endDate || !leaveType || !reason) {
       setError("Please fill in all required fields.");
       return;
     }
-  
+
     if (termLoading) {
       setError("Loading current term... please wait.");
       return;
     }
-  
+
     if (!currentTerm || !currentTerm._id) {
       setError("Current academic term not found. Cannot submit leave request.");
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       const parentStudents = JSON.parse(localStorage.getItem("parent_students") || "[]");
       if (parentStudents.length === 0) throw new Error("No child found");
-  
-      const childId = parentStudents[0]._id || parentStudents[0].child?._id || parentStudents[0].child;
+
+      const childId = parentStudents[0].userId?._id;
       if (!childId) throw new Error("Child ID not found");
-  
+
       const leaveRequestData = {
         child: childId,
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
         leaveType,
         reason,
-        attachments: selectedFile ? [selectedFile] : [],
-        term: currentTerm._id, // Use only the term ID string here
+        attachments: selectedFile ? [selectedFile.name] : [],
+        term: currentTerm._id,
       };
-  
-      console.log("Submitting leave request data:", leaveRequestData);  // <-- Added log here
-  
+
       await createNewLeaveRequest(leaveRequestData);
-  
-      navigate("/requestleave");
+
+      setSuccessMessage("Leave request submitted successfully! Redirecting...");
+
+      setTimeout(() => {
+        navigate("/requestleave");
+      }, 2500);
     } catch (err) {
       setError(err.message || "Failed to submit leave request");
     } finally {
       setLoading(false);
     }
   };
-  
 
   if (termError) {
     return <p className="text-red-600 p-4">Error loading term info: {termError}</p>;
@@ -138,9 +141,9 @@ function LeaveForm() {
                     <option value="" disabled>
                       Select Leave Type
                     </option>
-                    <option>Health Issue</option>
-                    <option>Family Event</option>
-                    <option>Fees Issue</option>
+                    <option key="health" value="Health Issue">Health Issue</option>
+                    <option key="family" value="Family Event">Family Event</option>
+                    <option key="fees" value="Fees Issue">Fees Issue</option>
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                     <FaChevronDown className="h-5 w-5 text-gray-400" />
@@ -170,7 +173,7 @@ function LeaveForm() {
                   >
                     Choose file
                   </label>
-                  <span className="text-sm text-gray-500">{selectedFile ? selectedFile : "No file chosen"}</span>
+                  <span className="text-sm text-gray-500">{selectedFile ? selectedFile.name : "No file chosen"}</span>
                 </div>
                 <p className="mt-2 text-sm text-gray-500">
                   Upload any relevant documents (medical certificates, appointment letters, etc.)
@@ -188,6 +191,7 @@ function LeaveForm() {
               </div>
 
               {error && <p className="mt-4 text-red-600">{error}</p>}
+              {successMessage && <p className="mt-4 text-green-600">{successMessage}</p>}
             </form>
           </div>
         </div>

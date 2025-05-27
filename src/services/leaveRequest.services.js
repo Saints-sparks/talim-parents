@@ -1,22 +1,44 @@
 import axios from 'axios';
 import { API_BASE_URL } from './auth.services';
 
-const getAuthHeaders = () => {
+// Optional: Axios interceptor to log all response errors
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    console.error("Global Axios Error:", {
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.response?.data,
+      status: error.response?.status,
+    });
+    return Promise.reject(error);
+  }
+);
+
+const getAuthHeaders = (isFormData = false) => {
   const token = localStorage.getItem('access_token');
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Cache-Control': 'no-cache', // optional, useful for dev
-    },
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    'Cache-Control': 'no-cache',
+    'Content-Type': isFormData ? 'multipart/form-data' : 'application/json',
   };
+
+  return { headers };
 };
 
 export const createLeaveRequest = async (leaveRequestData) => {
   try {
+    const isFormData = leaveRequestData instanceof FormData;
+
+    console.log('POST URL:', `${API_BASE_URL}/leave-requests`);
+    console.log('Sending leave request data:', leaveRequestData);
+    console.log('Is FormData:', isFormData);
+    console.log('Headers:', getAuthHeaders(isFormData));
+
     const response = await axios.post(
       `${API_BASE_URL}/leave-requests`,
       leaveRequestData,
-      getAuthHeaders()
+      getAuthHeaders(isFormData)
     );
     return response.data;
   } catch (error) {

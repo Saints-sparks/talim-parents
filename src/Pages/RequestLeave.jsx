@@ -11,7 +11,7 @@ function RequestLeave() {
   useEffect(() => {
     const parentStudents = JSON.parse(localStorage.getItem("parent_students") || "[]");
     if (parentStudents.length > 0) {
-      const childId = parentStudents[0]._id || parentStudents[0].child?._id || parentStudents[0].child;
+      const childId = parentStudents[0].userId?._id;
       if (childId) {
         fetchLeaveRequestsByChild(childId);
       }
