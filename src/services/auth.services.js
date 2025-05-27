@@ -90,6 +90,7 @@ export const useAuth = () => {
       localStorage.removeItem('school_id');
       localStorage.removeItem('parent_id');
       localStorage.removeItem('parent_students');
+      localStorage.removeItem("selected_student");
       localStorage.removeItem('notifications');
       setAuthToken(null);
       setRefreshToken(null);

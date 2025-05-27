@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IoIosArrowDown } from "react-icons/io";
 import AttendanceCalendar from '../Components/AttendanceCalendar ';
+import { useSelectedStudent } from '../contexts/SelectedStudentContext';
 
 // List of months and years
 const months = [
@@ -14,6 +15,13 @@ function Attendance() {
   const [selectedYear, setSelectedYear] = useState(2025);
   const [monthDropdown, setMonthDropdown] = useState(false);
   const [yearDropdown, setYearDropdown] = useState(false);
+  const { selectedStudent } = useSelectedStudent();
+
+  // Update title based on selected student
+  const getTitle = () => {
+    if (!selectedStudent) return "Attendance";
+    return `${selectedStudent.userId.firstName}'s Attendance`;
+  };
 
   return (
     <div className="flex min-h-screen p-6 flex-col gap-6">
@@ -21,9 +29,11 @@ function Attendance() {
       {/* Attendance Section */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-[20px] md:text-[24px]">Attendance</h1>
+          <h1 className="text-[20px] md:text-[24px]">{getTitle()}</h1>
           <p className="text-[#aaaaaa] text-[12px] md:text-[16px]">
-            Track Your Child’s Attendance with Ease
+            {selectedStudent 
+              ? `Track ${selectedStudent.userId.firstName}'s Attendance with Ease`
+              : "Track Your Child's Attendance with Ease"}
           </p>
         </div>
 
@@ -87,7 +97,10 @@ function Attendance() {
       </div>
 
       {/* Calendar Component */}
-      <AttendanceCalendar />
+      <AttendanceCalendar 
+        selectedMonth={selectedMonth} 
+        selectedYear={selectedYear}
+      />
     </div>
   );
 }

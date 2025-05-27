@@ -1,9 +1,9 @@
-// Timetable.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { FiDownload, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 import AttendanceTimetable from '../Components/AttendanceTimetable';
 import { useTimetable } from '../services/timetable.services';
+import { useSelectedStudent } from '../contexts/SelectedStudentContext';
 
 function Timetable() {
   const [notification, setNotification] = useState({
@@ -19,15 +19,15 @@ function Timetable() {
     getTimetableByClass,
   } = useTimetable();
 
+  const { selectedStudent } = useSelectedStudent();
   const timetableRef = useRef(null);
 
+  // Fetch timetable when selected student changes
   useEffect(() => {
-    const parentStudents = JSON.parse(localStorage.getItem('parent_students') || '[]');
-    if (parentStudents.length > 0) {
-      const selectedStudent = parentStudents[0];
-      getTimetableByClass(selectedStudent?.classId?._id);
+    if (selectedStudent?.classId?._id) {
+      getTimetableByClass(selectedStudent.classId._id);
     }
-  }, []);
+  }, [selectedStudent, getTimetableByClass]);
 
   const handleDownload = () => {
     if (!timetableRef.current) return;
@@ -55,6 +55,12 @@ function Timetable() {
     });
   };
 
+  // Get title based on selected student
+  const getTitle = () => {
+    if (!selectedStudent) return "Timetable";
+    return `${selectedStudent.userId.firstName}'s Timetable`;
+  };
+
   return (
     <div className="flex min-h-screen p-6 flex-col gap-6 relative">
 
@@ -76,14 +82,19 @@ function Timetable() {
 
       <div className='flex justify-between items-center'>
         <div>
-          <h1 className='text-[20px]'>Timetable</h1>
-          <p className='text-[#aaaaaa] text-[18px]'>Stay on Track with Your Class Schedule!</p>
+          <h1 className='text-[20px] md:text-[24px]'>{getTitle()}</h1>
+          <p className='text-[#aaaaaa] text-[12px] md:text-[16px]'>
+            {selectedStudent 
+              ? `View ${selectedStudent.userId.firstName}'s class schedule` 
+              : 'Stay on Track with Your Class Schedule!'}
+          </p>
         </div>
       
         <div className='flex space-x-3 mt-auto'>
           <button 
             onClick={handleDownload}
             className="flex gap-1 items-center text-white bg-[#003366] py-[10px] px-[15px] rounded-lg shadow-lg transition-transform hover:scale-105"
+            disabled={!selectedStudent || loading}
           >
             Download <FiDownload/>
           </button>
@@ -92,11 +103,19 @@ function Timetable() {
 
       {/* Attendance Section */}
       <div ref={timetableRef} className="bg-white rounded-lg shadow border border-gray-200">
-        <AttendanceTimetable 
-          timetables={timetables}
-          loading={loading}
-          error={error}
-        />
+        {!selectedStudent ? (
+          <div className="p-6 text-center text-gray-500">
+            Please select a student to view their timetable
+          </div>
+        ) : (
+          <AttendanceTimetable 
+            timetables={timetables}
+            loading={loading}
+            error={error}
+            studentName={`${selectedStudent.userId.firstName} ${selectedStudent.userId.lastName}`}
+            className={selectedStudent.classId?.name}
+          />
+        )}
       </div>
     </div>
   )

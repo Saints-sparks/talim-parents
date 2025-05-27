@@ -2,35 +2,32 @@ import React, { useState, useEffect } from "react";
 import moment from "moment";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAttendance } from "../hooks/useAttendance";
+import { useSelectedStudent } from "../contexts/SelectedStudentContext";
+// List of months
+const months = [
+  "January", "February", "March", "April", "May", "June", 
+  "July", "August", "September", "October", "November", "December"
+];
 
-const AttendanceCalendar = () => {
+const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
   const { attendanceData, loading, error, getAttendanceById } = useAttendance();
   const [currentDate, setCurrentDate] = useState(moment());
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [students, setStudents] = useState([]);
+  const { selectedStudent } = useSelectedStudent();
 
-  // Fetch students from localStorage
+  // Set initial date based on selected month/year
   useEffect(() => {
-    const storedStudents = localStorage.getItem('parent_students');
-    if (storedStudents) {
-      try {
-        const parsedStudents = JSON.parse(storedStudents);
-        setStudents(parsedStudents);
-        if (parsedStudents.length > 0) {
-          setSelectedStudent(parsedStudents[0]._id);
-        }
-      } catch (err) {
-        console.error('Error loading students:', err);
-      }
+    if (selectedMonth && selectedYear) {
+      const monthIndex = months.findIndex(m => m === selectedMonth);
+      setCurrentDate(moment().year(selectedYear).month(monthIndex));
     }
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
-  // Fetch attendance data when student changes
+  // Fetch attendance data when student or date changes
   useEffect(() => {
-    if (selectedStudent) {
-      getAttendanceById(selectedStudent);
+    if (selectedStudent?._id) {
+      getAttendanceById(selectedStudent._id, currentDate.year(), currentDate.month() + 1);
     }
-  }, [selectedStudent, getAttendanceById]);
+  }, [selectedStudent, currentDate, getAttendanceById]);
 
   const handlePrevMonth = () => {
     setCurrentDate(currentDate.clone().subtract(1, 'month'));
@@ -38,10 +35,6 @@ const AttendanceCalendar = () => {
 
   const handleNextMonth = () => {
     setCurrentDate(currentDate.clone().add(1, 'month'));
-  };
-
-  const handleStudentChange = (e) => {
-    setSelectedStudent(e.target.value);
   };
 
   // Calculate attendance stats from API data
@@ -159,29 +152,20 @@ const AttendanceCalendar = () => {
     );
   }
 
-  if (students.length === 0) {
-    return <div className="p-4">No students found.</div>;
+  if (!selectedStudent) {
+    return <div className="p-4">Please select a student first.</div>;
   }
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="p-4 border-b">
-        <label htmlFor="student-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Select Student
-        </label>
-        <select
-          id="student-select"
-          value={selectedStudent || ''}
-          onChange={handleStudentChange}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-        >
-          {students.map((student) => (
-            <option key={student._id} value={student._id}>
-              {student.userId?.firstName} {student.userId?.lastName}
-              {student.classId?.name && ` - ${student.classId.name}`}
-            </option>
-          ))}
-        </select>
+        <div className="text-sm font-medium text-gray-700 mb-1">
+          Viewing attendance for:{" "}
+          <span className="font-bold">
+            {selectedStudent.userId?.firstName} {selectedStudent.userId?.lastName}
+            {selectedStudent.classId?.name && ` - ${selectedStudent.classId.name}`}
+          </span>
+        </div>
       </div>
       
       <div className="p-4">
