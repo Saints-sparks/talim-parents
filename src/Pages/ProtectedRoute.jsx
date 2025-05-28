@@ -1,15 +1,24 @@
-// src/Components/ProtectedRoute.jsx
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
+import { useAuth } from '../services/auth.services'; // adjust import
 
-const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem('access_token'); // Or use context/auth hook
+export default function ProtectedRoute() {
+  const { authToken, loading } = useAuth();
 
-  if (!isAuthenticated) {
+  if (loading) {
+    // Skeleton placeholder for loading state
+    return (
+      <div style={{ padding: '2rem' }}>
+        <Skeleton height={40} count={5} style={{ marginBottom: '1rem' }} />
+      </div>
+    );
+  }
+
+  if (!authToken) {
     return <Navigate to="/" replace />;
   }
 
-  return children;
-};
-
-export default ProtectedRoute;
+  return <Outlet />;
+}

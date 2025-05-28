@@ -1,141 +1,226 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
-import { useAttendance } from "../hooks/useAttendance"; // Import custom hook
-import "react-big-calendar/lib/css/react-big-calendar.css";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useAttendance } from "../hooks/useAttendance";
+import { useSelectedStudent } from "../contexts/SelectedStudentContext";
+// List of months
+const months = [
+  "January", "February", "March", "April", "May", "June", 
+  "July", "August", "September", "October", "November", "December"
+];
 
-const localizer = momentLocalizer(moment);
+const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
+  const { attendanceData, loading, error, getAttendanceById } = useAttendance();
+  const [currentDate, setCurrentDate] = useState(moment());
+  const { selectedStudent } = useSelectedStudent();
 
-const AttendanceCalendar = ({ studentId }) => {
-  const { attendanceData, loading, error, getAttendanceById } = useAttendance(); // Using custom hook
-  const [calendarHeight, setCalendarHeight] = useState(500);
-  const [isMobile, setIsMobile] = useState(false);
-
-// Fetch attendance data on component mount (only once)
-useEffect(() => {
-  getAttendanceById("67d71540ff7f5cd71e70931f");
-}, []); // Empty dependency array ensures it runs only once when the component is mounted
-
+  // Set initial date based on selected month/year
   useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      setCalendarHeight(mobile ? 350 : 500);
-    };
+    if (selectedMonth && selectedYear) {
+      const monthIndex = months.findIndex(m => m === selectedMonth);
+      setCurrentDate(moment().year(selectedYear).month(monthIndex));
+    }
+  }, [selectedMonth, selectedYear]);
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []); // Only runs once on mount
+  // Fetch attendance data when student or date changes
+  useEffect(() => {
+    if (selectedStudent?._id) {
+      getAttendanceById(selectedStudent._id, currentDate.year(), currentDate.month() + 1);
+    }
+  }, [selectedStudent, currentDate, getAttendanceById]);
 
-  if (loading) {
-    return <div>Loading attendance data...</div>;
+  const handlePrevMonth = () => {
+    setCurrentDate(currentDate.clone().subtract(1, 'month'));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(currentDate.clone().add(1, 'month'));
+  };
+
+  // Calculate attendance stats from API data
+  const getAttendanceStats = () => {
+    if (!attendanceData || !attendanceData.records) {
+      return { present: 0, absent: 0, percentage: 0 };
+    }
+
+    // Filter out weekend records
+    const weekdayRecords = attendanceData.records.filter(record => {
+      const day = moment(record.date).day();
+      return day !== 0 && day !== 6; // 0 = Sunday, 6 = Saturday
+    });
+
+    const present = weekdayRecords.filter(r => r.status === 'present').length;
+    const absent = weekdayRecords.filter(r => r.status === 'absent').length;
+    const total = present + absent;
+    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+    
+    return { present, absent, percentage };
+  };
+
+  const attendanceStats = getAttendanceStats();
+
+  // Format attendance data for calendar display
+  const formatAttendanceData = () => {
+    if (!attendanceData || !attendanceData.records) return {};
+    
+    return attendanceData.records.reduce((acc, record) => {
+      const day = moment(record.date).day();
+      // Skip weekends
+      if (day === 0 || day === 6) return acc;
+      
+      acc[record.date] = record.status;
+      return acc;
+    }, {});
+  };
+
+  const formattedAttendance = formatAttendanceData();
+
+  // Render calendar days
+  const renderCalendarDays = () => {
+    const startOfMonth = currentDate.clone().startOf('month');
+    const daysInMonth = currentDate.daysInMonth();
+    const firstDayOfMonth = startOfMonth.day();
+    
+    const days = [];
+    let currentWeek = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 1; i < firstDayOfMonth; i++) {
+      currentWeek.push(<div key={`empty-start-${i}`} className="h-20 border border-gray-200"></div>);
+    }
+    
+    // Add cells for each day of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = currentDate.clone().date(i);
+      const dayOfWeek = date.day();
+      
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+      
+      const dateStr = date.format('YYYY-MM-DD');
+      const status = formattedAttendance[dateStr];
+      const isToday = date.isSame(moment(), 'day');
+      
+      currentWeek.push(
+        <div 
+          key={`day-${i}`} 
+          className="h-20 border border-gray-200 p-2 relative"
+        >
+          <span className="font-medium">{i}</span>
+          {isToday && (
+            <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">
+              Today
+            </span>
+          )}
+          {status && (
+            <div 
+              className={`mt-1 text-center text-sm font-medium rounded px-1 ${
+                status === 'present' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}
+            >
+              {status === 'present' ? 'Present' : 'Absent'}
+            </div>
+          )}
+        </div>
+      );
+      
+      // Start new row after Friday (day 5)
+      if (dayOfWeek === 5 || i === daysInMonth) {
+        days.push(
+          <div key={`week-${i}`} className="grid grid-cols-5 gap-0">
+            {currentWeek}
+          </div>
+        );
+        currentWeek = [];
+      }
+    }
+    
+    return days;
+  };
+
+  if (loading && !attendanceData) {
+    return <div className="p-4">Loading attendance data...</div>;
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return (
+      <div className="p-4 bg-red-50 text-red-600 rounded">
+        Error: {error}
+      </div>
+    );
   }
 
-  const generateGroupedAttendance = () => {
-    if (!attendanceData || !attendanceData.records) return [];
-
-    let events = [];
-    let previousStatus = null;
-
-    attendanceData.records.forEach((record) => {
-      const currentDate = new Date(record.date); // Assuming `date` field exists
-      const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-      const status = record.status === "absent" ? "Absent" : "Present"; // Assuming `status` field exists
-      const backgroundColor = status === "Absent" ? "#F5EBEB" : "#e5ebf0";
-
-      let isGroupStart = status !== previousStatus;
-      let nextDate = new Date(currentDate);
-      nextDate.setDate(currentDate.getDate() + 1);
-      let nextStatus = getStatusForDate(nextDate);
-      let isGroupEnd = status !== nextStatus;
-
-      events.push({
-        title: isGroupStart ? status : "",
-        start: currentDate,
-        end: currentDate,
-        allDay: true,
-        backgroundColor,
-        isGroupStart,
-        isGroupEnd,
-      });
-
-      previousStatus = status;
-    });
-
-    return events;
-  };
-
-  const getStatusForDate = (date) => {
-    let isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    return Math.random() < 0.2 && !isWeekend ? "Absent" : "Present";
-  };
-
-  const events = generateGroupedAttendance();
-
-  const components = {
-    dateCellWrapper: ({ value, children }) => {
-      const isToday = moment(value).isSame(moment(), 'day');
-      return (
-        <div className="rbc-day-bg relative h-full">
-          <div className={`absolute ${isMobile ? 'top-1 left-1 text-xs' : 'top-2 left-2 text-sm'} font-medium`}>
-            {value.getDate()}
-          </div>
-          {isToday && (
-            <div className={`absolute ${isMobile ? 'top-1 right-1 text-[10px] px-1' : 'top-2 right-2 text-xs px-2'} border border-blue-500 py-0.5 rounded-md`}>
-              Today
-            </div>
-          )}
-          {children}
-        </div>
-      );
-    },
-    header: ({ label }) => (
-      <div className="text-xs font-semibold uppercase p-1">
-        {isMobile ? label.charAt(0) : label.substring(0, 3)}
-      </div>
-    ),
-  };
+  if (!selectedStudent) {
+    return <div className="p-4">Please select a student first.</div>;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <Calendar
-        localizer={localizer}
-        events={events}
-        startAccessor="start"
-        endAccessor="end"
-        views={["month"]}
-        style={{ height: calendarHeight }}
-        components={components}
-        toolbar={false}
-        formats={{
-          dateFormat: 'D',
-          dayFormat: 'ddd',
-        }}
-        eventPropGetter={(event) => ({
-          style: {
-            backgroundColor: event.backgroundColor,
-            color: event.title ? "#000" : "transparent",
-            borderRadius: event.isGroupStart ? "4px 0 0 4px" : 
-                         event.isGroupEnd ? "0 4px 4px 0" : "0",
-            padding: isMobile ? "2px" : "4px",
-            textAlign: "center",
-            minHeight: isMobile ? "18px" : "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginLeft: event.isGroupStart ? "1px" : "-1px",
-            marginRight: event.isGroupEnd ? "1px" : "-1px",
-            zIndex: event.title ? "1" : "0",
-            fontSize: isMobile ? "10px" : "12px",
-            fontWeight: "500",
-          },
-        })}
-      />
+      <div className="p-4 border-b">
+        <div className="text-sm font-medium text-gray-700 mb-1">
+          Viewing attendance for:{" "}
+          <span className="font-bold">
+            {selectedStudent.userId?.firstName} {selectedStudent.userId?.lastName}
+            {selectedStudent.classId?.name && ` - ${selectedStudent.classId.name}`}
+          </span>
+        </div>
+      </div>
+      
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-4">
+          <button 
+            onClick={handlePrevMonth}
+            className="p-1 rounded-full hover:bg-gray-100"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h3 className="font-medium text-gray-700">
+            {currentDate.format('MMMM YYYY')}
+          </h3>
+          <button 
+            onClick={handleNextMonth}
+            className="p-1 rounded-full hover:bg-gray-100"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+        
+        {/* Weekday headers */}
+        <div className="grid grid-cols-5 gap-0 mb-1">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
+            <div key={day} className="text-center text-xs font-bold uppercase text-gray-500 pb-2">
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        {/* Calendar days grid */}
+        <div className="space-y-0">
+          {renderCalendarDays()}
+        </div>
+      </div>
+      
+      {/* Attendance stats */}
+      <div className="p-4 border-t">
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="text-sm text-gray-500">Attendance Percentage</div>
+            <div className="text-2xl font-bold">{attendanceStats.percentage}%</div>
+          </div>
+          <div className="flex space-x-6">
+            <div className="text-center">
+              <div className="text-sm text-gray-500">Present</div>
+              <div className="text-lg font-bold text-blue-600">{attendanceStats.present}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-500">Absent</div>
+              <div className="text-lg font-bold text-red-600">{attendanceStats.absent}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

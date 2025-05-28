@@ -1,108 +1,111 @@
-import { useState, useRef } from 'react';
-import axios from 'axios';
-import { API_BASE_URL } from '../config/api';
+import { useState } from 'react';
+import {
+  createLeaveRequest,
+  getLeaveRequestsByChild,
+  getLeaveRequestsByTeacher,
+  getLeaveRequestById,
+  updateLeaveRequestStatus,
+  deleteLeaveRequest,
+} from '../services/leaveRequest.services';
 
-export function useLeaveRequest() {
+export const useLeaveRequest = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const cancelToken = useRef(null);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [currentLeaveRequest, setCurrentLeaveRequest] = useState(null);
 
-  const authToken = localStorage.getItem('access_token');
-
-  const axiosConfig = {
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-      'Cache-Control': 'no-cache',
-    },
+  const handleError = (error) => {
+    console.error("Leave Request Error:", error);
+    setError(error.response?.data?.message || error.message || 'Unknown error');
+    setLoading(false);
+    throw error;
   };
 
-  // Cancel ongoing request when component unmounts
-  const cancelRequest = () => {
-    if (cancelToken.current) {
-      cancelToken.current.cancel('Request canceled by user');
-    }
-  };
-
-  const makeRequest = async (requestFn) => {
-    cancelRequest(); // Cancel any ongoing request
-    
+  const fetchLeaveRequestsByChild = async (childId) => {
+    console.log("Fetching leave requests for childId:", childId);
     setLoading(true);
-    setError(null);
-    
-    cancelToken.current = axios.CancelToken.source();
-    
     try {
-      const response = await requestFn();
+      const data = await getLeaveRequestsByChild(childId);
+      console.log("Leave requests fetched:", data);
+      setLeaveRequests(data);
+      setError(null);
       setLoading(false);
-      return response.data;
-    } catch (err) {
-      if (!axios.isCancel(err)) {
-        setError(err.response?.data || err.message);
-        setLoading(false);
-      }
-      throw err;
+      return data;
+    } catch (error) {
+      return handleError(error);
     }
   };
 
-  // Create a new leave request
-  const createLeaveRequest = async (data) => {
-    return makeRequest(() => axios.post(
-      `${API_BASE_URL}/leave-requests`,
-      data,
-      { ...axiosConfig, cancelToken: cancelToken.current.token }
-    ));
+  const fetchLeaveRequestsByTeacher = async (teacherId) => {
+    setLoading(true);
+    try {
+      const data = await getLeaveRequestsByTeacher(teacherId);
+      setLeaveRequests(data);
+      setError(null);
+      setLoading(false);
+      return data;
+    } catch (error) {
+      return handleError(error);
+    }
   };
 
-  // Get leave request by ID
-  const getLeaveRequestById = async (id) => {
-    return makeRequest(() => axios.get(
-      `${API_BASE_URL}/leave-requests/${id}`,
-      { ...axiosConfig, cancelToken: cancelToken.current.token }
-    ));
+  const fetchLeaveRequestById = async (id) => {
+    setLoading(true);
+    try {
+      const data = await getLeaveRequestById(id);
+      setCurrentLeaveRequest(data);
+      setError(null);
+      setLoading(false);
+      return data;
+    } catch (error) {
+      return handleError(error);
+    }
   };
 
-  // Update leave request status
-  const updateLeaveRequestStatus = async (id, updateData) => {
-    return makeRequest(() => axios.put(
-      `${API_BASE_URL}/leave-requests/${id}/status`,
-      updateData,
-      { ...axiosConfig, cancelToken: cancelToken.current.token }
-    ));
+  const updateStatus = async (id, statusData) => {
+    setLoading(true);
+    try {
+      const data = await updateLeaveRequestStatus(id, statusData);
+      setError(null);
+      setLoading(false);
+      return data;
+    } catch (error) {
+      return handleError(error);
+    }
   };
 
-  // Get leave requests by child/student ID
-  const getLeaveRequestsByChild = async (childId) => {
-    return makeRequest(() => axios.get(
-      `${API_BASE_URL}/leave-requests/student/${childId}`,
-      { ...axiosConfig, cancelToken: cancelToken.current.token }
-    ));
+  const createNewLeaveRequest = async (leaveRequestData) => {
+    setLoading(true);
+    try {
+      const result = await createLeaveRequest(leaveRequestData);
+      setLoading(false);
+      return result;
+    } catch (error) {
+      return handleError(error);
+    }
   };
 
-  // Get leave requests by teacher ID
-  const getLeaveRequestsByTeacher = async (teacherId) => {
-    return makeRequest(() => axios.get(
-      `${API_BASE_URL}/leave-requests/teacher/${teacherId}`,
-      { ...axiosConfig, cancelToken: cancelToken.current.token }
-    ));
-  };
-
-  // Delete leave request by ID
-  const deleteLeaveRequest = async (id) => {
-    return makeRequest(() => axios.delete(
-      `${API_BASE_URL}/leave-requests/${id}`,
-      { ...axiosConfig, cancelToken: cancelToken.current.token }
-    ));
+  const removeLeaveRequest = async (id) => {
+    setLoading(true);
+    try {
+      const result = await deleteLeaveRequest(id);
+      setLoading(false);
+      return result;
+    } catch (error) {
+      return handleError(error);
+    }
   };
 
   return {
     loading,
     error,
-    createLeaveRequest,
-    getLeaveRequestById,
-    updateLeaveRequestStatus,
-    getLeaveRequestsByChild,
-    getLeaveRequestsByTeacher,
-    deleteLeaveRequest,
-    cancelRequest, // Export cancel function for cleanup
+    leaveRequests,
+    currentLeaveRequest,
+    fetchLeaveRequestsByChild,
+    fetchLeaveRequestsByTeacher,
+    fetchLeaveRequestById,
+    updateStatus,
+    createNewLeaveRequest,
+    removeLeaveRequest,
   };
-}
+};
