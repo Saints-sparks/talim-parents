@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { RiHome5Line } from "react-icons/ri";
 import { BsHandbag } from "react-icons/bs";
 import { PiCalendarDotsLight } from "react-icons/pi";
@@ -10,45 +10,45 @@ import { CgLogOff } from "react-icons/cg";
 import { IoMenu } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
 
-import logo from '../images/1.png';
+import logo from "../images/1.png";
 
-import { useAuth } from '../services/auth.services';  // adjust this import path
+import { useAuth } from "../services/auth.services"; // adjust path if needed
+import { useSchool } from "../hooks/useSchools";     // import the hook
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { logout, loading: authLoading, error: authError } = useAuth();
+  const { logout, loading: authLoading, error: authError, schoolId } = useAuth();
+  const { school, loading: schoolLoading, error: schoolError } = useSchool();
 
-  const [isOpen, setIsOpen] = useState(false);  // Mobile toggle
+  const [isOpen, setIsOpen] = useState(false); // Mobile toggle
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false); // Desktop toggle
 
   useEffect(() => {
     const checkIfMobile = () => setIsMobile(window.innerWidth < 768);
     checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    return () => window.removeEventListener('resize', checkIfMobile);
+    window.addEventListener("resize", checkIfMobile);
+    return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
 
   const handleLinkClick = () => {
     if (isMobile) setIsOpen(false);
   };
 
-  // Updated logout handler to call your useAuth logout function
   const handleLogout = async () => {
     await logout();
-    // After logout, navigate to login page
-    navigate('/login');
+    navigate("/login");
   };
 
   const menuItems = [
-    { path: '/dashboard', name: 'Dashboard', icon: <RiHome5Line className='text-[24px]' /> },
-    { path: '/timetable', name: 'Timetable', icon: <IoMdTime className='text-[24px]' /> },
-    { path: '/attendance', name: 'Attendance', icon: <PiCalendarDotsLight className='text-[24px]' /> },
-    { path: '/requestleave', name: 'Request leave', icon: <BsHandbag className='text-[24px]' /> },
-    { path: '/result', name: 'Results', icon: <SlBadge className='text-[24px]' /> },
-    { path: '/messages', name: 'Messages', icon: <TbMessageDots className='text-[24px]' /> },
+    { path: "/dashboard", name: "Dashboard", icon: <RiHome5Line className="text-[24px]" /> },
+    { path: "/timetable", name: "Timetable", icon: <IoMdTime className="text-[24px]" /> },
+    { path: "/attendance", name: "Attendance", icon: <PiCalendarDotsLight className="text-[24px]" /> },
+    { path: "/requestleave", name: "Request leave", icon: <BsHandbag className="text-[24px]" /> },
+    { path: "/result", name: "Results", icon: <SlBadge className="text-[24px]" /> },
+    { path: "/messages", name: "Messages", icon: <TbMessageDots className="text-[24px]" /> },
   ];
 
   return (
@@ -60,11 +60,11 @@ export default function Sidebar() {
           onClick={() => setIsOpen(true)}
           aria-label="Open sidebar menu"
         >
-          <IoMenu size={24} className='text-[#003366]' />
+          <IoMenu size={24} className="text-[#003366]" />
         </button>
       )}
 
-      {/* Mobile Overlay when sidebar is open */}
+      {/* Mobile Overlay */}
       {isMobile && isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-30"
@@ -75,9 +75,9 @@ export default function Sidebar() {
 
       <aside
         className={`
-          ${isMobile ? 'fixed left-0 top-0 z-[60]' : 'sticky top-0 z-30'}
-          ${isMobile && !isOpen ? '-translate-x-full' : 'translate-x-0'}
-          ${isCollapsed ? 'w-20' : 'w-64'}
+          ${isMobile ? "fixed left-0 top-0 z-[60]" : "sticky top-0 z-30"}
+          ${isMobile && !isOpen ? "-translate-x-full" : "translate-x-0"}
+          ${isCollapsed ? "w-20" : "w-64"}
           flex flex-col justify-between min-h-screen bg-white shadow-lg
           transition-transform duration-300 ease-in-out
         `}
@@ -90,11 +90,13 @@ export default function Sidebar() {
             <button
               className="p-2 rounded-md border border-gray-300"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <IoIosArrowBack
                 size={20}
-                className={`text-[#003366] transition-transform ${isCollapsed ? 'rotate-180' : 'rotate-0'}`}
+                className={`text-[#003366] transition-transform ${
+                  isCollapsed ? "rotate-180" : "rotate-0"
+                }`}
               />
             </button>
           )}
@@ -104,18 +106,29 @@ export default function Sidebar() {
               onClick={() => setIsOpen(false)}
               aria-label="Close sidebar menu"
             >
-              <div className='border-[#003366] border-2 rounded-lg p-1'>
-                <IoIosArrowBack size={20} className='text-[#003366]' />
+              <div className="border-[#003366] border-2 rounded-lg p-1">
+                <IoIosArrowBack size={20} className="text-[#003366]" />
               </div>
             </button>
           )}
         </div>
 
-        {/* School Name */}
+        {/* School Name & Logo */}
         {!isCollapsed && (
-          <button className='flex bg-[#fbfbfb] justify-center gap-1 items-center rounded-[10px] border m-3 px-[1px] py-[3px] w-[227px]'>
-            <img src="/6.svg" alt="School Logo" />
-            <p>Unity Secondary School</p>
+          <button className="flex bg-[#fbfbfb] justify-center gap-1 items-center rounded-[10px] border m-3 px-[1px] py-[3px] w-[227px]">
+            <img
+              // src={school?.logo || "/logo."}
+              src={"/6.svg"}
+              alt="School Logo"
+              className="h-6 w-6 object-contain"
+            />
+            <p>
+              {schoolLoading
+                ? "Loading..."
+                : schoolError
+                ? "Error loading school"
+                : school?.name || "School Name"}
+            </p>
           </button>
         )}
 
@@ -127,9 +140,7 @@ export default function Sidebar() {
                 <Link
                   to={path}
                   className={`flex items-center px-6 py-3 m-3 rounded-lg text-gray-700 transition-colors duration-200 ${
-                    location.pathname === path
-                      ? 'bg-[#bfccd8] text-[#184674]'
-                      : 'hover:bg-gray-50'
+                    location.pathname === path ? "bg-[#bfccd8] text-[#184674]" : "hover:bg-gray-50"
                   }`}
                   onClick={handleLinkClick}
                 >
@@ -149,7 +160,7 @@ export default function Sidebar() {
               onClick={handleLogout}
               aria-label="Logout"
               disabled={authLoading}
-              title={authLoading ? 'Logging out...' : 'Logout'}
+              title={authLoading ? "Logging out..." : "Logout"}
             >
               <CgLogOff size={20} />
             </button>

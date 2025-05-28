@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback  } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from './auth.services';  // reuse base URL
 
@@ -16,21 +16,20 @@ export const useTimetable = () => {
     headers: { Authorization: `Bearer ${authToken}` },
   });
 
-  // Fetch timetable by class ID
-  const getTimetableByClass = async (classId) => {
+  const getTimetableByClass = useCallback(async (classId) => {
     setLoading(true);
     try {
       const response = await axiosAuth.get(`/timetable/class/${classId}`);
       setTimetables(response.data);
       setError(null);
-      setLoading(false);
       return response.data;
     } catch (err) {
       setError('Failed to fetch timetable by class');
-      setLoading(false);
       return null;
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [authToken]); // Add dependencies here
 
   // Fetch timetable by teacher ID
   const getTimetableByTeacher = async (teacherId) => {

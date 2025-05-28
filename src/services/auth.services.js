@@ -35,11 +35,10 @@ export const useAuth = () => {
         const userData = introspectRes.data?.user;
         setUser(userData);
         setSchoolId(userData?.schoolId);
+        localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('school_id', userData?.schoolId || '');
-  
         // Store userId as parentId for fetching children students later
-        localStorage.setItem('parent_id', userData?.userId || '');
-  
+        localStorage.setItem('parent_id', userData?.userId || '');  
         setLoading(false);
         return true;
       }
@@ -85,13 +84,10 @@ export const useAuth = () => {
           },
         }
       );
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('school_id');
-      localStorage.removeItem('parent_id');
-      localStorage.removeItem('parent_students');
-      localStorage.removeItem("selected_student");
-      localStorage.removeItem('notifications');
+
+      localStorage.clear();
+      
+
       setAuthToken(null);
       setRefreshToken(null);
       setSchoolId(null);

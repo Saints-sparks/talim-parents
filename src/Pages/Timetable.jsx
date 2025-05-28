@@ -28,6 +28,7 @@ function Timetable() {
       getTimetableByClass(selectedStudent.classId._id);
     }
   }, [selectedStudent, getTimetableByClass]);
+  
 
   const handleDownload = () => {
     if (!timetableRef.current) return;

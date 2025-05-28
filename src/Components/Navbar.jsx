@@ -8,6 +8,8 @@ import NotificationsModal from "../Components/NotificationsModal";
 import useNotifications from "../hooks/useNotifications";
 import { useParent } from "../hooks/useParents";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
+import { useAuth } from "../services/auth.services";
+import { Avatar, AvatarFallback, AvatarImage } from "../lib/ui/avatar";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const notificationRef = useRef(null);
+  const {user} = useAuth()
 
   const { notifications } = useNotifications();
   const {
@@ -33,6 +36,8 @@ const Navbar = () => {
     month: "short",
   });
 
+  
+
   useEffect(() => {
     if (!studentsLoading && students.length > 0) {
       // Set initial selected student (either from localStorage or first student)
@@ -45,6 +50,8 @@ const Navbar = () => {
       setSelectedWard("No wards");
     }
   }, [studentsLoading, students, selectedStudent, updateSelectedStudent]);
+
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -59,6 +66,14 @@ const Navbar = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const getInitials = () => {
+    if (!selectedStudent || !selectedStudent.userId) return "";
+    const { firstName = "", lastName = "" } = selectedStudent.userId;
+    return (
+      (firstName[0] || "").toUpperCase() + (lastName[0] || "").toUpperCase()
+    );
+  };
 
   const handleNotificationClick = (e) => {
     e.stopPropagation();
@@ -156,13 +171,26 @@ const Navbar = () => {
 
             {/* Avatar + Dropdown */}
             <div className="flex items-center space-x-4">
-              <button className="w-10 h-10 rounded-full overflow-hidden hover:opacity-75 transition-opacity">
+              {/* <button className="w-10 h-10 rounded-full overflow-hidden hover:opacity-75 transition-opacity">
                 <img
                   src={logo || "/fallback-avatar.png"}
                   alt="User Avatar"
                   className="w-full h-full object-cover"
                 />
-              </button>
+              </button> */}
+                <Avatar>
+                {selectedStudent?.userId?.userAvatar ? (
+                  <AvatarImage
+                    src={selectedStudent.userId.userAvatar}
+                    alt={`${selectedStudent.userId.firstName} ${selectedStudent.userId.lastName}`}
+                  />
+                ) : (
+                  <AvatarFallback className="bg-green-300">
+                    {getInitials()}
+                  </AvatarFallback>
+                )}
+                </Avatar>
+
               {renderWardDropdown()}
             </div>
           </div>
@@ -189,13 +217,26 @@ const Navbar = () => {
                 )}
               </button>
 
-              <button className="w-10 h-10 rounded-full overflow-hidden hover:opacity-75 transition-opacity">
+              {/* <button className="w-10 h-10 rounded-full overflow-hidden hover:opacity-75 transition-opacity">
                 <img
                   src={logo || "/fallback-avatar.png"}
                   alt="User Avatar"
                   className="w-full h-full object-cover"
                 />
-              </button>
+              </button> */}
+
+              <Avatar>
+                {selectedStudent?.userId?.userAvatar ? (
+                  <AvatarImage
+                    src={selectedStudent.userId.userAvatar}
+                    alt={`${selectedStudent.userId.firstName} ${selectedStudent.userId.lastName}`}
+                  />
+                ) : (
+                  <AvatarFallback className="bg-green-300">
+                    {getInitials()}
+                  </AvatarFallback>
+                )}
+                </Avatar>
 
               {renderWardDropdown()}
             </div>

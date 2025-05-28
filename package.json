@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.10",
     "axios": "^1.9.0",
     "chart.js": "^4.4.7",
     "dotenv": "^16.5.0",
@@ -27,7 +28,8 @@
     "react-icons": "^5.4.0",
     "react-loading-skeleton": "^3.5.0",
     "react-media-recorder": "^1.7.1",
-    "react-router-dom": "^7.1.1"
+    "react-router-dom": "^7.1.1",
+    "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
