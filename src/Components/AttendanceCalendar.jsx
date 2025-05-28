@@ -3,6 +3,9 @@ import moment from "moment";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAttendance } from "../hooks/useAttendance";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
+import SkeletonLoader from "./SkeletonLoader";
+import LoadError from "../Components/loadError"; // Import LoadError
+
 // List of months
 const months = [
   "January", "February", "March", "April", "May", "June", 
@@ -28,14 +31,6 @@ const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
       getAttendanceById(selectedStudent._id, currentDate.year(), currentDate.month() + 1);
     }
   }, [selectedStudent, currentDate, getAttendanceById]);
-
-  const handlePrevMonth = () => {
-    setCurrentDate(currentDate.clone().subtract(1, 'month'));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(currentDate.clone().add(1, 'month'));
-  };
 
   // Calculate attendance stats from API data
   const getAttendanceStats = () => {
@@ -126,7 +121,7 @@ const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
         </div>
       );
       
-      // Start new row after Friday (day 5)
+      // Start new row after Friday (day 5) or last day of month
       if (dayOfWeek === 5 || i === daysInMonth) {
         days.push(
           <div key={`week-${i}`} className="grid grid-cols-5 gap-0">
@@ -141,14 +136,21 @@ const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
   };
 
   if (loading && !attendanceData) {
-    return <div className="p-4">Loading attendance data...</div>;
+    return <>
+      <SkeletonLoader/>
+    </>
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 text-red-600 rounded">
-        Error: {error}
-      </div>
+      <LoadError
+        message={`Error loading attendance data: ${error}`}
+        onRetry={() => {
+          if (selectedStudent?._id) {
+            getAttendanceById(selectedStudent._id, currentDate.year(), currentDate.month() + 1);
+          }
+        }}
+      />
     );
   }
 
@@ -171,7 +173,7 @@ const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
           <button 
-            onClick={handlePrevMonth}
+            onClick={() => setCurrentDate(currentDate.clone().subtract(1, 'month'))}
             className="p-1 rounded-full hover:bg-gray-100"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -180,7 +182,7 @@ const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
             {currentDate.format('MMMM YYYY')}
           </h3>
           <button 
-            onClick={handleNextMonth}
+            onClick={() => setCurrentDate(currentDate.clone().add(1, 'month'))}
             className="p-1 rounded-full hover:bg-gray-100"
           >
             <ChevronRight className="w-5 h-5" />

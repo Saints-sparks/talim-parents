@@ -4,6 +4,8 @@ import { IoIosArrowBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import { useLeaveRequest } from "../hooks/useLeaveRequests";
 import { useTerm } from "../hooks/useTerm";
+import LoadError from './loadError'
+import SkeletonLoader from "./SkeletonLoader";
 
 function LeaveForm() {
   const navigate = useNavigate();
@@ -39,8 +41,9 @@ function LeaveForm() {
     }
 
     if (termLoading) {
-      setError("Loading current term... please wait.");
-      return;
+      return <>
+      <SkeletonLoader/>
+      </>
     }
 
     if (!currentTerm || !currentTerm._id) {
@@ -82,60 +85,75 @@ function LeaveForm() {
   };
 
   if (termError) {
-    return <p className="text-red-600 p-4">Error loading term info: {termError}</p>;
+    return (
+      <LoadError
+        message={`There was an error loading the current academic term info: ${termError}. Please check your connection.`}
+        onRetry={() => window.location.reload()}
+      />
+    );
   }
-
+  
   if (termLoading) {
-    return <p className="p-4">Loading current academic term...</p>;
+    return <>
+    <SkeletonLoader/>
+    </>
   }
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Mobile Header */}
+      <div className="md:hidden sticky top-0 z-10 bg-white border-b border-gray-200 p-4 flex items-center">
+        <button onClick={() => navigate(-1)} className="focus:outline-none mr-2">
+          <IoIosArrowBack className="w-6 h-6 text-[#003366] hover:text-[#002244]" />
+        </button>
+        <h1 className="text-lg font-semibold text-gray-800">Request Student Absence</h1>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:space-x-6">
-          <div className="flex-1 py-6">
-            <div className="flex items-center mb-4">
+          <div className="flex-1 py-4 md:py-6">
+            {/* Desktop Header (hidden on mobile) */}
+            <div className="hidden md:flex items-center mb-4">
               <button onClick={() => navigate(-1)} className="focus:outline-none">
                 <IoIosArrowBack className="w-6 h-6 md:w-7 md:h-7 text-[#003366] hover:text-[#002244]" />
               </button>
             </div>
-
-            <h1 className="text-xl md:text-[25px] font-semibold mb-2">Request Student Absence</h1>
-            <p className="text-[#aaaaaa] mb-6 text-sm md:text-base">
+            <h1 className="hidden md:block text-xl md:text-[25px] font-semibold mb-2">Request Student Absence</h1>
+            <p className="hidden md:block text-[#aaaaaa] mb-6 text-sm md:text-base">
               Submit a leave request for your child's upcoming absence
             </p>
 
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">Start Date</label>
+                  <label className="block mb-1 md:mb-2 text-sm font-medium text-gray-700">Start Date</label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="border border-gray-300 rounded-lg px-3 py-3 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">End Date</label>
+                  <label className="block mb-1 md:mb-2 text-sm font-medium text-gray-700">End Date</label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="border border-gray-300 rounded-lg px-3 py-3 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
                 </div>
               </div>
 
-              <div className="mt-6">
-                <label className="block mb-2 text-sm font-medium text-gray-700">Leave Type</label>
+              <div className="mt-4 md:mt-6">
+                <label className="block mb-1 md:mb-2 text-sm font-medium text-gray-700">Leave Type</label>
                 <div className="relative">
                   <select
                     value={leaveType}
                     onChange={(e) => setLeaveType(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 w-full appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="border border-gray-300 rounded-lg px-3 py-3 w-full appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
                     <option value="" disabled>
@@ -146,26 +164,26 @@ function LeaveForm() {
                     <option key="fees" value="Fees Issue">Fees Issue</option>
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <FaChevronDown className="h-5 w-5 text-gray-400" />
+                    <FaChevronDown className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6">
-                <label className="block mb-2 text-sm font-medium text-gray-700">Reason for Absence</label>
+              <div className="mt-4 md:mt-6">
+                <label className="block mb-1 md:mb-2 text-sm font-medium text-gray-700">Reason for Absence</label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="border border-gray-300 rounded-lg px-3 py-3 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Please provide details about the absence"
-                  rows={3}
+                  rows={4}
                   required
                 />
               </div>
 
-              <div className="mt-6">
-                <label className="block mb-2 text-sm font-medium text-gray-700">Support Documents (Optional)</label>
-                <div className="flex items-center justify-between border border-gray-300 rounded-md px-3 py-2">
+              <div className="mt-4 md:mt-6">
+                <label className="block mb-1 md:mb-2 text-sm font-medium text-gray-700">Support Documents (Optional)</label>
+                <div className="flex items-center justify-between border border-gray-300 rounded-lg px-3 py-3">
                   <input type="file" id="file-upload" className="hidden" onChange={handleFileChange} />
                   <label
                     htmlFor="file-upload"
@@ -173,9 +191,11 @@ function LeaveForm() {
                   >
                     Choose file
                   </label>
-                  <span className="text-sm text-gray-500">{selectedFile ? selectedFile.name : "No file chosen"}</span>
+                  <span className="text-xs md:text-sm text-gray-500 truncate max-w-[50%]">
+                    {selectedFile ? selectedFile.name : "No file chosen"}
+                  </span>
                 </div>
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-1 md:mt-2 text-xs md:text-sm text-gray-500">
                   Upload any relevant documents (medical certificates, appointment letters, etc.)
                 </p>
               </div>
@@ -190,8 +210,10 @@ function LeaveForm() {
                 </button>
               </div>
 
-              {error && <p className="mt-4 text-red-600">{error}</p>}
-              {successMessage && <p className="mt-4 text-green-600">{successMessage}</p>}
+              <div className="pb-16 md:pb-0">
+                {error && <p className="mt-4 text-red-600 text-sm md:text-base">{error}</p>}
+                {successMessage && <p className="mt-4 text-green-600 text-sm md:text-base">{successMessage}</p>}
+              </div>
             </form>
           </div>
         </div>

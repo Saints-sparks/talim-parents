@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { IoIosArrowDown } from "react-icons/io";
-import AttendanceCalendar from '../Components/AttendanceCalendar ';
+import AttendanceCalendar from '../Components/AttendanceCalendar';
 import { useSelectedStudent } from '../contexts/SelectedStudentContext';
+import SkeletonLoader from '../Components/SkeletonLoader';
+import LoadError from '../Components/loadError';  // Import LoadError
 
-// List of months and years
 const months = [
   "January", "February", "March", "April", "May", "June", 
   "July", "August", "September", "October", "November", "December"
 ];
-const years = Array.from({ length: 10 }, (_, i) => 2025 - i); // Generate last 10 years
+const years = Array.from({ length: 10 }, (_, i) => 2025 - i);
 
 function Attendance() {
   const [selectedMonth, setSelectedMonth] = useState("January");
@@ -17,15 +18,50 @@ function Attendance() {
   const [yearDropdown, setYearDropdown] = useState(false);
   const { selectedStudent } = useSelectedStudent();
 
-  // Update title based on selected student
+  // Add error state (simulate no error initially)
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = () => {
+    setLoading(true);
+    setError(null);
+
+    // Simulate data loading with possible error after 1s
+    setTimeout(() => {
+      // Simulate success or failure here:
+      const simulateError = false; // set true to test error UI
+
+      if (simulateError) {
+        setError("Failed to load attendance data.");
+        setLoading(false);
+      } else {
+        setLoading(false);
+        setError(null);
+      }
+    }, 1000);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const getTitle = () => {
     if (!selectedStudent) return "Attendance";
     return `${selectedStudent.userId.firstName}'s Attendance`;
   };
 
+  if (error) {
+    return (
+      <LoadError
+        message={error}
+        onRetry={() => loadData()}
+      />
+    );
+  }
+
   return (
     <div className="flex min-h-screen p-6 flex-col gap-6">
-      
+
       {/* Attendance Section */}
       <div className="flex justify-between items-center">
         <div>
@@ -37,9 +73,9 @@ function Attendance() {
           </p>
         </div>
 
-        {/* Dropdown for Month & Year */}
+        {/* Dropdowns */}
         <div className="flex space-x-3 relative">
-          
+
           {/* Month Dropdown */}
           <div className="relative">
             <button 
@@ -97,10 +133,16 @@ function Attendance() {
       </div>
 
       {/* Calendar Component */}
-      <AttendanceCalendar 
-        selectedMonth={selectedMonth} 
-        selectedYear={selectedYear}
-      />
+      <div className="min-h-[400px]">
+        {loading ? (
+          <SkeletonLoader type="card" count={3} />
+        ) : (
+          <AttendanceCalendar 
+            selectedMonth={selectedMonth} 
+            selectedYear={selectedYear}
+          />
+        )}
+      </div>
     </div>
   );
 }
