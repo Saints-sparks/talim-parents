@@ -209,51 +209,56 @@ const LeaveRequestTable = ({ leaveRequests, onNewRequest }) => {
       {/* Mobile Card View */}
       <div className="sm:hidden p-4 space-y-4 relative">
         {/* New Request Button */}
-        <button
-          onClick={onNewRequest}
-          className="flex items-center gap-2 px-4 py-2 mb-4 rounded-md bg-[#003366] text-white font-semibold shadow hover:bg-[#002244]"
-          aria-label="Create new leave request"
-        >
-          <FiPlus size={20} />
-        </button>
-
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={onNewRequest}
+            className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#003366] text-white font-semibold shadow hover:bg-[#002244]"
+            aria-label="Create new leave request"
+          >
+            <FiPlus size={20} />
+          </button>
+        </div>
         {leaveRequests.length > 0 ? (
           currentRequests.map((req) => (
             <div
               key={req._id}
-              className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white"
+              className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white flex flex-col"
             >
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-gray-500 text-xs">Request Date</div>
-                <div className="font-semibold text-sm">{formatDate(req.createdAt)}</div>
-              </div>
-
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-gray-500 text-xs">Leave Period</div>
-                <div className="font-semibold text-sm">
-                  {formatLeavePeriod(req.startDate, req.endDate)}
+             <div className="flex justify-between items-start">
+              {/* Left side: Request Date and Leave Period stacked */}
+              <div className="flex flex-col space-y-2">
+                <div>
+                  <div className="font-semibold text-sm">Request Date</div>
+                  <div className="text-gray-500 text-xs">{formatDate(req.createdAt)}</div>
                 </div>
-              </div>
-
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-gray-500 text-xs">Type</div>
-                <div className="font-semibold text-sm">{req.leaveType}</div>
-              </div>
-
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-gray-500 text-xs">Status</div>
-                <StatusBadge status={req.status} />
-              </div>
-
-              <div className="pt-2 border-t border-gray-200">
+                <div>
+                  <div className="font-semibold text-sm">Leave Period</div>
+                  <div className="text-gray-500 text-xs">{formatLeavePeriod(req.startDate, req.endDate)}</div>
+                </div>
+                {/* Download button below request date and leave period */}
                 <button
                   onClick={() => handleDownloadPDF(req)}
-                  className="flex items-center gap-1 text-gray-700 hover:text-blue-600 text-sm"
+                  className="flex items-center gap-1 text-gray-700 hover:text-blue-600 text-sm mt-2"
                   title="Download Leave Request PDF"
                 >
                   <TbFileDownload size={20} /> Download
                 </button>
               </div>
+
+                  {/* Right side: Status and Request Type stacked like left side */}
+                  <div className="flex flex-col space-y-4 items-end">
+                    <div>
+                    {/* <div className="font-semibold text-sm pl-8">Status</div> */}
+                      <StatusBadge status={req.status} />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-sm">Type</div>
+                      <div className="text-gray-500 text-xs mt-1">{req.leaveType}</div>
+                    </div>
+                  </div>
+
+            </div>
+
             </div>
           ))
         ) : (

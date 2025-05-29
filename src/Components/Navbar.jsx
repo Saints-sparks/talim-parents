@@ -198,8 +198,8 @@ const Navbar = () => {
 
         {/* Mobile View */}
         <div className="sm:hidden flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-white py-2 px-4 rounded-lg shadow-sm flex items-center space-x-2">
+          <div className="flex items-center justify-between mb-4 ">
+            <div className="bg-white py-2 px-4 rounded-lg shadow-sm flex items-center space-x-2 ml-5">
               <span className="text-[#6f6f6f]">{currentDate}</span>
               <TbCalendarMonth className="text-[#6f6f6f] h-[24px] w-[24px]" />
             </div>
