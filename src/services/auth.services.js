@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import axios from 'axios';
-import {API_ENDPOINTS} from '../config/api';
-
 
 export const API_BASE_URL = 'http://localhost:5000';
 
@@ -16,7 +14,7 @@ export const useAuth = () => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_ENDPOINTS.LOGIN}`, {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
       });
@@ -57,7 +55,7 @@ export const useAuth = () => {
   const register = async (email, password, role, schoolId, firstName, lastName, phoneNumber) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_ENDPOINTS.REGISTER}`, {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         email,
         password,
         role,
@@ -103,7 +101,7 @@ export const useAuth = () => {
 
   const refreshTokenHandler = async () => {
     try {
-      const response = await axios.post(`${API_ENDPOINTS.REGISTER}`, {
+      const response = await axios.post(`${API_BASE_URL}/refresh-token`, {
         refreshToken,
       });
       const { access_token, refresh_token } = response.data;

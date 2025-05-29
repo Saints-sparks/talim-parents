@@ -16,9 +16,9 @@ import { SelectedStudentProvider } from './contexts/SelectedStudentContext'; // 
 
 function AppLayout() {
   return (
-
-    <Router>
-      <div className="App">
+    <div className="flex min-h-screen bg-[#f8f8f8]">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
         <Navbar />
         <div className="p-6 flex-grow overflow-auto">
           <Outlet />
@@ -58,6 +58,5 @@ function App() {
     </SelectedStudentProvider>
   );
 }
-
 
 export default App;

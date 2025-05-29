@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { API_ENDPOINTS } from "../config/api";
+import { API_BASE_URL } from "../services/auth.services";
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -19,7 +19,7 @@ export const useNotifications = () => {
         }
 
         // **Fetch fresh notifications**
-        const response = await axios.get(`${API_ENDPOINTS.NOTIFICATIONS}`);
+        const response = await axios.get(`${API_BASE_URL}/notifications`);
 
         if (!response.data || !Array.isArray(response.data.data)) {
           throw new Error("Unexpected response format");
