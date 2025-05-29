@@ -3,12 +3,14 @@ import { TbCalendarMonth } from "react-icons/tb";
 import { useNavigate } from "react-router-dom";
 import { useLeaveRequest } from "../hooks/useLeaveRequests";
 import LeaveRequestTable from "../Components/LeaveRequestTable";
+import LeaveRequestTableSkeleton from "../Components/LeaveRequestTableSkeleton"; // import skeleton
+import LoadError from "../Components/loadError";
 
 function RequestLeave() {
   const navigate = useNavigate();
   const { leaveRequests, loading, error, fetchLeaveRequestsByChild } = useLeaveRequest();
 
-  useEffect(() => {
+  const loadLeaveRequests = () => {
     const parentStudents = JSON.parse(localStorage.getItem("parent_students") || "[]");
     if (parentStudents.length > 0) {
       const childId = parentStudents[0].userId?._id;
@@ -16,7 +18,15 @@ function RequestLeave() {
         fetchLeaveRequestsByChild(childId);
       }
     }
+  };
+
+  useEffect(() => {
+    loadLeaveRequests();
   }, []);
+
+  const handleNewRequest = () => {
+    navigate("/leaveform");
+  };
 
   return (
     <div className="flex min-h-screen p-6 flex-col gap-6 relative">
@@ -28,20 +38,32 @@ function RequestLeave() {
           </p>
         </div>
 
-        <div className="flex space-x-3 mt-auto">
+        <div className="hidden sm:flex space-x-3 mt-auto">
           <button
-            onClick={() => navigate("/leaveform")}  // <-- Redirect here
+            onClick={handleNewRequest}
             className="flex gap-1 items-center text-white bg-[#003366] py-[10px] px-[15px] rounded-lg shadow-lg transition-transform hover:scale-105"
           >
-            New Request <TbCalendarMonth />
+            <TbCalendarMonth /> New Request
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200">
-        {loading && <p className="p-6 text-center text-gray-500">Loading leave requests...</p>}
-        {error && <p className="p-6 text-center text-red-600">Error: {error}</p>}
-        {!loading && !error && <LeaveRequestTable leaveRequests={leaveRequests} />}
+      <div className="bg-white rounded-lg shadow border border-gray-200 min-h-[200px] p-4">
+        {loading && <LeaveRequestTableSkeleton />}
+
+        {error && (
+          <LoadError
+            message={`Failed to load leave requests: ${error}`}
+            onRetry={loadLeaveRequests}
+          />
+        )}
+
+        {!loading && !error && (
+          <LeaveRequestTable
+            leaveRequests={leaveRequests}
+            onNewRequest={handleNewRequest}
+          />
+        )}
       </div>
     </div>
   );

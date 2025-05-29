@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { FiDownload, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 import AttendanceTimetable from '../Components/AttendanceTimetable';
+import SkeletonLoader from '../Components/SkeletonLoader';  // Import SkeletonLoader
 import { useTimetable } from '../services/timetable.services';
 import { useSelectedStudent } from '../contexts/SelectedStudentContext';
+import LoadError from '../Components/loadError';
 
 function Timetable() {
   const [notification, setNotification] = useState({
@@ -28,7 +30,6 @@ function Timetable() {
       getTimetableByClass(selectedStudent.classId._id);
     }
   }, [selectedStudent, getTimetableByClass]);
-  
 
   const handleDownload = () => {
     if (!timetableRef.current) return;
@@ -81,7 +82,7 @@ function Timetable() {
         </div>
       )}
 
-      <div className='flex justify-between items-center'>
+      <div className='flex justify-between items-center overflow-auto whitespace-nowrap'>
         <div>
           <h1 className='text-[20px] md:text-[24px]'>{getTitle()}</h1>
           <p className='text-[#aaaaaa] text-[12px] md:text-[16px]'>
@@ -103,21 +104,33 @@ function Timetable() {
       </div>
 
       {/* Attendance Section */}
-      <div ref={timetableRef} className="bg-white rounded-lg shadow border border-gray-200">
-        {!selectedStudent ? (
-          <div className="p-6 text-center text-gray-500">
-            Please select a student to view their timetable
-          </div>
-        ) : (
-          <AttendanceTimetable 
-            timetables={timetables}
-            loading={loading}
-            error={error}
-            studentName={`${selectedStudent.userId.firstName} ${selectedStudent.userId.lastName}`}
-            className={selectedStudent.classId?.name}
-          />
-        )}
-      </div>
+      <div ref={timetableRef} className="bg-white rounded-lg shadow border border-gray-200 min-h-[300px]">
+  {!selectedStudent ? (
+    <div className="p-6 text-center text-gray-500">
+      Please select a student to view their timetable
+    </div>
+  ) : loading ? (
+    <SkeletonLoader type="table" count={1} height="12rem" />
+  ) : error ? (
+    <LoadError
+      message={`Failed to load timetable: ${error}. Please check your connection.`}
+      onRetry={() => {
+        if(selectedStudent?.classId?._id) {
+          getTimetableByClass(selectedStudent.classId._id);
+        }
+      }}
+    />
+  ) : (
+    <AttendanceTimetable 
+      timetables={timetables}
+      loading={loading}
+      error={error}
+      studentName={`${selectedStudent.userId.firstName} ${selectedStudent.userId.lastName}`}
+      className={selectedStudent.classId?.name}
+    />
+  )}
+</div>
+
     </div>
   )
 }
