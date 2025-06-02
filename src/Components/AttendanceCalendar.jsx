@@ -205,7 +205,7 @@ const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
       </div>
       
       {/* Attendance stats */}
-      <div className="p-4 border-t">
+      {/* <div className="p-4 border-t">
         <div className="flex justify-between items-center">
           <div>
             <div className="text-sm text-gray-500">Attendance Percentage</div>
@@ -222,7 +222,7 @@ const AttendanceCalendar = ({ selectedMonth, selectedYear }) => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

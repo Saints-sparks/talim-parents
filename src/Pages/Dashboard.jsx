@@ -88,7 +88,7 @@ function Dashboard() {
                     <div className="flex flex-col h-full justify-between">
                       <div>
                         <p className="text-gray-500 text-sm mb-1">{box.text}</p>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                        <h2 className="text-2xl sm:text-3xl font-medium text-gray-900">
                           {box.number}
                         </h2>
                       </div>

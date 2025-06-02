@@ -9,6 +9,8 @@ import { IoMdTime } from "react-icons/io";
 import { CgLogOff } from "react-icons/cg";
 import { IoMenu } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
+import LeaveRequestIcon from '../lib/ui/LeaveRequestIcon'; 
+
 
 import logo from "../images/1.png";
 
@@ -21,10 +23,10 @@ export default function Sidebar() {
 
   const { logout, loading: authLoading, error: authError, schoolId } = useAuth();
   const { school, loading: schoolLoading, error: schoolError } = useSchool();
-
   const [isOpen, setIsOpen] = useState(false); // Mobile toggle
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false); // Desktop toggle
+  const unreadMessagesCount = 5;
 
   useEffect(() => {
     const checkIfMobile = () => setIsMobile(window.innerWidth < 768);
@@ -46,7 +48,7 @@ export default function Sidebar() {
     { path: "/dashboard", name: "Dashboard", icon: <RiHome5Line className="text-[24px]" /> },
     { path: "/timetable", name: "Timetable", icon: <IoMdTime className="text-[24px]" /> },
     { path: "/attendance", name: "Attendance", icon: <PiCalendarDotsLight className="text-[24px]" /> },
-    { path: "/requestleave", name: "Request leave", icon: <BsHandbag className="text-[24px]" /> },
+    { path: "/requestleave", name: "Request leave", icon: <LeaveRequestIcon className="text-[24px]" /> },
     { path: "/result", name: "Results", icon: <SlBadge className="text-[24px]" /> },
     { path: "/messages", name: "Messages", icon: <TbMessageDots className="text-[24px]" /> },
   ];

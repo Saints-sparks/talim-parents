@@ -16,7 +16,7 @@ import { SelectedStudentProvider } from './contexts/SelectedStudentContext'; // 
 
 function AppLayout() {
   return (
-    <div className="flex min-h-screen bg-[#f8f8f8]">
+    <div className="flex min-h-screen bg-[#f8f8f8] font-manrope">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Navbar />
