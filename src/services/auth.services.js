@@ -13,40 +13,84 @@ export const useAuth = () => {
 
   const login = async (email, password) => {
     setLoading(true);
+    setError(null); // Clear previous errors
+    
     try {
+      console.log('Attempting login with:', { email, API_BASE_URL });
+      
       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
+      }, {
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
+
+      console.log('Login response:', response.data);
   
       const { access_token, refresh_token } = response.data;
   
-      if (access_token && refresh_token) {
-        localStorage.setItem('access_token', access_token);
-        localStorage.setItem('refresh_token', refresh_token);
-        setAuthToken(access_token);
-        setRefreshToken(refresh_token);
-  
-        // Introspect to get user info
-        const introspectRes = await axios.post(`${API_BASE_URL}/auth/introspect`, {
-          token: access_token,
-        });
-  
-        const userData = introspectRes.data?.user;
-        setUser(userData);
-        setSchoolId(userData?.schoolId);
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('school_id', userData?.schoolId || '');
-        // Store userId as parentId for fetching children students later
-        localStorage.setItem('parent_id', userData?.userId || '');  
-        setLoading(false);
-        return true;
+      if (!access_token || !refresh_token) {
+        throw new Error('Invalid response: missing tokens');
       }
+
+      // Store tokens
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('refresh_token', refresh_token);
+      setAuthToken(access_token);
+      setRefreshToken(refresh_token);
   
-      throw new Error('Authentication failed');
+      // Introspect to get user info
+      console.log('Getting user info...');
+      const introspectRes = await axios.post(`${API_BASE_URL}/auth/introspect`, {
+        token: access_token,
+      }, {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      console.log('Introspect response:', introspectRes.data);
+  
+      const userData = introspectRes.data?.user;
+      
+      if (!userData) {
+        throw new Error('Invalid response: missing user data');
+      }
+
+      setUser(userData);
+      setSchoolId(userData?.schoolId);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('school_id', userData?.schoolId || '');
+      localStorage.setItem('parent_id', userData?.userId || '');
+      
+      setLoading(false);
+      console.log('Login successful');
+      return true;
+  
     } catch (err) {
-      console.error(err);
-      setError('Login failed, please check your credentials');
+      console.error('Login error:', err);
+      
+      let errorMessage = 'Login failed, please check your credentials';
+      
+      if (err.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to server. Please check if the server is running.';
+      } else if (err.code === 'ENOTFOUND') {
+        errorMessage = 'Server not found. Please check the server URL.';
+      } else if (err.response) {
+        // Server responded with error status
+        console.error('Server error response:', err.response.data);
+        errorMessage = err.response.data?.message || `Server error: ${err.response.status}`;
+      } else if (err.request) {
+        // Request was made but no response received
+        console.error('No response received:', err.request);
+        errorMessage = 'No response from server. Please check your connection.';
+      }
+      
+      setError(errorMessage);
       setLoading(false);
       return false;
     }
@@ -87,7 +131,6 @@ export const useAuth = () => {
 
       localStorage.clear();
       
-
       setAuthToken(null);
       setRefreshToken(null);
       setSchoolId(null);
