@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:5000';
+export const API_BASE_URL = 'https://talim-be-dev.onrender.com';
 
 export const useAuth = () => {
     const [user, setUser] = useState(null);
