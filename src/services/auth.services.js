@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-export const API_BASE_URL = 'https://talim-be-dev.onrender.com';
+export const API_BASE_URL = 'http://localhost:5005';
 
 export const useAuth = () => {
     const [user, setUser] = useState(null);
@@ -32,15 +32,22 @@ export const useAuth = () => {
 
             const { access_token, refresh_token } = response.data;
 
-            if (!access_token || !refresh_token) {
-                throw new Error('Invalid response: missing tokens');
+            if (!access_token) {
+                throw new Error('Invalid response: missing access token');
             }
 
             // Store tokens
             localStorage.setItem('access_token', access_token);
-            localStorage.setItem('refresh_token', refresh_token);
             setAuthToken(access_token);
-            setRefreshToken(refresh_token);
+
+            if (refresh_token) {
+                localStorage.setItem('refresh_token', refresh_token);
+                setRefreshToken(refresh_token);
+            } else {
+                // No refresh token returned by the backend; proceed without it
+                console.warn('No refresh token returned by login response; continuing without refresh token.');
+                setRefreshToken(null);
+            }
 
             // Introspect to get user info
             console.log('Getting user info...');
@@ -61,6 +68,22 @@ export const useAuth = () => {
                 throw new Error('Invalid response: missing user data');
             }
 
+            // RBAC: only parent role is permitted in this portal
+            if (userData.role !== 'parent') {
+                // Clear stored tokens — this login is not allowed
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                const friendlyRole = userData.role.replace(/_/g, ' ');
+                const rbacMsg =
+                    `Access denied. This portal is for parents only. ` +
+                    `Your account is registered as "${friendlyRole}". ` +
+                    `Please use the correct Talim app for your role.`;
+                setError(rbacMsg);
+                setLoading(false);
+                // Return the specific error type so the UI can show the right banner
+                return { kind: 'access_denied', message: rbacMsg };
+            }
+
             setUser(userData);
             setSchoolId(userData?.schoolId);
             localStorage.setItem('user', JSON.stringify(userData));
@@ -68,31 +91,43 @@ export const useAuth = () => {
             localStorage.setItem('parent_id', userData?.userId || '');
 
             setLoading(false);
-            console.log('Login successful');
-            return true;
+            return { kind: 'success' };
 
         } catch (err) {
             console.error('Login error:', err);
 
-            let errorMessage = 'Login failed, please check your credentials';
+            let errorMessage = 'Incorrect email or password. Please check your credentials and try again.';
 
             if (err.code === 'ECONNREFUSED') {
-                errorMessage = 'Cannot connect to server. Please check if the server is running.';
+                errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.';
             } else if (err.code === 'ENOTFOUND') {
-                errorMessage = 'Server not found. Please check the server URL.';
+                errorMessage = 'Server not found. Please check your internet connection and try again.';
             } else if (err.response) {
-                // Server responded with error status
-                console.error('Server error response:', err.response.data);
-                errorMessage = err.response.data?.message || `Server error: ${err.response.status}`;
+                const serverMsg = err.response.data?.message;
+                if (err.response.status === 401) {
+                    errorMessage = 'Incorrect email or password. Please double-check your credentials and try again.';
+                } else if (serverMsg) {
+                    errorMessage = serverMsg;
+                } else {
+                    errorMessage = `Server error (${err.response.status}). Please try again later.`;
+                }
             } else if (err.request) {
-                // Request was made but no response received
-                console.error('No response received:', err.request);
-                errorMessage = 'No response from server. Please check your connection.';
+                errorMessage = 'No response from server. Please check your internet connection.';
+            } else if (err.message) {
+                // Includes RBAC errors thrown above
+                errorMessage = err.message;
             }
 
+            const isCredentialError =
+                err.response?.status === 401 ||
+                errorMessage.toLowerCase().includes('incorrect') ||
+                errorMessage.toLowerCase().includes('credentials');
             setError(errorMessage);
             setLoading(false);
-            return false;
+            return {
+                kind: isCredentialError ? 'invalid_credentials' : 'unknown',
+                message: errorMessage,
+            };
         }
     };
 
