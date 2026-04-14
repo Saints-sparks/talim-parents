@@ -3,34 +3,44 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from './services/auth.services';
 import logo from './assets/logo.svg';
 
+// ── Inline SVG icons (no lucide-react dependency needed) ──────────────────────
 const ShieldAlertIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-red-600 mt-0.5">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    <line x1="12" y1="8" x2="12" y2="12"/>
-    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  <svg className="h-5 w-5 shrink-0 text-red-600 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <circle cx="12" cy="16" r="0.5" fill="currentColor" />
   </svg>
 );
 
-const AlertCircleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" y1="8" x2="12" y2="12"/>
-    <line x1="12" y1="16" x2="12.01" y2="16"/>
+const AlertCircleIcon = ({ className = "h-5 w-5 shrink-0 mt-0.5 text-amber-600" }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <circle cx="12" cy="16" r="0.5" fill="currentColor" />
   </svg>
 );
 
 const EyeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
-    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
 const EyeOffIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 );
+
+const SpinnerIcon = () => (
+  <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+  </svg>
+);
+// ─────────────────────────────────────────────────────────────────────────────
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -60,32 +70,32 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+    <div className="min-h-screen grid lg:grid-cols-2">
       {/* ── Left panel — Form ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '3rem 4rem', backgroundColor: '#ffffff' }}>
-        <div style={{ width: '100%', maxWidth: '360px' }}>
+      <div className="flex flex-col justify-center items-center px-8 py-12 sm:px-16 bg-white">
+        <div className="w-full max-w-sm">
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '2rem' }}>
-            <img src={logo} alt="Talim Logo" style={{ height: '40px', width: '40px' }} />
-            <span style={{ fontSize: '1.25rem', fontWeight: '700', color: '#030E18' }}>Talim</span>
-            <span style={{ marginLeft: '2px', borderRadius: '9999px', backgroundColor: '#EAF2FB', padding: '2px 10px', fontSize: '0.75rem', fontWeight: '600', color: '#003366' }}>
+          <div className="flex items-center gap-3 mb-8">
+            <img src={logo} alt="Talim Logo" className="h-10 w-10" />
+            <span className="text-xl font-bold text-[#030E18]">Talim</span>
+            <span className="ml-0.5 rounded-full bg-[#EAF2FB] px-2.5 py-0.5 text-xs font-semibold text-[#003366]">
               Parents
             </span>
           </div>
 
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#030E18', margin: 0 }}>Welcome back</h1>
-          <p style={{ marginTop: '4px', fontSize: '0.875rem', color: '#6F6F6F' }}>
+          <h1 className="text-2xl font-bold text-[#030E18]">Welcome back</h1>
+          <p className="mt-1 text-sm text-[#6F6F6F]">
             Sign in to track your child's learning journey.
           </p>
 
           {/* RBAC / Access denied banner */}
           {loginError?.kind === 'access_denied' && (
-            <div style={{ marginTop: '1.25rem', borderRadius: '12px', border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2', padding: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <div className="mt-6 rounded-xl border border-red-100 bg-red-50 p-4">
+              <div className="flex items-start gap-3">
                 <ShieldAlertIcon />
                 <div>
-                  <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#B91C1C', margin: 0 }}>Access denied</p>
-                  <p style={{ marginTop: '4px', fontSize: '0.75rem', color: '#DC2626', lineHeight: '1.5', margin: '4px 0 0' }}>
+                  <p className="text-sm font-semibold text-red-700">Access denied</p>
+                  <p className="mt-1 text-xs text-red-600 leading-relaxed">
                     {loginError.message}
                   </p>
                 </div>
@@ -95,10 +105,10 @@ function Login() {
 
           {/* Invalid credentials banner */}
           {loginError?.kind === 'invalid_credentials' && (
-            <div style={{ marginTop: '1.25rem', borderRadius: '12px', border: '1px solid #FEF3C7', backgroundColor: '#FFFBEB', padding: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <AlertCircleIcon style={{ color: '#D97706' }} />
-                <p style={{ fontSize: '0.875rem', color: '#92400E', margin: 0 }}>
+            <div className="mt-6 rounded-xl border border-amber-100 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircleIcon />
+                <p className="text-sm text-amber-700">
                   Incorrect email or password. Please double-check your credentials and try again.
                 </p>
               </div>
@@ -107,18 +117,18 @@ function Login() {
 
           {/* Unknown error banner */}
           {loginError?.kind === 'unknown' && (
-            <div style={{ marginTop: '1.25rem', borderRadius: '12px', border: '1px solid #E5E7EB', backgroundColor: '#F9FAFB', padding: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <AlertCircleIcon style={{ color: '#6B7280' }} />
-                <p style={{ fontSize: '0.875rem', color: '#4B5563', margin: 0 }}>{loginError.message}</p>
+            <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircleIcon className="h-5 w-5 shrink-0 mt-0.5 text-gray-500" />
+                <p className="text-sm text-gray-600">{loginError.message}</p>
               </div>
             </div>
           )}
 
-          <form onSubmit={handleLogin} style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <form onSubmit={handleLogin} className="mt-8 space-y-5" noValidate>
             {/* Email */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="email" style={{ fontSize: '0.875rem', fontWeight: '500', color: '#030E18' }}>
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-sm font-medium text-[#030E18]">
                 Email address
               </label>
               <input
@@ -129,23 +139,16 @@ function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                style={{
-                  width: '100%', height: '40px', padding: '0 12px',
-                  border: '1px solid #E5E7EB', borderRadius: '8px',
-                  backgroundColor: '#F9FAFB', fontSize: '0.875rem', color: '#111827',
-                  outline: 'none', boxSizing: 'border-box',
-                }}
-                onFocus={(e) => { e.target.style.borderColor = '#003366'; e.target.style.boxShadow = '0 0 0 3px rgba(0,51,102,0.15)'; }}
-                onBlur={(e) => { e.target.style.borderColor = '#E5E7EB'; e.target.style.boxShadow = 'none'; }}
+                className="w-full h-10 px-3 border border-[#E5E7EB] bg-[#F9FAFB] rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#003366]/30 focus:border-[#003366] transition-all disabled:opacity-60"
               />
             </div>
 
             {/* Password */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label htmlFor="password" style={{ fontSize: '0.875rem', fontWeight: '500', color: '#030E18' }}>
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="block text-sm font-medium text-[#030E18]">
                 Password
               </label>
-              <div style={{ position: 'relative' }}>
+              <div className="relative">
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -154,23 +157,13 @@ function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  style={{
-                    width: '100%', height: '40px', padding: '0 40px 0 12px',
-                    border: '1px solid #E5E7EB', borderRadius: '8px',
-                    backgroundColor: '#F9FAFB', fontSize: '0.875rem', color: '#111827',
-                    outline: 'none', boxSizing: 'border-box',
-                  }}
-                  onFocus={(e) => { e.target.style.borderColor = '#003366'; e.target.style.boxShadow = '0 0 0 3px rgba(0,51,102,0.15)'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#E5E7EB'; e.target.style.boxShadow = 'none'; }}
+                  className="w-full h-10 px-3 pr-10 border border-[#E5E7EB] bg-[#F9FAFB] rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#003366]/30 focus:border-[#003366] transition-all disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  style={{
-                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0,
-                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
@@ -179,12 +172,12 @@ function Login() {
 
             {/* Remember me */}
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', color: '#4B5563', cursor: 'pointer' }}>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: '#003366' }}
+                  className="h-4 w-4 rounded border-gray-300 accent-[#003366]"
                 />
                 Keep me signed in for easy access
               </label>
@@ -194,24 +187,22 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              style={{
-                width: '100%', height: '44px',
-                backgroundColor: loading ? '#6B9DC2' : '#003366',
-                color: '#ffffff', border: 'none', borderRadius: '8px',
-                fontSize: '0.875rem', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                transition: 'background-color 0.15s',
-              }}
-              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = '#002244'; }}
-              onMouseLeave={(e) => { if (!loading) e.currentTarget.style.backgroundColor = '#003366'; }}
+              className="w-full h-11 bg-[#003366] hover:bg-[#002244] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading ? (
+                <>
+                  <SpinnerIcon />
+                  Signing in…
+                </>
+              ) : (
+                'Sign in'
+              )}
             </button>
           </form>
 
-          <p style={{ marginTop: '2.5rem', textAlign: 'center', fontSize: '0.75rem', color: '#9CA3AF' }}>
+          <p className="mt-10 text-center text-xs text-gray-400">
             © Talim {new Date().getFullYear()} ·{' '}
-            <a href="mailto:help@talim.com" style={{ color: '#003366', textDecoration: 'none' }}>
+            <a href="mailto:help@talim.com" className="hover:underline text-[#003366]">
               help@talim.com
             </a>
           </p>
@@ -219,32 +210,23 @@ function Login() {
       </div>
 
       {/* ── Right panel — Blue brand panel ── */}
-      <div style={{
-        backgroundColor: '#003366',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '3rem',
-      }}
-        className="hidden md:flex"
-      >
+      <div className="hidden lg:flex flex-col items-center justify-center bg-[#003366] p-12">
         <img
           src="/Par.svg"
           alt="Parent portal illustration"
-          style={{ width: '100%', maxWidth: '400px', opacity: 0.9 }}
+          className="w-full max-w-md opacity-90"
         />
-        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.25rem', fontWeight: '700', color: '#ffffff', margin: 0 }}>
-            Talim Parent Portal
-          </p>
-          <p style={{ marginTop: '8px', fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', maxWidth: '280px', lineHeight: '1.6', margin: '8px auto 0' }}>
-            Stay connected with your child's school, track progress, and manage leave requests.
+        <div className="mt-8 text-center">
+          <p className="text-xl font-bold text-white">Talim Parent Portal</p>
+          <p className="mt-2 text-sm text-white/70 max-w-xs leading-relaxed mx-auto">
+            Stay connected with your child's school, track their progress, and manage leave requests.
           </p>
         </div>
-        {/* Decorative dots */}
-        <div style={{ marginTop: '2.5rem', display: 'flex', gap: '8px' }}>
-          <div style={{ height: '8px', width: '32px', borderRadius: '9999px', backgroundColor: 'rgba(255,255,255,0.6)' }} />
-          <div style={{ height: '8px', width: '8px', borderRadius: '9999px', backgroundColor: 'rgba(255,255,255,0.3)' }} />
-          <div style={{ height: '8px', width: '8px', borderRadius: '9999px', backgroundColor: 'rgba(255,255,255,0.3)' }} />
+        {/* Decorative dots (static indicator bar) */}
+        <div className="mt-10 flex gap-2">
+          <div className="h-2 w-8 rounded-full bg-white/60" />
+          <div className="h-2 w-2 rounded-full bg-white/30" />
+          <div className="h-2 w-2 rounded-full bg-white/30" />
         </div>
       </div>
     </div>
