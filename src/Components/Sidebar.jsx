@@ -6,7 +6,7 @@ import { PiCalendarDotsLight } from "react-icons/pi";
 import { SlBadge } from "react-icons/sl";
 import { TbMessageDots } from "react-icons/tb";
 import { IoMdTime } from "react-icons/io";
-import { CgLogOff } from "react-icons/cg";
+import { CgLogOff, CgProfile } from "react-icons/cg";
 import { IoMenu } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
 import LeaveRequestIcon from '../lib/ui/LeaveRequestIcon'; 
@@ -51,6 +51,7 @@ export default function Sidebar() {
     { path: "/requestleave", name: "Request leave", icon: <LeaveRequestIcon className="text-[24px]" /> },
     { path: "/result", name: "Results", icon: <SlBadge className="text-[24px]" /> },
     { path: "/messages", name: "Messages", icon: <TbMessageDots className="text-[24px]" /> },
+    { path: "/profile", name: "Profile", icon: <CgProfile className="text-[24px]" /> },
   ];
 
   return (

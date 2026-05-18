@@ -1,60 +1,60 @@
-import React, { useState, useRef, useEffect } from "react";
-import { CiSearch } from "react-icons/ci";
-import { TbCalendarMonth } from "react-icons/tb";
-import { IoIosNotificationsOutline, IoIosArrowDown } from "react-icons/io";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Bell, ChevronDown, Plus, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import NotificationsModal from "../Components/NotificationsModal";
 import useNotifications from "../hooks/useNotifications";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
 import { useParentOnboarding } from "../contexts/ParentOnboardingContext";
+import { useAuth } from "../services/auth.services";
 import { Avatar, AvatarFallback, AvatarImage } from "../lib/ui/avatar";
+
+const getStudentName = (student) => {
+  const user = student?.userId || {};
+  return [user.firstName, user.lastName].filter(Boolean).join(" ") || "Select child";
+};
+
+const getStudentMeta = (student) => {
+  const grade = student?.gradeLevel || student?.grade || student?.classId?.gradeLevel;
+  const className = student?.classId?.name || student?.className || "Class not assigned";
+  return [grade, className].filter(Boolean).join(" - ");
+};
+
+const getInitials = (person) => {
+  const first = person?.firstName?.[0] || "";
+  const last = person?.lastName?.[0] || "";
+  return `${first}${last}`.toUpperCase() || "P";
+};
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [selectedWard, setSelectedWard] = useState(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const notificationRef = useRef(null);
+  const childDropdownRef = useRef(null);
+  const parentDropdownRef = useRef(null);
+  const [showChildDropdown, setShowChildDropdown] = useState(false);
+  const [showParentDropdown, setShowParentDropdown] = useState(false);
 
   const { notifications } = useNotifications();
-  const {
-    wards: students = [],
-    wardsLoading: studentsLoading,
-  } = useParentOnboarding();
+  const { wards = [], wardsLoading } = useParentOnboarding();
   const { updateSelectedStudent, selectedStudent } = useSelectedStudent();
+  const { user, logout } = useAuth();
 
-  const unreadNotifications = notifications.filter((n) => !n.isRead);
-  const unreadCount = unreadNotifications.length;
-
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    day: "numeric",
-    month: "short",
-  });
-
-  
+  const unreadCount = notifications.filter((notification) => notification.unread || !notification.isRead).length;
+  const parentName = useMemo(
+    () => [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Parent",
+    [user]
+  );
 
   useEffect(() => {
-    if (!studentsLoading && students.length > 0) {
-      const initialStudent = selectedStudent || students[0];
-      updateSelectedStudent(initialStudent);
-      setSelectedWard(
-        `${initialStudent.userId.firstName} ${initialStudent.userId.lastName}`
-      );
-    } else if (!studentsLoading && students.length === 0) {
-      setSelectedWard("No wards");
+    if (!wardsLoading && wards.length > 0 && !selectedStudent) {
+      updateSelectedStudent(wards[0]);
     }
-  }, [studentsLoading, students, selectedStudent, updateSelectedStudent]);
-
-
+  }, [selectedStudent, updateSelectedStudent, wards, wardsLoading]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(event.target)
-      ) {
-        setShowModal(false);
+      if (childDropdownRef.current && !childDropdownRef.current.contains(event.target)) {
+        setShowChildDropdown(false);
+      }
+      if (parentDropdownRef.current && !parentDropdownRef.current.contains(event.target)) {
+        setShowParentDropdown(false);
       }
     };
 
@@ -62,192 +62,161 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const getInitials = () => {
-    if (!selectedStudent || !selectedStudent.userId) return "";
-    const { firstName = "", lastName = "" } = selectedStudent.userId;
-    return (
-      (firstName[0] || "").toUpperCase() + (lastName[0] || "").toUpperCase()
-    );
+  const handleSelectChild = (student) => {
+    updateSelectedStudent(student);
+    setShowChildDropdown(false);
   };
 
-  const handleNotificationClick = (e) => {
-    e.stopPropagation();
-    setShowModal((prev) => !prev);
-    navigate("/notifications");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
   };
-
-  const renderWardDropdown = () => (
-    <div className="relative">
-      <button
-        onClick={() => setShowDropdown((prev) => !prev)}
-        className="flex items-center gap-2"
-        aria-haspopup="true"
-        aria-expanded={showDropdown}
-      >
-        <p className="text-[#434343]">{selectedWard}</p>
-        <IoIosArrowDown />
-      </button>
-
-      {showDropdown && (
-        <ul className="absolute top-10 left-0 bg-white border rounded-md shadow-md w-40 py-1 z-10">
-          {students.length > 0 ? (
-            students.map((student, index) => {
-              const fullName = `${student.userId.firstName} ${student.userId.lastName}`;
-              return (
-                <li
-                  key={index}
-                  onClick={() => {
-                    setSelectedWard(fullName);
-                    setShowDropdown(false);
-                    updateSelectedStudent(student);
-                  }}
-                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                >
-                  {fullName}
-                </li>
-              );
-            })
-          ) : (
-            <li className="px-4 py-2 text-sm text-gray-500">
-              {studentsLoading ? "Loading wards..." : "No wards available"}
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
 
   return (
-    <nav className="border-b bg-white w-full relative z-10">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        {/* Desktop View */}
-        <div className="hidden sm:flex items-center justify-between">
-          {/* Search */}
-          <div className="relative flex-1 max-w-sm">
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <CiSearch className="absolute left-3 top-2.5 text-[#6f6f6f] h-[24px] w-[24px]" />
-          </div>
-
-          {/* Right Section */}
-          <div className="flex items-center space-x-4">
-            <div className="bg-white py-2 px-4 rounded-lg shadow-sm flex items-center space-x-2">
-              <span className="text-[#6f6f6f]">{currentDate}</span>
-              <TbCalendarMonth className="text-[#6f6f6f] h-[24px] w-[24px]" />
-            </div>
-
-            {/* Notifications */}
-            <div className="relative" ref={notificationRef}>
-              <button
-                onClick={handleNotificationClick}
-                className="relative text-2xl bg-white py-2 px-2 rounded-lg hover:opacity-75 transition-opacity"
-                aria-label="Notifications"
-              >
-                <IoIosNotificationsOutline />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {showModal && (
-                <div className="fixed sm:absolute top-16 right-0 z-[999] w-full sm:w-80 bg-white border shadow-lg rounded-lg">
-                  <NotificationsModal
-                    closeModal={() => setShowModal(false)}
-                    unreadNotifications={unreadNotifications}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Avatar + Dropdown */}
-            <div className="flex items-center space-x-4">
-              {/* <button className="w-10 h-10 rounded-full overflow-hidden hover:opacity-75 transition-opacity">
-                <img
-                  src={logo || "/fallback-avatar.png"}
-                  alt="User Avatar"
-                  className="w-full h-full object-cover"
-                />
-              </button> */}
-                <Avatar>
-                {selectedStudent?.userId?.userAvatar ? (
-                  <AvatarImage
-                    src={selectedStudent.userId.userAvatar}
-                    alt={`${selectedStudent.userId.firstName} ${selectedStudent.userId.lastName}`}
-                  />
-                ) : (
-                  <AvatarFallback className="bg-green-300">
-                    {getInitials()}
-                  </AvatarFallback>
-                )}
+    <header className="sticky top-0 z-20 border-b border-[#E5EAF2] bg-white">
+      <div className="flex min-h-[76px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative" ref={childDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowChildDropdown((current) => !current)}
+              className="flex min-w-[260px] items-center justify-between gap-4 rounded-lg border border-[#DCE5F2] bg-white px-3 py-2 text-left shadow-sm hover:bg-[#F8FAFD]"
+              aria-haspopup="true"
+              aria-expanded={showChildDropdown}
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <Avatar className="h-11 w-11">
+                  {selectedStudent?.userId?.userAvatar ? (
+                    <AvatarImage src={selectedStudent.userId.userAvatar} alt={getStudentName(selectedStudent)} />
+                  ) : (
+                    <AvatarFallback className="bg-[#EAF2FB] text-[#003366]">
+                      {getInitials(selectedStudent?.userId)}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-[#101828]">
+                    {wardsLoading ? "Loading child..." : getStudentName(selectedStudent)}
+                  </span>
+                  <span className="block truncate text-xs text-[#667085]">
+                    {selectedStudent ? getStudentMeta(selectedStudent) : "No child selected"}
+                  </span>
+                </span>
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-[#667085]" />
+            </button>
 
-              {renderWardDropdown()}
-            </div>
+            {showChildDropdown && (
+              <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[280px] rounded-lg border border-[#E5EAF2] bg-white p-2 shadow-lg">
+                {wards.length > 0 ? (
+                  wards.map((student) => {
+                    const id = student?._id || student?.userId?._id || student?.userId?.userId;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleSelectChild(student)}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-[#F4F8FF]"
+                      >
+                        <Avatar className="h-9 w-9">
+                          {student?.userId?.userAvatar ? (
+                            <AvatarImage src={student.userId.userAvatar} alt={getStudentName(student)} />
+                          ) : (
+                            <AvatarFallback className="bg-[#EAF2FB] text-xs text-[#003366]">
+                              {getInitials(student?.userId)}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <span>
+                          <span className="block text-sm font-semibold text-[#101828]">{getStudentName(student)}</span>
+                          <span className="block text-xs text-[#667085]">{getStudentMeta(student)}</span>
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-2 text-sm text-[#667085]">
+                    {wardsLoading ? "Loading children..." : "No linked children"}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/onboarding")}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-[#DCE5F2] bg-white px-5 text-sm font-bold text-[#344054] shadow-sm hover:bg-[#F8FAFD]"
+          >
+            <Plus className="h-4 w-4" />
+            Add / Switch Child
+          </button>
         </div>
 
-        {/* Mobile View */}
-        <div className="sm:hidden flex flex-col">
-          <div className="flex items-center justify-between mb-4 ">
-            <div className="bg-white py-2 px-4 rounded-lg shadow-sm flex items-center space-x-2 ml-5">
-              <span className="text-[#6f6f6f]">{currentDate}</span>
-              <TbCalendarMonth className="text-[#6f6f6f] h-[24px] w-[24px]" />
-            </div>
+        <div className="flex items-center justify-end gap-4">
+          <button
+            type="button"
+            onClick={() => navigate("/notifications")}
+            className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#344054] hover:bg-[#F8FAFD]"
+            aria-label="Notifications"
+          >
+            <Bell className="h-6 w-6" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
 
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleNotificationClick}
-                className="relative text-2xl bg-white py-2 px-2 rounded-lg hover:opacity-75 transition-opacity"
-              >
-                <IoIosNotificationsOutline />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* <button className="w-10 h-10 rounded-full overflow-hidden hover:opacity-75 transition-opacity">
-                <img
-                  src={logo || "/fallback-avatar.png"}
-                  alt="User Avatar"
-                  className="w-full h-full object-cover"
-                />
-              </button> */}
-
-              <Avatar>
-                {selectedStudent?.userId?.userAvatar ? (
-                  <AvatarImage
-                    src={selectedStudent.userId.userAvatar}
-                    alt={`${selectedStudent.userId.firstName} ${selectedStudent.userId.lastName}`}
-                  />
+          <div className="relative" ref={parentDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowParentDropdown((current) => !current)}
+              className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-[#F8FAFD]"
+              aria-haspopup="true"
+              aria-expanded={showParentDropdown}
+            >
+              <Avatar className="h-11 w-11">
+                {user?.userAvatar ? (
+                  <AvatarImage src={user.userAvatar} alt={parentName} />
                 ) : (
-                  <AvatarFallback className="bg-green-300">
-                    {getInitials()}
+                  <AvatarFallback className="bg-[#F5E9E2] text-[#7A4B33]">
+                    {user ? getInitials(user) : <UserRound className="h-5 w-5" />}
                   </AvatarFallback>
                 )}
-                </Avatar>
+              </Avatar>
+              <span className="hidden text-left sm:block">
+                <span className="block text-sm font-bold text-[#101828]">{parentName}</span>
+                <span className="block text-xs text-[#667085]">Parent</span>
+              </span>
+              <ChevronDown className="hidden h-4 w-4 text-[#667085] sm:block" />
+            </button>
 
-              {renderWardDropdown()}
-            </div>
-          </div>
-
-          <div className="relative w-full">
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <CiSearch className="absolute left-3 top-2.5 text-[#6f6f6f] h-[24px] w-[24px]" />
+            {showParentDropdown && (
+              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-44 rounded-lg border border-[#E5EAF2] bg-white p-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowParentDropdown(false);
+                    navigate("/profile");
+                  }}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-[#344054] hover:bg-[#F8FAFD]"
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 

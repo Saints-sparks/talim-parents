@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './services/auth.services';
 import logo from './assets/logo.svg';
+import ModernLoader from './Components/ModernLoader';
 
 // ── Inline SVG icons (no lucide-react dependency needed) ──────────────────────
 const ShieldAlertIcon = () => (
@@ -71,6 +72,8 @@ function Login() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
+      <ModernLoader visible={loading} />
+
       {/* ── Left panel — Form ── */}
       <div className="flex flex-col justify-center items-center px-8 py-12 sm:px-16 bg-white">
         <div className="w-full max-w-sm">

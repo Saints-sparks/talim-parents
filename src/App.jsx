@@ -12,12 +12,14 @@ import Messages from './Pages/Messages';
 import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
 import NotificationDetail from './Pages/NotificationDetail';
+import Profile from './Pages/Profile';
 import ProtectedRoute from './Pages/ProtectedRoute';
 import Onboarding from './Pages/Onboarding';
 import { AuthProvider } from './services/auth.services';
 import { SelectedStudentProvider } from './contexts/SelectedStudentContext';
 import { ParentOnboardingProvider, useParentOnboarding } from './contexts/ParentOnboardingContext';
 import ParentGuideTour from './Components/onboarding/ParentGuideTour';
+import { ToastViewport } from './Components/CustomToast';
 
 const ONBOARDING_ROUTE_STEPS = {
   '/notifications': 'view-notifications',
@@ -63,6 +65,7 @@ function App() {
         <ParentOnboardingProvider>
           <Router>
             <OnboardingRouteTracker />
+            <ToastViewport />
             <Routes>
               <Route path="/" element={<Login />} />
 
@@ -78,6 +81,7 @@ function App() {
                   <Route path="/leaveform" element={<LeaveForm />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/notifications/:id" element={<NotificationDetail />} />
+                  <Route path="/profile" element={<Profile />} />
                 </Route>
               </Route>
 

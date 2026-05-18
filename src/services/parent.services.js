@@ -35,3 +35,24 @@ export const getStudentsByParent = async () => {
     throw error;
   }
 };
+
+export const getParentByUserId = async (parentId) => {
+  try {
+    const accessToken = localStorage.getItem('access_token');
+    const resolvedParentId = parentId || localStorage.getItem('parent_id');
+
+    if (!accessToken) throw new Error('No access token found');
+    if (!resolvedParentId) throw new Error('Parent ID not found');
+
+    const response = await axios.get(`${API_BASE_URL}/parents/user/${resolvedParentId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch parent profile:', error);
+    throw error;
+  }
+};
