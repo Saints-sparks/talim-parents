@@ -14,8 +14,20 @@ export const useLeaveRequest = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [currentLeaveRequest, setCurrentLeaveRequest] = useState(null);
 
+  const isNoLeaveRequestsError = (error) => {
+    const message = error.response?.data?.message || error.message || '';
+    return error.response?.status === 404 && /leave request/i.test(message);
+  };
+
   const handleError = (error) => {
     console.error("Leave Request Error:", error);
+    if (isNoLeaveRequestsError(error)) {
+      setLeaveRequests([]);
+      setError(null);
+      setLoading(false);
+      return [];
+    }
+
     setError(error.response?.data?.message || error.message || 'Unknown error');
     setLoading(false);
     throw error;
@@ -27,7 +39,7 @@ export const useLeaveRequest = () => {
     try {
       const data = await getLeaveRequestsByChild(childId);
       console.log("Leave requests fetched:", data);
-      setLeaveRequests(data);
+      setLeaveRequests(Array.isArray(data) ? data : data?.data || []);
       setError(null);
       setLoading(false);
       return data;
