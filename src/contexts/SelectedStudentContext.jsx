@@ -1,22 +1,36 @@
-import { createContext, useContext, useState, useEffect } from "react";
+/* eslint-disable react/prop-types, react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useAuth } from "../services/auth.services";
 
 const SelectedStudentContext = createContext();
 
 export const SelectedStudentProvider = ({ children }) => {
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const { parentId } = useAuth();
 
-  // Load previously selected student from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("selected_student");
-    if (stored) {
-      setSelectedStudent(JSON.parse(stored));
+    if (!parentId) {
+      setSelectedStudent(null);
+      return;
     }
-  }, []);
 
-  const updateSelectedStudent = (student) => {
-    localStorage.setItem("selected_student", JSON.stringify(student));
+    const stored = localStorage.getItem(`selected_student_${parentId}`);
+    if (stored) {
+      try {
+        setSelectedStudent(JSON.parse(stored));
+      } catch {
+        setSelectedStudent(null);
+      }
+    } else {
+      setSelectedStudent(null);
+    }
+  }, [parentId]);
+
+  const updateSelectedStudent = useCallback((student) => {
+    if (!parentId || !student) return;
+    localStorage.setItem(`selected_student_${parentId}`, JSON.stringify(student));
     setSelectedStudent(student);
-  };
+  }, [parentId]);
 
   return (
     <SelectedStudentContext.Provider

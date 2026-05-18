@@ -3,12 +3,10 @@ import { CiSearch } from "react-icons/ci";
 import { TbCalendarMonth } from "react-icons/tb";
 import { IoIosNotificationsOutline, IoIosArrowDown } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
-import logo from "/public/ava.svg";
 import NotificationsModal from "../Components/NotificationsModal";
 import useNotifications from "../hooks/useNotifications";
-import { useParent } from "../hooks/useParents";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
-import { useAuth } from "../services/auth.services";
+import { useParentOnboarding } from "../contexts/ParentOnboardingContext";
 import { Avatar, AvatarFallback, AvatarImage } from "../lib/ui/avatar";
 
 const Navbar = () => {
@@ -17,14 +15,12 @@ const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const notificationRef = useRef(null);
-  const {user} = useAuth()
 
   const { notifications } = useNotifications();
   const {
-    students = [],
-    loading: studentsLoading,
-    error: studentsError,
-  } = useParent();
+    wards: students = [],
+    wardsLoading: studentsLoading,
+  } = useParentOnboarding();
   const { updateSelectedStudent, selectedStudent } = useSelectedStudent();
 
   const unreadNotifications = notifications.filter((n) => !n.isRead);
@@ -40,7 +36,6 @@ const Navbar = () => {
 
   useEffect(() => {
     if (!studentsLoading && students.length > 0) {
-      // Set initial selected student (either from localStorage or first student)
       const initialStudent = selectedStudent || students[0];
       updateSelectedStudent(initialStudent);
       setSelectedWard(

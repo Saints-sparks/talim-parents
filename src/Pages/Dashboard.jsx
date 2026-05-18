@@ -5,6 +5,7 @@ import AttendanceCalendar from '../Components/AttendanceCalendar';
 import { useSubjects } from '../hooks/useSubjects';
 import SkeletonLoader from '../Components/SkeletonLoader';
 import LoadError from "../Components/loadError";
+import ParentSetupProgressWidget from "../Components/onboarding/ParentSetupProgressWidget";
 
 function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("January");
@@ -63,6 +64,15 @@ function Dashboard() {
         {/* Overview Section */}
         <section className="space-y-4">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Overview</h1>
+          <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+            <ParentSetupProgressWidget />
+            <div className="hidden rounded-lg border border-[#E8EDF3] bg-white p-5 shadow-sm lg:block">
+              <p className="text-sm font-bold text-[#030E18]">Welcome back</p>
+              <p className="mt-1 text-sm text-[#657386]">
+                Here’s what’s happening with your child today.
+              </p>
+            </div>
+          </div>
           
           {error && (
             <LoadError

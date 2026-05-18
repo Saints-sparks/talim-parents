@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Navbar from './Components/Navbar';
 import Sidebar from './Components/Sidebar';
 import Login from './Login';
@@ -12,7 +13,33 @@ import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
 import NotificationDetail from './Pages/NotificationDetail';
 import ProtectedRoute from './Pages/ProtectedRoute';
-import { SelectedStudentProvider } from './contexts/SelectedStudentContext'; // Ensure this path is correct
+import Onboarding from './Pages/Onboarding';
+import { AuthProvider } from './services/auth.services';
+import { SelectedStudentProvider } from './contexts/SelectedStudentContext';
+import { ParentOnboardingProvider, useParentOnboarding } from './contexts/ParentOnboardingContext';
+import ParentGuideTour from './Components/onboarding/ParentGuideTour';
+
+const ONBOARDING_ROUTE_STEPS = {
+  '/notifications': 'view-notifications',
+  '/attendance': 'view-attendance',
+  '/timetable': 'view-timetable',
+  '/result': 'view-results',
+  '/requestleave': 'request-leave',
+  '/leaveform': 'request-leave',
+  '/messages': 'open-messages',
+};
+
+function OnboardingRouteTracker() {
+  const location = useLocation();
+  const { markStepComplete } = useParentOnboarding();
+
+  React.useEffect(() => {
+    const stepId = ONBOARDING_ROUTE_STEPS[location.pathname];
+    if (stepId) markStepComplete(stepId);
+  }, [location.pathname, markStepComplete]);
+
+  return null;
+}
 
 function AppLayout() {
   return (
@@ -24,38 +51,42 @@ function AppLayout() {
           <Outlet />
         </div>
       </div>
+      <ParentGuideTour />
     </div>
   );
 }
 
 function App() {
   return (
-    <SelectedStudentProvider>
-      <Router>
-        <Routes>
-          {/* Public Route */}
-          <Route path="/" element={<Login />} />
+    <AuthProvider>
+      <SelectedStudentProvider>
+        <ParentOnboardingProvider>
+          <Router>
+            <OnboardingRouteTracker />
+            <Routes>
+              <Route path="/" element={<Login />} />
 
-          {/* Protected Routes with Layout */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/requestleave" element={<RequestLeave />} />
-              <Route path="/timetable" element={<Timetable />} />
-              <Route path="/attendance" element={<Attendance />} />
-              <Route path="/result" element={<Result />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/leaveform" element={<LeaveForm />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/notifications/:id" element={<NotificationDetail />} />
-            </Route>
-          </Route>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route element={<AppLayout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/requestleave" element={<RequestLeave />} />
+                  <Route path="/timetable" element={<Timetable />} />
+                  <Route path="/attendance" element={<Attendance />} />
+                  <Route path="/result" element={<Result />} />
+                  <Route path="/messages" element={<Messages />} />
+                  <Route path="/leaveform" element={<LeaveForm />} />
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/notifications/:id" element={<NotificationDetail />} />
+                </Route>
+              </Route>
 
-          {/* Redirect unknown paths to login */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </SelectedStudentProvider>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
+        </ParentOnboardingProvider>
+      </SelectedStudentProvider>
+    </AuthProvider>
   );
 }
 
