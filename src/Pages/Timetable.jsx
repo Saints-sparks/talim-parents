@@ -1,19 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
-import { FiDownload, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+import { FiDownload } from "react-icons/fi";
 import AttendanceTimetable from '../Components/AttendanceTimetable';
 import SkeletonLoader from '../Components/SkeletonLoader';  // Import SkeletonLoader
 import { useTimetable } from '../services/timetable.services';
 import { useSelectedStudent } from '../contexts/SelectedStudentContext';
 import LoadError from '../Components/loadError';
+import { toast } from '../Components/CustomToast';
 
 function Timetable() {
-  const [notification, setNotification] = useState({
-    show: false,
-    type: '', // 'success' or 'error'
-    message: ''
-  });
-
   const {
     timetables,
     loading,
@@ -40,20 +35,9 @@ function Timetable() {
       link.href = canvas.toDataURL('image/png');
       link.click();
 
-      setNotification({
-        show: true,
-        type: 'success',
-        message: 'Timetable downloaded successfully!'
-      });
-
-      setTimeout(() => setNotification({ show: false, type: '', message: '' }), 3000);
+      toast.success('Timetable downloaded successfully!', 'Download complete');
     }).catch(() => {
-      setNotification({
-        show: true,
-        type: 'error',
-        message: 'Failed to download timetable. Please try again.'
-      });
-      setTimeout(() => setNotification({ show: false, type: '', message: '' }), 3000);
+      toast.error('Failed to download timetable. Please try again.', 'Download failed');
     });
   };
 
@@ -65,22 +49,6 @@ function Timetable() {
 
   return (
     <div className="flex min-h-screen p-6 flex-col gap-6 relative">
-
-      {/* Notification Toast */}
-      {notification.show && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center p-4 rounded-lg shadow-lg ${
-          notification.type === 'success' 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {notification.type === 'success' ? (
-            <FiCheckCircle className="mr-2 text-xl" />
-          ) : (
-            <FiAlertCircle className="mr-2 text-xl" />
-          )}
-          <span>{notification.message}</span>
-        </div>
-      )}
 
       <div className='flex justify-between items-center overflow-auto whitespace-nowrap'>
         <div>

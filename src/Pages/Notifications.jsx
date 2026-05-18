@@ -25,6 +25,7 @@ import {
 import useNotifications from "../hooks/useNotifications";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
 import { cn } from "../lib/utils";
+import { toast } from "../Components/CustomToast";
 
 const TABS = [
   { key: "all", label: "All" },
@@ -276,11 +277,16 @@ function Notifications() {
             notification={selectedNotification}
             selectedStudent={selectedStudent}
             onBack={() => setShowDetail(false)}
-            onMarkAsRead={() => selectedNotification && markAsRead(selectedNotification.id)}
+            onMarkAsRead={() => {
+              if (!selectedNotification) return;
+              markAsRead(selectedNotification.id);
+              toast.success("Notification marked as read.", "Updated");
+            }}
             onDelete={() => {
               if (!selectedNotification) return;
               deleteNotification(selectedNotification.id);
               setShowDetail(false);
+              toast.info("Notification removed from this view.", "Deleted");
             }}
           />
         </aside>

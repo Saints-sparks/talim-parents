@@ -81,3 +81,12 @@
 .animate-talim-dot {
   animation: talim-dot 1s ease-in-out infinite;
 }
+
+@keyframes toast-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}

@@ -15,7 +15,7 @@ const getStudentName = (student) => {
 const getStudentMeta = (student) => {
   const grade = student?.gradeLevel || student?.grade || student?.classId?.gradeLevel;
   const className = student?.classId?.name || student?.className || "Class not assigned";
-  return [grade, className].filter(Boolean).join(" • ");
+  return [grade, className].filter(Boolean).join(" - ");
 };
 
 const getInitials = (person) => {
@@ -196,7 +196,10 @@ const Navbar = () => {
               <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-44 rounded-lg border border-[#E5EAF2] bg-white p-2 shadow-lg">
                 <button
                   type="button"
-                  onClick={() => setShowParentDropdown(false)}
+                  onClick={() => {
+                    setShowParentDropdown(false);
+                    navigate("/profile");
+                  }}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm text-[#344054] hover:bg-[#F8FAFD]"
                 >
                   Profile
