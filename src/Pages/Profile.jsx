@@ -7,13 +7,15 @@ import {
   Info,
   LockKeyhole,
   Mail,
+  Phone,
   Plus,
   ShieldCheck,
   Star,
   UserRound,
+  X,
 } from "lucide-react";
 import { useAuth, API_BASE_URL } from "../services/auth.services";
-import { getParentByUserId } from "../services/parent.services";
+import { getParentByUserId, updateParentProfile } from "../services/parent.services";
 import { useSchool } from "../hooks/useSchools";
 import { useParentOnboarding } from "../contexts/ParentOnboardingContext";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
@@ -247,6 +249,82 @@ function ChildRow({ student, isDefault, onSelect }) {
   );
 }
 
+function EditProfileModal({ user, onClose, onSave }) {
+  const [form, setForm] = useState({ phoneNumber: user?.phoneNumber || "" });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSave(form);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#EEF2F7] px-6 py-4">
+          <h2 className="text-base font-bold text-[#101828]">Edit Profile</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#667085] hover:bg-[#F4F8FF]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5">
+          <div className="mb-2 rounded-lg bg-[#EEF6FF] px-4 py-3 text-sm text-[#0A4EA3]">
+            <p className="font-semibold">
+              Name and email are managed by your school and cannot be changed here.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-[#344054]" htmlFor="edit-phone">
+                Phone Number
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+                <input
+                  id="edit-phone"
+                  type="tel"
+                  value={form.phoneNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, phoneNumber: e.target.value }))}
+                  placeholder="e.g. +234 801 234 5678"
+                  className="h-11 w-full rounded-lg border border-[#DCE5F2] bg-white pl-9 pr-4 text-sm text-[#101828] placeholder:text-[#98A2B3] focus:border-[#0A4EA3] focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-lg border border-[#DCE5F2] bg-white px-5 text-sm font-semibold text-[#344054] hover:bg-[#F8FAFD]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="h-10 rounded-lg bg-[#0A4EA3] px-5 text-sm font-bold text-white hover:bg-[#083D82] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function Profile() {
   const { user, parentId, authToken, updateUser } = useAuth();
   const { school, loading: schoolLoading } = useSchool();
@@ -255,6 +333,7 @@ export default function Profile() {
   const [parentProfile, setParentProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   useEffect(() => {
     if (!parentId) return;
@@ -342,8 +421,29 @@ export default function Profile() {
     toast.info("Linked children refreshed.");
   };
 
+  const handleEditSave = async (data) => {
+    try {
+      const updated = await updateParentProfile(data);
+      if (data.phoneNumber !== undefined) {
+        updateUser({ phoneNumber: data.phoneNumber });
+      }
+      if (updated?.user) updateUser(updated.user);
+      toast.success("Profile updated.");
+      setIsEditOpen(false);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || "Could not update profile.");
+    }
+  };
+
   return (
     <main className="mx-auto w-full max-w-7xl">
+      {isEditOpen && (
+        <EditProfileModal
+          user={mergedUser}
+          onClose={() => setIsEditOpen(false)}
+          onSave={handleEditSave}
+        />
+      )}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-normal text-[#101828]">My Profile</h1>
@@ -353,7 +453,7 @@ export default function Profile() {
         </div>
         <button
           type="button"
-          onClick={() => toast.info("Some profile details are managed by your school administrator.")}
+          onClick={() => setIsEditOpen(true)}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-[#DCE5F2] bg-white px-5 text-sm font-bold text-[#101828] shadow-sm hover:bg-[#F8FAFD]"
         >
           <Edit3 className="h-4 w-4" />
