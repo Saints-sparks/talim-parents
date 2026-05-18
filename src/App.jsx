@@ -13,6 +13,7 @@ import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
 import NotificationDetail from './Pages/NotificationDetail';
 import Profile from './Pages/Profile';
+import EmptyState from './Pages/EmptyState';
 import ProtectedRoute from './Pages/ProtectedRoute';
 import Onboarding from './Pages/Onboarding';
 import { AuthProvider } from './services/auth.services';
@@ -82,6 +83,8 @@ function App() {
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/notifications/:id" element={<NotificationDetail />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/payments" element={<EmptyState title="Payments" message="Payment history and invoices will appear here when available." />} />
+                  <Route path="/settings" element={<EmptyState title="Settings" message="Parent account and notification preferences will appear here when available." />} />
                 </Route>
               </Route>
 

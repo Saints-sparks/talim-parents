@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { RiHome5Line } from "react-icons/ri";
-import { BsHandbag } from "react-icons/bs";
 import { PiCalendarDotsLight } from "react-icons/pi";
 import { SlBadge } from "react-icons/sl";
 import { TbMessageDots } from "react-icons/tb";
-import { IoMdTime } from "react-icons/io";
-import { CgLogOff, CgProfile } from "react-icons/cg";
+import { IoMdNotificationsOutline, IoMdTime } from "react-icons/io";
+import { CgLogOff } from "react-icons/cg";
 import { IoMenu } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
+import { MdOutlinePayments, MdOutlineSettings, MdOutlineFamilyRestroom } from "react-icons/md";
 import LeaveRequestIcon from '../lib/ui/LeaveRequestIcon'; 
 
 
@@ -21,12 +21,11 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { logout, loading: authLoading, error: authError, schoolId } = useAuth();
+  const { logout, loading: authLoading, error: authError } = useAuth();
   const { school, loading: schoolLoading, error: schoolError } = useSchool();
   const [isOpen, setIsOpen] = useState(false); // Mobile toggle
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false); // Desktop toggle
-  const unreadMessagesCount = 5;
 
   useEffect(() => {
     const checkIfMobile = () => setIsMobile(window.innerWidth < 768);
@@ -46,12 +45,15 @@ export default function Sidebar() {
 
   const menuItems = [
     { path: "/dashboard", name: "Dashboard", icon: <RiHome5Line className="text-[24px]" /> },
-    { path: "/timetable", name: "Timetable", icon: <IoMdTime className="text-[24px]" /> },
+    { path: "/onboarding", name: "My Children", icon: <MdOutlineFamilyRestroom className="text-[24px]" /> },
     { path: "/attendance", name: "Attendance", icon: <PiCalendarDotsLight className="text-[24px]" /> },
-    { path: "/requestleave", name: "Request leave", icon: <LeaveRequestIcon className="text-[24px]" /> },
+    { path: "/timetable", name: "Timetable", icon: <IoMdTime className="text-[24px]" /> },
     { path: "/result", name: "Results", icon: <SlBadge className="text-[24px]" /> },
+    { path: "/requestleave", name: "Leave Requests", icon: <LeaveRequestIcon className="text-[24px]" /> },
     { path: "/messages", name: "Messages", icon: <TbMessageDots className="text-[24px]" /> },
-    { path: "/profile", name: "Profile", icon: <CgProfile className="text-[24px]" /> },
+    { path: "/notifications", name: "Notifications", icon: <IoMdNotificationsOutline className="text-[24px]" /> },
+    { path: "/payments", name: "Payments", icon: <MdOutlinePayments className="text-[24px]" /> },
+    { path: "/settings", name: "Settings", icon: <MdOutlineSettings className="text-[24px]" /> },
   ];
 
   return (

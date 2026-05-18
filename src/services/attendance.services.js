@@ -48,3 +48,41 @@ export const markAttendance = async () => {
     throw error;
   }
 };
+
+export const getParentMonthlyAttendance = async ({
+  studentId,
+  month,
+  year,
+  selectedDate,
+}) => {
+  try {
+    const accessToken = localStorage.getItem('access_token');
+
+    if (!accessToken) throw new Error('No access token found');
+    if (!studentId) throw new Error('Student ID is required');
+    if (!month || !year) throw new Error('Month and year are required');
+
+    const params = new URLSearchParams({
+      month: String(month),
+      year: String(year),
+    });
+
+    if (selectedDate) {
+      params.set('selectedDate', selectedDate);
+    }
+
+    const response = await axios.get(
+      `${API_BASE_URL}/attendance/student/${studentId}/monthly?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch monthly attendance:', error);
+    throw error;
+  }
+};
