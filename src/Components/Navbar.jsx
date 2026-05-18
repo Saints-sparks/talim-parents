@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, ChevronDown, Plus, UserRound } from "lucide-react";
+import { Bell, CalendarDays, ChevronDown, Plus, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useNotifications from "../hooks/useNotifications";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
@@ -40,6 +40,15 @@ const Navbar = () => {
   const parentName = useMemo(
     () => [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Parent",
     [user]
+  );
+  const currentDate = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date()),
+    []
   );
 
   useEffect(() => {
@@ -154,6 +163,11 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center justify-end gap-4">
+          <div className="hidden h-11 items-center gap-2 rounded-lg border border-[#DCE5F2] bg-white px-4 text-sm font-bold text-[#344054] shadow-sm md:flex">
+            <span>{currentDate}</span>
+            <CalendarDays className="h-4 w-4 text-[#667085]" />
+          </div>
+
           <button
             type="button"
             onClick={() => navigate("/notifications")}
