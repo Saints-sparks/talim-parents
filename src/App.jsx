@@ -8,6 +8,7 @@ import RequestLeave from './Pages/RequestLeave';
 import Result from './Pages/Result';
 import Attendance from './Pages/Attendance';
 import Timetable from './Pages/Timetable';
+import MyChildren from './Pages/MyChildren';
 import Messages from './Pages/Messages';
 import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
@@ -23,6 +24,7 @@ import ParentGuideTour from './Components/onboarding/ParentGuideTour';
 import { ToastViewport } from './Components/CustomToast';
 
 const ONBOARDING_ROUTE_STEPS = {
+  '/my-children': 'select-ward',
   '/notifications': 'view-notifications',
   '/attendance': 'view-attendance',
   '/timetable': 'view-timetable',
@@ -75,6 +77,7 @@ function App() {
                 <Route element={<AppLayout />}>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/requestleave" element={<RequestLeave />} />
+                  <Route path="/my-children" element={<MyChildren />} />
                   <Route path="/timetable" element={<Timetable />} />
                   <Route path="/attendance" element={<Attendance />} />
                   <Route path="/result" element={<Result />} />

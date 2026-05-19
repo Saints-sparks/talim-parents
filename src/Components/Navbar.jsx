@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../lib/ui/avatar";
 
 const getStudentName = (student) => {
   const user = student?.userId || {};
-  return [user.firstName, user.lastName].filter(Boolean).join(" ") || "Select child";
+  return [student?.firstName || user.firstName, student?.lastName || user.lastName].filter(Boolean).join(" ") || "Select child";
 };
 
 const getStudentMeta = (student) => {
@@ -25,9 +25,13 @@ const getInitials = (person) => {
 };
 
 const getStudentId = (student) =>
-  student?._id || student?.userId?._id || student?.userId?.userId;
+  student?.childId || student?._id || student?.studentId || student?.userId?._id || student?.userId?.userId;
 
-const Navbar = () => {
+export const ParentHeader = ({
+  onAddSwitchChild,
+  addSwitchLabel = "Add / Switch Child",
+  className = "",
+} = {}) => {
   const navigate = useNavigate();
   const childDropdownRef = useRef(null);
   const parentDropdownRef = useRef(null);
@@ -56,7 +60,7 @@ const Navbar = () => {
 
   useEffect(() => {
     if (!wardsLoading && wards.length > 0 && !selectedStudent) {
-      updateSelectedStudent(wards[0]);
+      updateSelectedStudent(wards.find((student) => student?.isDefault) || wards[0]);
     }
   }, [selectedStudent, updateSelectedStudent, wards, wardsLoading]);
 
@@ -86,7 +90,7 @@ const Navbar = () => {
   const selectedId = getStudentId(selectedStudent);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[#E5EAF2] bg-white">
+    <header className={`sticky top-0 z-20 border-b border-[#E5EAF2] bg-white ${className}`}>
       <div className="flex min-h-[76px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
         {/* Left: child selector + add/switch button */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -99,9 +103,9 @@ const Navbar = () => {
               aria-expanded={showChildDropdown}
             >
               <Avatar className="h-10 w-10 shrink-0">
-                {selectedStudent?.userId?.userAvatar ? (
+                {selectedStudent?.avatar || selectedStudent?.userId?.userAvatar ? (
                   <AvatarImage
-                    src={selectedStudent.userId.userAvatar}
+                    src={selectedStudent.avatar || selectedStudent.userId.userAvatar}
                     alt={getStudentName(selectedStudent)}
                   />
                 ) : (
@@ -139,9 +143,9 @@ const Navbar = () => {
                           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-[#F4F8FF]"
                         >
                           <Avatar className="h-9 w-9 shrink-0">
-                            {student?.userId?.userAvatar ? (
+                            {student?.avatar || student?.userId?.userAvatar ? (
                               <AvatarImage
-                                src={student.userId.userAvatar}
+                                src={student.avatar || student.userId.userAvatar}
                                 alt={getStudentName(student)}
                               />
                             ) : (
@@ -174,11 +178,11 @@ const Navbar = () => {
 
           <button
             type="button"
-            onClick={() => navigate("/onboarding")}
+            onClick={() => (onAddSwitchChild ? onAddSwitchChild() : navigate("/my-children"))}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#DCE5F2] bg-white px-4 text-sm font-bold text-[#344054] shadow-sm hover:bg-[#F8FAFD]"
           >
             <Plus className="h-4 w-4" />
-            Add / Switch Child
+            {addSwitchLabel}
           </button>
         </div>
 
@@ -289,4 +293,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default ParentHeader;
