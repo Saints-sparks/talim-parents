@@ -45,7 +45,7 @@ export default function Sidebar() {
 
   const menuItems = [
     { path: "/dashboard", name: "Dashboard", icon: <RiHome5Line className="text-[24px]" /> },
-    { path: "/onboarding", name: "My Children", icon: <MdOutlineFamilyRestroom className="text-[24px]" /> },
+    { path: "/my-children", name: "My Children", icon: <MdOutlineFamilyRestroom className="text-[24px]" /> },
     { path: "/attendance", name: "Attendance", icon: <PiCalendarDotsLight className="text-[24px]" /> },
     { path: "/timetable", name: "Timetable", icon: <IoMdTime className="text-[24px]" /> },
     { path: "/result", name: "Results", icon: <SlBadge className="text-[24px]" /> },
