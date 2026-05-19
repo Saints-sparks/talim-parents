@@ -10,13 +10,13 @@ export default function ProtectedRoute() {
   const { authToken, loading } = useAuth();
   const {
     isHydrated,
-    wardsLoading,
     hasNoLinkedWards,
     isStepComplete,
   } = useParentOnboarding();
   const isOnboardingRoute = location.pathname === '/onboarding';
+  const isChildrenRoute = location.pathname === '/my-children';
 
-  if (loading || !isHydrated || wardsLoading) {
+  if (loading || !isHydrated) {
     return (
       <div style={{ padding: '2rem' }}>
         <Skeleton height={40} count={5} style={{ marginBottom: '1rem' }} />
@@ -31,7 +31,7 @@ export default function ProtectedRoute() {
   const requiredEntryComplete =
     isStepComplete('parent-profile') && isStepComplete('select-ward');
 
-  if (!isOnboardingRoute && (!requiredEntryComplete || hasNoLinkedWards)) {
+  if (!isOnboardingRoute && !isChildrenRoute && (!requiredEntryComplete || hasNoLinkedWards)) {
     return <Navigate to="/onboarding" replace />;
   }
 
