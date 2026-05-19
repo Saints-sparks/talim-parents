@@ -40,11 +40,11 @@ function ChatHeader({ selectedChat, setShowSidebar, onToggleDetails }) {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <button type="button" className="rounded-lg border border-[#E5EAF2] p-2 text-[#344054]">
+      <div className="flex shrink-0 items-center gap-2">
+        <button type="button" className="hidden rounded-lg border border-[#E5EAF2] p-2 text-[#344054] sm:block">
           <Phone className="h-5 w-5" />
         </button>
-        <button type="button" className="rounded-lg border border-[#E5EAF2] p-2 text-[#344054]">
+        <button type="button" className="hidden rounded-lg border border-[#E5EAF2] p-2 text-[#344054] sm:block">
           <Video className="h-5 w-5" />
         </button>
         <button

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useMemo, useRef, useState } from "react";
-import { Mail, Phone, UserRound } from "lucide-react";
+import { Mail, Phone, UserRound, X } from "lucide-react";
 import ChatHeader from "../Components/ChatHeader";
 import MessageInput from "../Components/MessageInput";
 import MessageList from "../Components/MessageList";
@@ -17,7 +17,7 @@ const getPrimaryParticipant = (room) => {
   return room.participants?.find((participant) => participant.userId !== room.id) || room.participants?.[0];
 };
 
-function ConversationDetails({ room, messages }) {
+function ConversationDetails({ room, messages, onClose }) {
   const images = useMemo(() => getSharedAttachments(messages, "image"), [messages]);
   const audio = useMemo(() => getSharedAttachments(messages, "audio"), [messages]);
   const participant = getPrimaryParticipant(room);
@@ -25,8 +25,18 @@ function ConversationDetails({ room, messages }) {
   if (!room) return null;
 
   return (
-    <aside className="hidden w-[320px] shrink-0 border-l border-[#E5EAF2] bg-white p-5 xl:block">
-      <h3 className="mb-6 text-base font-bold text-[#101828]">Conversation Details</h3>
+    <aside className="flex h-full w-full max-w-[360px] shrink-0 flex-col overflow-y-auto border-l border-[#E5EAF2] bg-white p-5">
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h3 className="text-base font-bold text-[#101828]">Conversation Details</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-2 text-[#667085] hover:bg-[#F2F4F7]"
+          aria-label="Close conversation details"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
       <div className="text-center">
         {room.avatarInfo?.type === "image" ? (
           <img src={room.avatarInfo.value} alt="" className="mx-auto h-20 w-20 rounded-full object-cover" />
@@ -120,7 +130,7 @@ function Messages() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [showDetails, setShowDetails] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
   const mediaRecorderRef = useRef(null);
   const recordingChunksRef = useRef([]);
   const recordingStartedAtRef = useRef(null);
@@ -197,7 +207,7 @@ function Messages() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] min-h-[640px] overflow-hidden rounded-xl border border-[#E5EAF2] bg-white">
+    <div className="relative flex h-[calc(100dvh-128px)] min-h-0 overflow-hidden rounded-xl border border-[#E5EAF2] bg-white max-md:h-[calc(100dvh-96px)] max-md:rounded-none max-md:border-x-0">
       <div
         className={`fixed inset-y-0 left-0 z-50 w-screen bg-white transition-transform duration-300 md:static md:w-[360px] md:translate-x-0 ${
           showSidebar ? "translate-x-0" : "-translate-x-full"
@@ -209,6 +219,7 @@ function Messages() {
           onSelectRoom={(roomId) => {
             selectRoom(roomId);
             setShowSidebar(false);
+            setShowDetails(false);
           }}
           isLoading={isLoading}
           isConnected={isConnected}
@@ -239,7 +250,23 @@ function Messages() {
                   onStopRecording={handleStopRecording}
                 />
               </div>
-              {showDetails && <ConversationDetails room={selectedRoom} messages={messages} />}
+              {showDetails && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-40 bg-black/30 xl:hidden"
+                    onClick={() => setShowDetails(false)}
+                    aria-label="Close conversation details overlay"
+                  />
+                  <div className="fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none">
+                    <ConversationDetails
+                      room={selectedRoom}
+                      messages={messages}
+                      onClose={() => setShowDetails(false)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </>
         ) : (
