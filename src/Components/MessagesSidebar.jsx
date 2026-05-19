@@ -56,7 +56,7 @@ function MessagesSidebar({
 
   return (
     <aside className="h-full w-full border-r border-[#E5EAF2] bg-white">
-      <div className="border-b border-[#E5EAF2] p-4">
+      <div className="border-b border-[#E5EAF2] px-4 pb-4 pt-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-[#101828]">Messages</h2>

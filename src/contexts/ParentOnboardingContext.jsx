@@ -115,12 +115,14 @@ export const ParentOnboardingProvider = ({ children }) => {
   const [wards, setWards] = useState([]);
   const [wardsLoading, setWardsLoading] = useState(false);
   const [wardsError, setWardsError] = useState(null);
+  const [wardsLoaded, setWardsLoaded] = useState(false);
 
   useEffect(() => {
     if (!parentId) {
       setState(defaultState);
       setIsHydrated(true);
       setWards([]);
+      setWardsLoaded(false);
       return;
     }
 
@@ -132,6 +134,7 @@ export const ParentOnboardingProvider = ({ children }) => {
   const refreshWards = useCallback(async () => {
     if (!authToken || !parentId || !isAuthenticated) {
       setWards([]);
+      setWardsLoaded(false);
       return [];
     }
 
@@ -148,6 +151,7 @@ export const ParentOnboardingProvider = ({ children }) => {
       return [];
     } finally {
       setWardsLoading(false);
+      setWardsLoaded(true);
     }
   }, [authToken, parentId, isAuthenticated]);
 
@@ -213,12 +217,13 @@ export const ParentOnboardingProvider = ({ children }) => {
   const isFullyComplete = PARENT_ONBOARDING_STEPS.every((step) =>
     state.completedSteps.includes(step.id)
   );
-  const hasNoLinkedWards = !wardsLoading && !wardsError && wards.length === 0;
+  const hasNoLinkedWards = wardsLoaded && !wardsLoading && !wardsError && wards.length === 0;
 
   const value = useMemo(
     () => ({
       wards,
       wardsLoading,
+      wardsLoaded,
       wardsError,
       refreshWards,
       completedSteps: state.completedSteps,
@@ -238,6 +243,7 @@ export const ParentOnboardingProvider = ({ children }) => {
     [
       wards,
       wardsLoading,
+      wardsLoaded,
       wardsError,
       refreshWards,
       state.completedSteps,
