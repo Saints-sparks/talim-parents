@@ -1,327 +1,265 @@
-import MessagesSidebar from '../Components/MessagesSidebar';
-import ChatDetailsModal from '../Components/ChatDetailsModal';
-import React, { useState, useRef, useEffect } from 'react';
-import ChatHeader from '../Components/ChatHeader';
-import MessageList from '../Components/MessageList';
-import MessageInput from '../Components/MessageInput';
-import FilePreview from '../Components/FilePreview';
+/* eslint-disable react/prop-types */
+import { useMemo, useRef, useState } from "react";
+import { Mail, Phone, UserRound } from "lucide-react";
+import ChatHeader from "../Components/ChatHeader";
+import MessageInput from "../Components/MessageInput";
+import MessageList from "../Components/MessageList";
+import MessagesSidebar from "../Components/MessagesSidebar";
+import { toast } from "../Components/CustomToast";
+import { useRealtimeChat } from "../hooks/useRealtimeChat";
+import { uploadChatAttachment } from "../services/chat.services";
+
+const getSharedAttachments = (messages, type) =>
+  messages.flatMap((message) => message.attachments || []).filter((attachment) => attachment.type === type);
+
+const getPrimaryParticipant = (room) => {
+  if (!room || room.isGroup) return null;
+  return room.participants?.find((participant) => participant.userId !== room.id) || room.participants?.[0];
+};
+
+function ConversationDetails({ room, messages }) {
+  const images = useMemo(() => getSharedAttachments(messages, "image"), [messages]);
+  const audio = useMemo(() => getSharedAttachments(messages, "audio"), [messages]);
+  const participant = getPrimaryParticipant(room);
+
+  if (!room) return null;
+
+  return (
+    <aside className="hidden w-[320px] shrink-0 border-l border-[#E5EAF2] bg-white p-5 xl:block">
+      <h3 className="mb-6 text-base font-bold text-[#101828]">Conversation Details</h3>
+      <div className="text-center">
+        {room.avatarInfo?.type === "image" ? (
+          <img src={room.avatarInfo.value} alt="" className="mx-auto h-20 w-20 rounded-full object-cover" />
+        ) : (
+          <span
+            className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-xl font-bold text-white"
+            style={{ backgroundColor: room.avatarInfo?.bgColor || "#0A4EA3" }}
+          >
+            {room.avatarInfo?.value || "U"}
+          </span>
+        )}
+        <h4 className="mt-3 text-lg font-bold text-[#101828]">{room.displayName}</h4>
+        <p className="text-sm text-[#667085]">{room.isGroup ? `${room.participantCount} members` : room.role || "Teacher"}</p>
+      </div>
+
+      <div className="my-7 grid grid-cols-3 gap-3 border-b border-[#E5EAF2] pb-6">
+        {[
+          [UserRound, "Profile"],
+          [Phone, "Call"],
+          [Mail, "Email"],
+        ].map(([Icon, label]) => (
+          <button key={label} type="button" className="rounded-lg p-2 text-center text-[#344054] hover:bg-[#F8FAFD]">
+            <Icon className="mx-auto mb-1 h-5 w-5" />
+            <span className="text-xs font-semibold">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      <section className="border-b border-[#E5EAF2] pb-6">
+        <h4 className="mb-3 text-sm font-bold text-[#101828]">About</h4>
+        <p className="text-sm leading-6 text-[#667085]">
+          {room.isGroup
+            ? "Group conversation for school updates and class communication."
+            : `${room.displayName} is available for school communication through Talim messages.`}
+        </p>
+        {participant?.email && <p className="mt-2 text-sm text-[#667085]">{participant.email}</p>}
+      </section>
+
+      <section className="mt-6 border-b border-[#E5EAF2] pb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-bold text-[#101828]">Voice Notes</h4>
+          <span className="text-xs font-semibold text-[#0A4EA3]">{audio.length}</span>
+        </div>
+        <div className="space-y-2">
+          {audio.slice(0, 2).map((item) => (
+            <audio key={item.url} controls preload="metadata" className="w-full">
+              <source src={item.url} type={item.mimeType || "audio/webm"} />
+            </audio>
+          ))}
+          {!audio.length && <p className="text-sm text-[#98A2B3]">No voice notes yet.</p>}
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-bold text-[#101828]">Shared Photos</h4>
+          <span className="text-xs font-semibold text-[#0A4EA3]">{images.length}</span>
+        </div>
+        {images.length ? (
+          <div className="grid grid-cols-3 gap-2">
+            {images.slice(0, 6).map((image) => (
+              <a key={image.url} href={image.url} target="_blank" rel="noreferrer">
+                <img src={image.url} alt="" className="aspect-square rounded-lg object-cover" />
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[#98A2B3]">No shared photos yet.</p>
+        )}
+      </section>
+    </aside>
+  );
+}
 
 function Messages() {
-  const [selectedChat, setSelectedChat] = useState({
-  });
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const {
+    chatRooms,
+    messages,
+    selectedRoom,
+    selectedRoomId,
+    isLoading,
+    isLoadingMessages,
+    isConnected,
+    error,
+    selectRoom,
+    sendMessage,
+  } = useRealtimeChat();
+
+  const [newMessage, setNewMessage] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [fileCaption, setFileCaption] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-  const [uploadedFiles, setUploadedFiles] = useState({
-    images: [],
-    videos: [],
-    documents: [],
-  });
-  const fileInputRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
   const mediaRecorderRef = useRef(null);
+  const recordingChunksRef = useRef([]);
+  const recordingStartedAtRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
-  // Comprehensive dummy data for chat histories
-  useEffect(() => {
-    const dummyMessages = [
-      // Text messages
-      {
-        id: 1,
-        sender: "user",
-        text: "Hi everyone! Don't forget, the creative writing assignment is due tomorrow.",
-        timestamp: "3:10 PM",
-        type: "text",
-      },
-      {
-        id: 2,
-        sender: "teacher",
-        text: "Good evening, students. Please make sure to inform your parents about the Everyday English textbook.",
-        timestamp: "3:15 PM",
-        type: "text",
-      },
-      {
-        id: 3,
-        sender: "classmate1",
-        text: "Has anyone started the math homework yet? I'm stuck on question 5.",
-        timestamp: "3:20 PM",
-        type: "text",
-      },
-      {
-        id: 4,
-        sender: "classmate2",
-        text: "I can help with question 5! It's about quadratic equations. Let me send you my solution.",
-        timestamp: "3:25 PM",
-        type: "text",
-      },
-      // Image messages
-      {
-        id: 5,
-        sender: "classmate2",
-        fileURL: "https://via.placeholder.com/300x200?text=Math+Solution",
-        timestamp: "3:30 PM",
-        type: "file",
-        fileType: "image",
-        caption: "Here's my solution to question 5"
-      },
-      {
-        id: 6,
-        sender: "teacher",
-        fileURL: "https://via.placeholder.com/400x300?text=Class+Schedule",
-        timestamp: "3:35 PM",
-        type: "file",
-        fileType: "image",
-        caption: "Updated class schedule for next week"
-      },
-      // Video messages
-      {
-        id: 7,
-        sender: "classmate3",
-        fileURL: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-        timestamp: "3:40 PM",
-        type: "file",
-        fileType: "video",
-        caption: "Check out this cool science experiment video!"
-      },
-      {
-        id: 8,
-        sender: "teacher",
-        fileURL: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-        timestamp: "3:45 PM",
-        type: "file",
-        fileType: "video",
-        caption: "This will help with your physics project"
-      },
-      // Audio messages
-      {
-        id: 9,
-        sender: "classmate1",
-        fileURL: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-        timestamp: "3:50 PM",
-        type: "file",
-        fileType: "audio",
-        caption: "My explanation for question 5"
-      },
-      {
-        id: 10,
-        sender: "teacher",
-        fileURL: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-        timestamp: "3:55 PM",
-        type: "file",
-        fileType: "audio",
-        caption: "Important announcement about tomorrow's class"
-      },
-      // Document messages
-      {
-        id: 11,
-        sender: "teacher",
-        fileURL: "https://www.africau.edu/images/default/sample.pdf",
-        timestamp: "4:00 PM",
-        type: "file",
-        fileType: "document",
-        caption: "Study guide for the upcoming test",
-        fileName: "Study-Guide.pdf"
-      },
-      {
-        id: 12,
-        sender: "classmate4",
-        fileURL: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-        timestamp: "4:05 PM",
-        type: "file",
-        fileType: "document",
-        caption: "My essay draft for feedback",
-        fileName: "Essay-Draft.docx"
-      }
-    ];
-    setMessages(dummyMessages);
-  }, []);
+  const handleSend = async () => {
+    if (!newMessage.trim() && !selectedFile) return;
 
-  const sendMessage = (withFile = false) => {
-    if (!withFile && newMessage.trim() === '' && !audioBlob) return;
+    try {
+      setIsUploading(true);
+      const attachments = selectedFile ? [await uploadChatAttachment(selectedFile)] : [];
+      const attachmentType = attachments[0]?.type;
 
-    let newMsg = {
-      id: messages.length + 1,
-      sender: "user",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
+      sendMessage({
+        content: newMessage,
+        attachments,
+        type: attachmentType === "audio" ? "voice" : attachmentType === "image" ? "image" : "text",
+        duration: attachments[0]?.duration,
+      });
 
-    if (withFile && selectedFile) {
-      newMsg = {
-        ...newMsg,
-        type: 'file',
-        fileURL: filePreview,
-        fileType: selectedFile.type.includes('image') ? 'image' : 
-                selectedFile.type.includes('video') ? 'video' : 
-                selectedFile.type.includes('audio') ? 'audio' : 'document',
-        fileName: selectedFile.name,
-        text: fileCaption,
-      };
-    } else if (audioBlob) {
-      newMsg = {
-        ...newMsg,
-        type: 'file',
-        fileType: 'audio',
-        fileURL: URL.createObjectURL(audioBlob),
-        caption: 'Voice message'
-      };
-    } else {
-      newMsg = {
-        ...newMsg,
-        type: 'text',
-        text: newMessage.trim(),
-      };
+      setNewMessage("");
+      setSelectedFile(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Unable to send attachment");
+    } finally {
+      setIsUploading(false);
     }
-
-    setMessages([...messages, newMsg]);
-    setNewMessage('');
-    setAudioBlob(null);
-    setSelectedFile(null);
-    setFilePreview(null);
-    setFileCaption('');
-
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleChatSelect = (chat) => {
-    setSelectedChat(chat);
-    setShowSidebar(false);
-  };
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      recordingChunksRef.current = [];
+      recordingStartedAtRef.current = Date.now();
 
-  const handleFileChange = (e, type) => {
-    const file = e.target.files[0];
-    const fileURL = URL.createObjectURL(file);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
 
-    console.log("File selected: ", file.name, type);
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const duration = Math.max(1, Math.round((Date.now() - recordingStartedAtRef.current) / 1000));
+        const blob = new Blob(recordingChunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
 
-    setUploadedFiles((prev) => ({
-      ...prev,
-      [type]: [...prev[type], { fileURL, name: file.name, type: file.type }],
-    }));
+        try {
+          setIsUploading(true);
+          const attachment = await uploadChatAttachment(file);
+          sendMessage({
+            content: "",
+            attachments: [{ ...attachment, duration }],
+            type: "voice",
+            duration,
+          });
+        } catch (err) {
+          toast.error(err.response?.data?.message || err.message || "Unable to send voice note");
+        } finally {
+          setIsUploading(false);
+        }
+      };
 
-    setFilePreview(fileURL);
-    setSelectedFile(file);
-    setShowModal(false);
-  };
-
-  const handleOpenModal = (type) => {
-    setModalType(type);
-    setShowModal(true);
-  };
-
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    // Actual recording implementation would go here
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      toast.error("Microphone access is required to record voice notes");
+    }
   };
 
   const handleStopRecording = () => {
+    mediaRecorderRef.current?.stop();
     setIsRecording(false);
-    // Create a dummy audio blob for demonstration
-    const dummyAudioBlob = new Blob([], { type: 'audio/mp3' });
-    setAudioBlob(dummyAudioBlob);
-  };
-
-  const handlePlayAudio = () => {
-    // Audio playback implementation would go here
-    console.log("Playing audio...");
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <div className={`fixed inset-y-0 left-0 md:static bg-white w-screen md:w-[300px] lg:w-[350px] h-full z-50 transform transition-transform duration-300 ease-in-out ${
-        showSidebar ? 'translate-x-0' : '-translate-x-full'
-      } md:translate-x-0 overflow-y-auto`}>
-        <MessagesSidebar setSelectedChat={handleChatSelect} />
+    <div className="flex h-[calc(100vh-120px)] min-h-[640px] overflow-hidden rounded-xl border border-[#E5EAF2] bg-white">
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-screen bg-white transition-transform duration-300 md:static md:w-[360px] md:translate-x-0 ${
+          showSidebar ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <MessagesSidebar
+          rooms={chatRooms}
+          selectedRoomId={selectedRoomId}
+          onSelectRoom={(roomId) => {
+            selectRoom(roomId);
+            setShowSidebar(false);
+          }}
+          isLoading={isLoading}
+          isConnected={isConnected}
+        />
       </div>
 
-      <div className="flex-1 flex flex-col w-full md:w-auto">
-        {selectedChat ? (
+      <main className="flex min-w-0 flex-1 flex-col">
+        {selectedRoom ? (
           <>
-            <ChatHeader 
-              selectedChat={selectedChat}
+            <ChatHeader
+              selectedChat={selectedRoom}
               setShowSidebar={setShowSidebar}
-              setShowDetailsModal={() => console.log("Details modal")}
+              onToggleDetails={() => setShowDetails((value) => !value)}
             />
-
-            <MessageList
-              messages={messages}
-              messagesEndRef={messagesEndRef}
-            />
-
-            <MessageInput
-              fileInputRef={fileInputRef}
-              newMessage={newMessage}
-              setNewMessage={setNewMessage}
-              sendMessage={() => sendMessage(false)}
-              handleOpenModal={handleOpenModal}
-              isRecording={isRecording}
-              handleStartRecording={handleStartRecording}
-              handleStopRecording={handleStopRecording}
-              audioBlob={audioBlob}
-              handlePlayAudio={handlePlayAudio}
-              handleKeyPress={handleKeyPress}
-            />
+            <div className="flex min-h-0 flex-1">
+              <div className="flex min-w-0 flex-1 flex-col">
+                <MessageList messages={messages} messagesEndRef={messagesEndRef} isLoading={isLoadingMessages} />
+                <MessageInput
+                  newMessage={newMessage}
+                  setNewMessage={setNewMessage}
+                  onSendText={handleSend}
+                  onFileSelected={setSelectedFile}
+                  selectedFile={selectedFile}
+                  onClearFile={() => setSelectedFile(null)}
+                  isUploading={isUploading}
+                  isRecording={isRecording}
+                  onStartRecording={handleStartRecording}
+                  onStopRecording={handleStopRecording}
+                />
+              </div>
+              {showDetails && <ConversationDetails room={selectedRoom} messages={messages} />}
+            </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center p-4">
-              <p className="text-gray-400 text-sm md:text-base mb-2">
-                Select a chat to start messaging
+          <div className="flex flex-1 items-center justify-center bg-[#F8FAFD] p-6 text-center">
+            <div>
+              <h2 className="text-lg font-bold text-[#101828]">Select a conversation</h2>
+              <p className="mt-2 text-sm text-[#667085]">
+                {error || "Messages from teachers and school staff will appear here."}
               </p>
               <button
+                type="button"
                 onClick={() => setShowSidebar(true)}
-                className="md:hidden text-blue-500 hover:text-blue-600 text-sm"
+                className="mt-4 rounded-lg bg-[#0A4EA3] px-4 py-2 text-sm font-semibold text-white md:hidden"
               >
                 Open Chats
               </button>
             </div>
           </div>
         )}
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-md w-96">
-            <h3 className="text-lg font-semibold mb-4">Upload {modalType}</h3>
-            <input
-              type="file"
-              accept={modalType === "Images" ? "image/*" : modalType === "Videos" ? "video/*" : "application/pdf, .doc, .docx"}
-              onChange={(e) => handleFileChange(e, modalType.toLowerCase())}
-              ref={fileInputRef}
-              className="w-full p-2 border rounded"
-            />
-            <div className="mt-4 flex justify-end space-x-2">
-              <button
-                onClick={() => setShowModal(false)}
-                className="bg-gray-300 text-gray-700 py-1 px-4 rounded hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  sendMessage(true);
-                }}
-                className="bg-blue-500 text-white py-1 px-4 rounded hover:bg-blue-600"
-              >
-                Upload
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </main>
     </div>
   );
 }

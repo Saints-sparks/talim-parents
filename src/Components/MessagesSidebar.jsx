@@ -1,92 +1,168 @@
-import React, { useState } from "react";
-import { FaSearch, FaCheckDouble } from 'react-icons/fa';
-import { IoIosArrowDown } from "react-icons/io";
-import { chats} from "../data/chats";
+/* eslint-disable react/prop-types */
+import { useMemo, useState } from "react";
+import { Filter, Search } from "lucide-react";
 
-function MessagesSidebar({ setSelectedChat }) {
-    const [selectedFilter, setSelectedFilter] = useState("All");
-    const [showDropdown, setShowDropdown] = useState(false);
-  
-    const filters = ["All", "Unread", "Drafts", "Archived", "Trash", "Groups"];
+const formatRoomTime = (room) => {
+  const value = room?.lastMessage?.createdAt || room?.updatedAt;
+  if (!value) return "";
+  const date = new Date(value);
+  const today = new Date();
+
+  if (date.toDateString() === today.toDateString()) {
+    return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(date);
+  }
+
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+};
+
+const getPreview = (room) => {
+  const lastMessage = room?.lastMessage;
+  if (!lastMessage) return "No messages yet";
+  if (lastMessage.content) return lastMessage.content;
+  const attachment = lastMessage.attachments?.[0];
+  if (!attachment) return "Attachment";
+  const type = typeof attachment === "string" ? "file" : attachment.type;
+  if (type === "image") return "Photo";
+  if (type === "audio") return "Voice message";
+  return "Attachment";
+};
+
+function MessagesSidebar({
+  rooms = [],
+  selectedRoomId,
+  onSelectRoom,
+  isLoading,
+  isConnected,
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("all");
+
+  const filteredRooms = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return rooms.filter((room) => {
+      const matchesFilter =
+        selectedFilter === "all" ||
+        (selectedFilter === "unread" && room.unreadCount > 0) ||
+        (selectedFilter === "groups" && room.isGroup);
+      const matchesSearch =
+        !term ||
+        room.displayName?.toLowerCase().includes(term) ||
+        getPreview(room).toLowerCase().includes(term);
+      return matchesFilter && matchesSearch;
+    });
+  }, [rooms, searchTerm, selectedFilter]);
+
+  const totalUnread = rooms.reduce((sum, room) => sum + (room.unreadCount || 0), 0);
+
   return (
-    <div className="w-full md:w-[300px] bg-white border-r h-full md:h-screen overflow-hidden z-50 relative md:z-auto">
-      <div className="p-3 md:p-4">
-        {/* Title */}
-        <h2 className="text-lg font-semibold mb-3 md:mb-4">Messages</h2>
-
-        {/* Search & Filter */}
-        <div className="flex items-center space-x-2 mb-3 md:mb-4">
-          <div className="flex items-center border rounded-md p-2 flex-grow">
-            <FaSearch className="text-gray-400 mr-2 min-w-[16px]" />
-            <input 
-              type="text" 
-              placeholder="Search messages..." 
-              className="w-full outline-none text-sm truncate"
-            />
+    <aside className="h-full w-full border-r border-[#E5EAF2] bg-white">
+      <div className="border-b border-[#E5EAF2] p-4">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-[#101828]">Messages</h2>
+            <p className="text-sm text-[#667085]">
+              {isConnected ? "Communicate with teachers and school staff." : "Connecting to chat..."}
+            </p>
           </div>
-          <div className="relative">
-  <button 
-    onClick={() => setShowDropdown(!showDropdown)} 
-    className="border rounded-md p-2 hover:bg-gray-50 text-xs active:bg-gray-100 transition-colors flex items-center"
-  >
-    {selectedFilter} <IoIosArrowDown className="text-gray-500 ml-1" />
-  </button>
-  {showDropdown && (
-    <ul className="absolute top-full left-0 bg-white border rounded-md shadow-md w-40 py-1 z-10">
-      {filters.map((filter, index) => (
-        <li
-          key={index}
-          onClick={() => {
-            setSelectedFilter(filter);
-            setShowDropdown(false);
-          }}
-          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-        >
-          {filter}
-        </li>
-      ))}
-    </ul>
-  )}
-</div>
-
+          <span className="rounded-full bg-[#EAF2FB] px-2.5 py-1 text-xs font-semibold text-[#0A4EA3]">
+            {totalUnread}
+          </span>
         </div>
 
-        {/* Chat List */}
-        <div className="mt-2 md:mt-4 space-y-2 md:space-y-4 overflow-y-auto h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] pb-4">
-          {chats.map((chat) => (
-            <div
-              key={chat.id}
-              onClick={() => setSelectedChat(chat)}
-              className="flex items-center p-2 md:p-3 rounded-lg hover:bg-gray-100 active:bg-gray-200 cursor-pointer transition-colors"
+        <div className="flex gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[#DCE5F2] px-3 py-2">
+            <Search className="h-4 w-4 shrink-0 text-[#98A2B3]" />
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search messages..."
+              className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            className="rounded-lg border border-[#DCE5F2] p-2 text-[#667085]"
+            title="Filter messages"
+          >
+            <Filter className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {[
+            ["all", "All"],
+            ["unread", `Unread${totalUnread ? ` ${totalUnread}` : ""}`],
+            ["groups", "Groups"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSelectedFilter(key)}
+              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                selectedFilter === key
+                  ? "border-[#D9E8FF] bg-[#EAF2FB] text-[#0A4EA3]"
+                  : "border-[#E5EAF2] bg-white text-[#667085] hover:bg-[#F8FAFD]"
+              }`}
             >
-              <img 
-                src={chat.profilePic} 
-                alt="Profile" 
-                className="w-8 h-8 md:w-10 md:h-10 rounded-full mr-2 md:mr-3" 
-              />
-              <div className="flex-1 min-w-0"> {/* min-w-0 helps with text truncation */}
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-semibold truncate pr-2">{chat.name}</h3>
-                  <span className="text-xs text-gray-500 whitespace-nowrap">{chat.time}</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  {chat.status === 'typing' ? (
-                    <span className="text-cyan-800/50">typing...</span>
-                  ) : (
-                    <div className="flex items-center w-full">
-                      <span className="truncate">{chat.message}</span>
-                      {chat.status === 'sent' && (
-                        <FaCheckDouble className="text-cyan-800/50 ml-2 flex-shrink-0" />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+              {label}
+            </button>
           ))}
         </div>
       </div>
-    </div>
+
+      <div className="h-[calc(100%-176px)] overflow-y-auto p-3">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="h-20 animate-pulse rounded-xl bg-[#F2F4F7]" />
+            ))}
+          </div>
+        ) : filteredRooms.length ? (
+          filteredRooms.map((room) => (
+            <button
+              key={room.roomId}
+              type="button"
+              onClick={() => onSelectRoom(room.roomId)}
+              className={`mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left transition ${
+                selectedRoomId === room.roomId ? "bg-[#EAF2FB]" : "hover:bg-[#F8FAFD]"
+              }`}
+            >
+              {room.avatarInfo?.type === "image" ? (
+                <img
+                  src={room.avatarInfo.value}
+                  alt=""
+                  className="h-11 w-11 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ backgroundColor: room.avatarInfo?.bgColor || "#0A4EA3" }}
+                >
+                  {room.avatarInfo?.value || "U"}
+                </span>
+              )}
+
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-bold text-[#101828]">{room.displayName}</span>
+                  <span className="shrink-0 text-xs text-[#667085]">{formatRoomTime(room)}</span>
+                </span>
+                <span className="mt-1 flex items-center justify-between gap-2">
+                  <span className="truncate text-sm text-[#667085]">{getPreview(room)}</span>
+                  {room.unreadCount > 0 && (
+                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#0A4EA3] px-1.5 text-xs font-bold text-white">
+                      {room.unreadCount}
+                    </span>
+                  )}
+                </span>
+              </span>
+            </button>
+          ))
+        ) : (
+          <div className="px-4 py-12 text-center text-sm text-[#667085]">No conversations found.</div>
+        )}
+      </div>
+    </aside>
   );
 }
 

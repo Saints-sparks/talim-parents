@@ -1,60 +1,31 @@
-import React from 'react';
-import MessageItem from './MessageItem';
+/* eslint-disable react/prop-types */
+import { useEffect } from "react";
+import MessageItem from "./MessageItem";
 
-function MessageList({
-  messages,
-  openDropdownId,
-  toggleDropdown,
-  handleReplyMessage,
-  handleForwardMessage,
-  handleDeleteMessage,
-  replyingTo,
-  newMessage,
-  setNewMessage,
-  setMessages,
-  setReplyingTo,
-  sendMessage
-}) {
+function MessageList({ messages = [], messagesEndRef, isLoading }) {
+  useEffect(() => {
+    messagesEndRef?.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, messagesEndRef]);
+
   return (
-    <div className="flex-1 p-3 md:p-6 overflow-y-auto space-y-3 bg-gray-50 relative">
-      {messages.map((msg) => (
-        <MessageItem
-          key={msg.id}
-          msg={msg}
-          openDropdownId={openDropdownId}
-          toggleDropdown={toggleDropdown}
-          handleReplyMessage={handleReplyMessage}
-          handleForwardMessage={handleForwardMessage}
-          handleDeleteMessage={handleDeleteMessage}
-        />
-      ))}
-
-      {replyingTo && (
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gray-200 flex items-center">
-          <span className="text-xs text-gray-600 mr-2">Replying to: "{replyingTo.text}"</span>
-          <input 
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your reply..."
-            className="flex-1 p-2 border rounded"
-          />
-          <button 
-            className="ml-2 bg-cyan-800 text-white px-3 py-1 rounded"
-            onClick={() => {
-              setMessages(prev => [...prev, { 
-                id: Date.now(), 
-                sender: "user", 
-                text: newMessage, 
-                replyTo: replyingTo 
-              }]);
-              setReplyingTo(null);
-              setNewMessage("");
-              sendMessage();
-            }}
-          >
-            <FaPaperPlane className="w-5 h-5" />
-          </button>
+    <div className="flex-1 overflow-y-auto bg-[#F8FAFD] p-4 md:p-6">
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="h-20 w-2/3 animate-pulse rounded-2xl bg-[#E5EAF2]" />
+          ))}
+        </div>
+      ) : messages.length ? (
+        <div className="space-y-4">
+          {messages.map((msg) => (
+            <MessageItem key={msg.id || msg._id} msg={msg} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      ) : (
+        <div className="flex h-full items-center justify-center text-center text-sm text-[#667085]">
+          No messages in this conversation yet.
+          <div ref={messagesEndRef} />
         </div>
       )}
     </div>
