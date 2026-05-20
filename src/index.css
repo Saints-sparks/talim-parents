@@ -90,3 +90,333 @@
     transform: scaleX(0);
   }
 }
+
+/* ============================================================
+   DARK MODE
+   Strategy: html.dark .standard-class  →  override standard Tailwind utilities
+             html.dark [class*="..."]    →  override arbitrary-value Tailwind classes
+             Specificity of html.dark + class/attr = (0,2,1) which beats (0,1,0) for utilities
+   ============================================================ */
+
+/* Smooth transition for all theme-affected properties */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, box-shadow, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+/* Do NOT transition things that should be instant */
+*[class*="transition-"],
+*[class*="animate-"],
+*[class*="duration-"] {
+  transition-property: revert;
+  transition-duration: revert;
+}
+
+/* === Base === */
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background-color: #0f1629;
+  color: #f1f5f9;
+}
+
+/* ── Page / layout backgrounds ── */
+html.dark .min-h-screen,
+html.dark .bg-gray-50,
+html.dark .bg-gray-100 {
+  background-color: #0f1629;
+}
+html.dark [class*="bg-[#f8f8f8]"],
+html.dark [class*="bg-[#F8F8F8]"],
+html.dark [class*="bg-[#fafafa]"],
+html.dark [class*="bg-[#FAFAFA]"] {
+  background-color: #0f1629;
+}
+
+/* ── Card / surface backgrounds (white → navy card) ── */
+html.dark .bg-white {
+  background-color: #1a2540;
+}
+html.dark .bg-gray-200 {
+  background-color: #1a2540;
+}
+
+/* ── Subtle / tint backgrounds ── */
+html.dark .bg-gray-50 {
+  background-color: #0f1629;
+}
+html.dark [class*="bg-[#F8FAFD]"],
+html.dark [class*="bg-[#F4F8FF]"],
+html.dark [class*="bg-[#EEF6FF]"],
+html.dark [class*="bg-[#F2F4F7]"],
+html.dark [class*="bg-[#F9FAFB]"],
+html.dark [class*="bg-[#fbfbfb]"],
+html.dark [class*="bg-[#FBFBFB]"],
+html.dark [class*="bg-[#F8F9FA]"] {
+  background-color: #152238;
+}
+html.dark [class*="bg-[#E8EDF3]"],
+html.dark [class*="bg-[#e8edf3]"],
+html.dark [class*="bg-[#EAF2FB]"],
+html.dark [class*="bg-[#eaf2fb]"],
+html.dark [class*="bg-[#E8F1FB]"] {
+  background-color: #1e2d47;
+}
+/* Avatar / avatar fallback tints — keep distinct */
+html.dark [class*="bg-[#F5E9E2]"] {
+  background-color: #2a1e1a;
+}
+
+/* Active sidebar nav item */
+html.dark [class*="bg-[#bfccd8]"],
+html.dark [class*="bg-[#BFCCD8]"] {
+  background-color: #1e3a6e;
+}
+
+/* ── Status / semantic tint backgrounds ── */
+html.dark [class*="bg-[#E8F8EF]"],
+html.dark [class*="bg-[#ECFDF3]"],
+html.dark .bg-green-50,
+html.dark .bg-emerald-50 {
+  background-color: #042516;
+}
+html.dark [class*="bg-[#FEF3F2]"],
+html.dark [class*="bg-[#FFF1F2]"],
+html.dark [class*="bg-[#FECDCA]"],
+html.dark .bg-red-50 {
+  background-color: #2a0a0a;
+}
+html.dark .bg-orange-50 { background-color: #2a1000; }
+html.dark .bg-yellow-50 { background-color: #1f1600; }
+html.dark .bg-blue-50   { background-color: #0e2040; }
+html.dark .bg-blue-100  { background-color: #0e2040; }
+html.dark .bg-violet-50,
+html.dark .bg-purple-50 { background-color: #1c1040; }
+html.dark .bg-slate-50  { background-color: #0f172a; }
+html.dark .bg-red-100   { background-color: #2a0a0a; }
+html.dark .bg-green-100 { background-color: #042516; }
+html.dark .bg-orange-100{ background-color: #2a1000; }
+html.dark .bg-yellow-100{ background-color: #1f1600; }
+html.dark .bg-purple-100{ background-color: #1c1040; }
+html.dark .bg-amber-100 { background-color: #1f1200; }
+html.dark .bg-pink-50   { background-color: #2a0016; }
+html.dark .bg-gray-100  { background-color: #1a2540; }
+
+/* ── Skeleton / pulse backgrounds ── */
+html.dark .bg-gray-200 { background-color: #1e2d47; }
+html.dark .bg-gray-300 { background-color: #2a3a5a; }
+
+/* ── Borders ── */
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300 {
+  border-color: #2a3a5a;
+}
+html.dark [class*="border-[#E5EAF2]"],
+html.dark [class*="border-[#e5eaf2]"],
+html.dark [class*="border-[#EEF2F7]"],
+html.dark [class*="border-[#DCE5F2]"],
+html.dark [class*="border-[#dce5f2]"],
+html.dark [class*="border-[#e0e0e0]"],
+html.dark [class*="border-[#E0E0E0]"],
+html.dark [class*="border-[#E6ECF3]"],
+html.dark [class*="border-[#E8EDF3]"] {
+  border-color: #2a3a5a;
+}
+html.dark [class*="border-[#FECDCA]"] {
+  border-color: #5a2020;
+}
+/* Divider lines */
+html.dark .divide-gray-100 > * + *,
+html.dark .divide-gray-200 > * + *,
+html.dark [class*="divide-[#EEF2F7]"] > * + * {
+  border-color: #2a3a5a;
+}
+
+/* ── Primary text ── */
+html.dark .text-gray-900,
+html.dark .text-gray-800 {
+  color: #f1f5f9;
+}
+html.dark [class*="text-[#101828]"],
+html.dark [class*="text-[#030E18]"],
+html.dark [class*="text-[#1D2939]"],
+html.dark [class*="text-[#0F1E2F]"] {
+  color: #f1f5f9;
+}
+
+/* ── Secondary text ── */
+html.dark .text-gray-700,
+html.dark .text-gray-600 {
+  color: #94a3b8;
+}
+html.dark [class*="text-[#344054]"],
+html.dark [class*="text-[#657386]"],
+html.dark [class*="text-[#4B5563]"] {
+  color: #cbd5e1;
+}
+html.dark [class*="text-[#667085]"],
+html.dark [class*="text-[#657085]"],
+html.dark [class*="text-[#6B7280]"] {
+  color: #94a3b8;
+}
+
+/* ── Muted / placeholder text ── */
+html.dark .text-gray-500,
+html.dark .text-gray-400 {
+  color: #64748b;
+}
+html.dark [class*="text-[#98A2B3]"],
+html.dark [class*="text-[#98a2b3]"] {
+  color: #475569;
+}
+
+/* ── Status text colors ── */
+html.dark .text-emerald-700 { color: #4ade80; }
+html.dark .text-green-700   { color: #4ade80; }
+html.dark .text-green-600   { color: #4ade80; }
+html.dark .text-red-700     { color: #f87171; }
+html.dark .text-red-600     { color: #f87171; }
+html.dark .text-orange-700  { color: #fb923c; }
+html.dark .text-orange-600  { color: #fb923c; }
+html.dark .text-yellow-700  { color: #fbbf24; }
+html.dark .text-yellow-600  { color: #fbbf24; }
+html.dark .text-blue-700    { color: #60a5fa; }
+html.dark .text-blue-600    { color: #60a5fa; }
+html.dark .text-violet-700  { color: #a78bfa; }
+html.dark .text-purple-700  { color: #a78bfa; }
+html.dark .text-purple-600  { color: #a78bfa; }
+html.dark .text-slate-700   { color: #94a3b8; }
+html.dark .text-slate-600   { color: #94a3b8; }
+html.dark .text-pink-700    { color: #f472b6; }
+html.dark .text-amber-600   { color: #fbbf24; }
+html.dark [class*="text-[#159947]"],
+html.dark [class*="text-[#067647]"] { color: #4ade80; }
+
+/* ── Inputs & forms ── */
+html.dark input:not([type="range"]),
+html.dark textarea,
+html.dark select {
+  background-color: #1a2540;
+  border-color: #2a3a5a;
+  color: #f1f5f9;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #475569;
+}
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+/* Read-only inputs */
+html.dark [class*="bg-[#F9FAFB]"] {
+  background-color: #0f1a2e;
+}
+
+/* ── Hover overrides ── */
+html.dark [class*="hover:bg-[#F8FAFD]"]:hover,
+html.dark [class*="hover:bg-[#F4F8FF]"]:hover,
+html.dark [class*="hover:bg-[#F2F4F7]"]:hover,
+html.dark [class*="hover:bg-[#F8F9FA]"]:hover {
+  background-color: #1e3050;
+}
+html.dark .hover\:bg-gray-50:hover { background-color: #1e3050; }
+html.dark .hover\:bg-\[#F8FAFD\]:hover { background-color: #1e3050; }
+html.dark .hover\:bg-red-50:hover  { background-color: #2a0a0a; }
+
+/* ── Shadows (darken for dark mode) ── */
+html.dark .shadow-sm  { box-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4); }
+html.dark .shadow-md  { box-shadow: 0 4px 6px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.4); }
+html.dark .shadow-lg  { box-shadow: 0 10px 15px rgba(0,0,0,0.5), 0 4px 6px rgba(0,0,0,0.4); }
+html.dark .shadow-xl  { box-shadow: 0 20px 25px rgba(0,0,0,0.5), 0 8px 10px rgba(0,0,0,0.4); }
+
+/* ── Tables ── */
+html.dark table  { background-color: #1a2540; color: #f1f5f9; }
+html.dark thead  { background-color: #152238; }
+html.dark tbody tr:hover { background-color: #1e3050; }
+html.dark th, html.dark td { border-color: #2a3a5a; }
+
+/* ── Modals / overlay shells ── */
+/* The fixed overlay bg-black/40 stays as-is (it's appropriate for dark) */
+/* Inner modal bg-white is handled by html.dark .bg-white */
+
+/* ── Scrollbars ── */
+html.dark ::-webkit-scrollbar       { width: 5px; height: 5px; }
+html.dark ::-webkit-scrollbar-track { background: #0f1629; }
+html.dark ::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 3px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #3b4f75; }
+
+/* ── Blue accent surfaces (keep blue, just lighten tint) ── */
+html.dark [class*="bg-[#EEF6FF]"] { background-color: #0e2040; }
+html.dark [class*="bg-[#E8F1FB]"] { background-color: #0e2040; }
+
+/* ── Sidebar active text ── */
+html.dark [class*="text-[#184674]"] { color: #93c5fd; }
+
+/* ── Footer / copyright text ── */
+html.dark [class*="text-[#003366]"]:not(button):not(a) { color: #93c5fd; }
+
+/* ── Dashed border empty states ── */
+html.dark [class*="border-[#DCE5F2]"][class*="border-dashed"] {
+  border-color: #2a3a5a;
+}
+
+/* ── Progress/step bars + dividers ── */
+html.dark [class*="bg-[#E5EAF2]"] { background-color: #1e2d47; }
+html.dark [class*="bg-[#EEF2F7]"] { background-color: #1e2d47; }
+
+/* ── Toggle switch track (off state) ── */
+html.dark [class*="bg-[#D0D5DD]"] { background-color: #2a3a5a; }
+
+/* ── Calendar cells ── */
+html.dark [class*="bg-[#E8EDF3]"] { background-color: #1e2d47; }
+
+/* ── Green verified badge ── */
+html.dark [class*="bg-[#E8F8EF]"] { background-color: #042516; }
+
+/* ── Toast overrides ── */
+html.dark [class*="bg-[#101828]"],
+html.dark [class*="bg-[#1D2939]"] { background-color: #1a2540; }
+
+/* ── Additional subtle tint backgrounds ── */
+html.dark [class*="bg-[#EAF2FF]"],
+html.dark [class*="bg-[#F0F7FF]"],
+html.dark [class*="bg-[#F4F7FB]"],
+html.dark [class*="bg-[#F7F9FB]"],
+html.dark [class*="bg-[#F7F9FC]"],
+html.dark [class*="bg-[#F8FBFF]"],
+html.dark [class*="bg-[#EEF2F6]"] {
+  background-color: #152238;
+}
+html.dark [class*="bg-[#e5ebf0]"] { background-color: #1e2d47; }
+html.dark [class*="bg-[#F5EBEB]"] { background-color: #2a0a0a; }
+
+/* ── Additional borders ── */
+html.dark [class*="border-[#D7E0EA]"],
+html.dark [class*="border-[#E8EDF5]"],
+html.dark [class*="border-[#EEF2F6]"],
+html.dark [class*="border-[#E5E7EB]"] {
+  border-color: #2a3a5a;
+}
+
+/* ── Additional borders (light blue) ── */
+html.dark [class*="border-[#D9E8FF]"] { border-color: #1e3a6e; }
+
+/* ── Additional text colors ── */
+html.dark [class*="text-[#002244]"],
+html.dark [class*="text-[#0B2E4F]"] { color: #93c5fd; }
+html.dark [class*="text-[#0F172A]"] { color: #f1f5f9; }
+html.dark [class*="text-[#475467]"] { color: #94a3b8; }
+html.dark [class*="text-[#8A95A5]"] { color: #64748b; }
+html.dark [class*="text-[#aaaaaa]"] { color: #64748b; }
+html.dark [class*="text-[#6F6F6F]"] { color: #64748b; }
+html.dark [class*="text-[#7A4B33]"] { color: #fdba74; }
+html.dark [class*="text-[#B42318]"] { color: #f87171; }
+html.dark [class*="text-[#FDB022]"] { color: #fbbf24; }
+html.dark [class*="text-[#0F1E2F]"] { color: #f1f5f9; }

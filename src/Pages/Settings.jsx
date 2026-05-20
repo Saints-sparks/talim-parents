@@ -21,6 +21,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useAuth, API_BASE_URL } from "../services/auth.services";
+import { useTheme } from "../contexts/ThemeContext";
 import { Avatar, AvatarFallback, AvatarImage } from "../lib/ui/avatar";
 import { toast } from "../Components/CustomToast";
 import {
@@ -740,6 +741,7 @@ const MODALS = {
 
 export default function Settings() {
   const { user: authUser, updateUser, logout } = useAuth();
+  const { setTheme: applyTheme } = useTheme();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
@@ -750,6 +752,7 @@ export default function Settings() {
     try {
       const data = await getParentSettings();
       setSettings(data);
+      if (data?.preferences?.theme) applyTheme(data.preferences.theme);
     } catch (err) {
       toast.error("Could not load settings. Please refresh.");
     } finally {
@@ -794,6 +797,7 @@ export default function Settings() {
   };
 
   const handleSaveTheme = async (newTheme) => {
+    applyTheme(newTheme);
     await updateThemePreference({ theme: newTheme });
     setSettings((s) =>
       s ? { ...s, preferences: { ...s.preferences, theme: newTheme } } : s,

@@ -24,6 +24,7 @@ import { AuthProvider } from './services/auth.services';
 import { SelectedStudentProvider } from './contexts/SelectedStudentContext';
 import { ParentOnboardingProvider, useParentOnboarding } from './contexts/ParentOnboardingContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ParentGuideTour from './Components/onboarding/ParentGuideTour';
 import { ToastViewport } from './Components/CustomToast';
 
@@ -52,7 +53,7 @@ function OnboardingRouteTracker() {
 
 function AppLayout() {
   return (
-    <div className="flex min-h-screen bg-[#f8f8f8] font-manrope">
+    <div className="flex min-h-screen bg-[#f8f8f8] dark:bg-[#0f1629] font-manrope">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Navbar />
@@ -67,6 +68,7 @@ function AppLayout() {
 
 function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <SelectedStudentProvider>
         <ParentOnboardingProvider>
@@ -105,6 +107,7 @@ function App() {
         </ParentOnboardingProvider>
       </SelectedStudentProvider>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
 
