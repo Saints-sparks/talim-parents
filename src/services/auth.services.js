@@ -2,8 +2,7 @@
 import { createContext, createElement, useContext, useMemo, useState } from 'react';
 import axios from 'axios';
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'https://talim-be-dev.onrender.com';
+export const API_BASE_URL ='https://talim-be-dev.onrender.com';
 
 const AuthContext = createContext(null);
 
