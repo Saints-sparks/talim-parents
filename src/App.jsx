@@ -16,6 +16,8 @@ import NotificationDetail from './Pages/NotificationDetail';
 import Profile from './Pages/Profile';
 import EmptyState from './Pages/EmptyState';
 import ProtectedRoute from './Pages/ProtectedRoute';
+import Payments from './Pages/Payments';
+import MakePayment from './Pages/MakePayment';
 import Onboarding from './Pages/Onboarding';
 import { AuthProvider } from './services/auth.services';
 import { SelectedStudentProvider } from './contexts/SelectedStudentContext';
@@ -88,7 +90,9 @@ function App() {
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/notifications/:id" element={<NotificationDetail />} />
                     <Route path="/profile" element={<Profile />} />
-                    <Route path="/payments" element={<EmptyState title="Payments" message="Payment history and invoices will appear here when available." />} />
+                    <Route path="/payments" element={<Payments />} />
+                    <Route path="/payments/pay" element={<MakePayment />} />
+                    <Route path="/payments/verify" element={<MakePayment />} />
                     <Route path="/settings" element={<EmptyState title="Settings" message="Parent account and notification preferences will appear here when available." />} />
                   </Route>
                 </Route>

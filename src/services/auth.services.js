@@ -2,7 +2,7 @@
 import { createContext, createElement, useContext, useMemo, useState } from 'react';
 import axios from 'axios';
 
-export const API_BASE_URL = 'https://talim-be-dev.onrender.com';
+export const API_BASE_URL ='https://talim-be-dev.onrender.com';
 
 const AuthContext = createContext(null);
 
@@ -37,7 +37,11 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(
         `${API_BASE_URL}/auth/login`,
         { email, password },
-        { timeout: 10000, headers: { 'Content-Type': 'application/json' } }
+        {
+          timeout: 10000,
+          withCredentials: true,
+          headers: { 'Content-Type': 'application/json' },
+        }
       );
 
       const { access_token, refresh_token } = response.data;
@@ -129,7 +133,10 @@ export const AuthProvider = ({ children }) => {
         await axios.post(
           `${API_BASE_URL}/auth/logout`,
           {},
-          { headers: { Authorization: `Bearer ${authToken}` } }
+          {
+            withCredentials: true,
+            headers: { Authorization: `Bearer ${authToken}` },
+          }
         );
       }
     } catch {
@@ -151,13 +158,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const refreshTokenHandler = async () => {
-    if (!refreshToken) return;
-    const response = await axios.post(`${API_BASE_URL}/refresh-token`, { refreshToken });
+    const response = await axios.post(
+      `${API_BASE_URL}/auth/refresh`,
+      {},
+      { withCredentials: true }
+    );
     const { access_token, refresh_token } = response.data;
     localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
+    if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
     setAuthToken(access_token);
-    setRefreshToken(refresh_token);
+    if (refresh_token) setRefreshToken(refresh_token);
+    return access_token;
   };
 
   const updateUser = (updatedData) => {
