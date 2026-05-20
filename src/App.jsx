@@ -15,6 +15,7 @@ import Notifications from './Pages/Notifications';
 import NotificationDetail from './Pages/NotificationDetail';
 import Profile from './Pages/Profile';
 import EmptyState from './Pages/EmptyState';
+import Settings from './Pages/Settings';
 import ProtectedRoute from './Pages/ProtectedRoute';
 import Payments from './Pages/Payments';
 import MakePayment from './Pages/MakePayment';
@@ -93,7 +94,7 @@ function App() {
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/payments/pay" element={<MakePayment />} />
                     <Route path="/payments/verify" element={<MakePayment />} />
-                    <Route path="/settings" element={<EmptyState title="Settings" message="Parent account and notification preferences will appear here when available." />} />
+                    <Route path="/settings" element={<Settings />} />
                   </Route>
                 </Route>
 
