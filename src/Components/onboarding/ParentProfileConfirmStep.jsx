@@ -31,16 +31,16 @@ export default function ParentProfileConfirmStep() {
   return (
     <ParentOnboardingLayout stepLabel="Step 1 of 8">
       <div>
-        <h1 className="text-xl font-bold text-[#030E18]">Let’s confirm your profile</h1>
-        <p className="mt-2 text-sm text-[#657386]">Please review your information to continue.</p>
+        <h1 className="text-xl font-bold text-[#030E18] dark:text-slate-100">Let’s confirm your profile</h1>
+        <p className="mt-2 text-sm text-[#657386] dark:text-slate-300">Please review your information to continue.</p>
 
-        <section className="mt-6 rounded-lg border border-[#E8EDF3] bg-white p-4 sm:p-5">
+        <section className="mt-6 rounded-lg border border-[#E8EDF3] bg-white p-4 dark:border-[#2a3a5a] dark:bg-[#1a2540] sm:p-5">
           <div className="flex flex-col gap-5 sm:flex-row">
-            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full bg-[#EAF2FB]">
+            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full bg-[#EAF2FB] dark:bg-[#1e2d47]">
               {preview ? (
                 <img src={preview} alt={parentName} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#003366]">
+                <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#003366] dark:text-[#93c5fd]">
                   {user ? getInitials(user) : <UserRound className="h-9 w-9" />}
                 </div>
               )}
@@ -70,7 +70,7 @@ export default function ParentProfileConfirmStep() {
             </div>
           </div>
 
-          <div className="mt-6 flex items-start gap-2 rounded-lg bg-[#F2F6FB] px-3 py-3 text-xs text-[#184674]">
+          <div className="mt-6 flex items-start gap-2 rounded-lg bg-[#F2F6FB] px-3 py-3 text-xs text-[#184674] dark:bg-[#0e2040] dark:text-[#93c5fd]">
             <Info className="mt-0.5 h-4 w-4 shrink-0" />
             <span>Some profile details are managed by your school and cannot be changed.</span>
           </div>
@@ -91,8 +91,8 @@ export default function ParentProfileConfirmStep() {
 function InfoField({ label, value, accent }) {
   return (
     <div>
-      <p className="text-xs font-medium text-[#7B8794]">{label}</p>
-      <p className={`mt-1 text-sm font-semibold ${accent ? "text-green-600" : "text-[#17212B]"}`}>
+      <p className="text-xs font-medium text-[#7B8794] dark:text-slate-400">{label}</p>
+      <p className={`mt-1 text-sm font-semibold ${accent ? "text-green-600 dark:text-green-400" : "text-[#17212B] dark:text-slate-100"}`}>
         {value}
       </p>
     </div>

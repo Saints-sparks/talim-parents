@@ -146,6 +146,7 @@ let toastId = 0;
 class ToastManager {
   listeners = new Set();
   toasts = [];
+  lastToast = null;
 
   subscribe(listener) {
     this.listeners.add(listener);
@@ -159,10 +160,26 @@ class ToastManager {
   }
 
   addToast(toastItem) {
+    const now = Date.now();
+    const isDuplicate =
+      this.lastToast &&
+      this.lastToast.type === toastItem.type &&
+      this.lastToast.message === toastItem.message &&
+      this.lastToast.title === toastItem.title &&
+      now - this.lastToast.time < 1000;
+
+    if (isDuplicate) return;
+
     const nextToast = {
       ...toastItem,
       id: `toast-${++toastId}`,
       onClose: this.removeToast,
+    };
+    this.lastToast = {
+      type: toastItem.type,
+      message: toastItem.message,
+      title: toastItem.title,
+      time: now,
     };
     this.toasts = [nextToast, ...this.toasts].slice(0, 5);
     this.emit();

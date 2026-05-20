@@ -12,7 +12,7 @@ import { MdOutlinePayments, MdOutlineSettings, MdOutlineFamilyRestroom } from "r
 import LeaveRequestIcon from '../lib/ui/LeaveRequestIcon'; 
 
 
-import logo from "../images/1.png";
+import logo from "../assets/logo.svg";
 
 import { useAuth } from "../services/auth.services"; // adjust path if needed
 import { useSchool } from "../hooks/useSchools";     // import the hook
@@ -26,6 +26,14 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false); // Mobile toggle
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false); // Desktop toggle
+
+  const schoolData = school?.school || school?.data || school || {};
+  const schoolName = schoolLoading
+    ? "Loading..."
+    : schoolError
+    ? "Error loading school"
+    : schoolData?.name || schoolData?.schoolName || "School Name";
+  const schoolLogo = schoolData?.logo || schoolData?.schoolLogo || logo;
 
   useEffect(() => {
     const checkIfMobile = () => setIsMobile(window.innerWidth < 768);
@@ -89,11 +97,18 @@ export default function Sidebar() {
         aria-label="Sidebar navigation"
       >
         {/* Sidebar Header */}
-        <div className="p-3 border-b flex items-center justify-between">
-          {!isCollapsed && <img src={logo} alt="Logo" className="h-12 w-auto" />}
+        <div className="flex items-center justify-between border-b p-3 dark:border-[#2a3a5a]">
+          <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
+            <img src={logo} alt="Talim Logo" className="h-11 w-11 rounded-xl" />
+            {!isCollapsed && (
+              <span className="text-xl font-bold text-[#030E18] dark:text-slate-100">
+                Talim
+              </span>
+            )}
+          </div>
           {!isMobile && (
             <button
-              className="p-2 rounded-md border border-gray-300"
+              className="rounded-md border border-gray-300 p-2 dark:border-[#2a3a5a]"
               onClick={() => setIsCollapsed(!isCollapsed)}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
@@ -107,7 +122,7 @@ export default function Sidebar() {
           )}
           {isMobile && isOpen && (
             <button
-              className="p-2 rounded-md"
+              className="rounded-md p-2"
               onClick={() => setIsOpen(false)}
               aria-label="Close sidebar menu"
             >
@@ -120,19 +135,18 @@ export default function Sidebar() {
 
         {/* School Name & Logo */}
         {!isCollapsed && (
-          <button className="flex bg-[#fbfbfb] justify-center gap-1 items-center rounded-[10px] border m-3 px-[1px] py-[3px] w-[227px]">
+          <button className="m-3 flex min-h-[64px] w-[calc(100%_-_1.5rem)] items-center justify-center gap-3 rounded-[10px] border bg-[#fbfbfb] px-3 py-3 dark:border-[#2a3a5a] dark:bg-[#152238]">
             <img
-              // src={school?.logo || "/logo."}
-              src={"/6.svg"}
-              alt="School Logo"
-              className="h-6 w-6 object-contain"
+              src={schoolLogo}
+              alt={schoolName}
+              className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = logo;
+              }}
             />
-            <p>
-              {schoolLoading
-                ? "Loading..."
-                : schoolError
-                ? "Error loading school"
-                : school?.name || "School Name"}
+            <p className="min-w-0 text-center text-sm font-semibold text-[#030E18] dark:text-slate-100">
+              {schoolName}
             </p>
           </button>
         )}

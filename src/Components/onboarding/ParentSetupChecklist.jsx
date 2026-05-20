@@ -47,17 +47,17 @@ export default function ParentSetupChecklist() {
   return (
     <ParentOnboardingLayout stepLabel="Step 3 of 8">
       <div>
-        <h1 className="text-xl font-bold text-[#030E18]">Complete your parent setup</h1>
-        <p className="mt-2 text-sm text-[#657386]">
+        <h1 className="text-xl font-bold text-[#030E18] dark:text-slate-100">Complete your parent setup</h1>
+        <p className="mt-2 text-sm text-[#657386] dark:text-slate-300">
           Follow the steps below to get the most out of Talim.
         </p>
 
         <div className="mt-6">
           <div className="flex items-center justify-between text-xs font-semibold">
-            <span className="text-[#657386]">
+            <span className="text-[#657386] dark:text-slate-300">
               {completedCount} / {totalCount} Completed
             </span>
-            <span className="text-[#003366]">{progressPercent}%</span>
+            <span className="text-[#003366] dark:text-[#93c5fd]">{progressPercent}%</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E9EEF4]">
             <div
