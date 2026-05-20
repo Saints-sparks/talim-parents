@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { LuBookText, LuTrophy, LuAward, LuStar, LuTrendingUp, LuDownload, LuRefreshCw, LuAlertCircle } from 'react-icons/lu';
-import { SelectedStudentContext } from '../contexts/SelectedStudentContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { LuBookText, LuTrophy, LuAward, LuStar, LuTrendingUp, LuDownload, LuRefreshCw, LuCircleAlert } from 'react-icons/lu';
+import { useSelectedStudent } from '../contexts/SelectedStudentContext';
 import {
   getResultSummary,
   getSubjectResults,
@@ -103,7 +103,7 @@ function EmptyResultsState({ termSelected }) {
 function ErrorState({ onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <LuAlertCircle className="text-4xl text-red-400 mb-3" />
+      <LuCircleAlert className="text-4xl text-red-400 mb-3" />
       <h3 className="text-base font-semibold text-gray-700 mb-1">Failed to load results</h3>
       <p className="text-sm text-gray-400 mb-4">Something went wrong. Please try again.</p>
       <button
@@ -179,7 +179,7 @@ function SubjectResultsTab({ subjects, summary }) {
       </table>
       {hasWeighted && (
         <p className="text-xs text-gray-400 mt-3 px-4 flex items-center gap-1">
-          <LuAlertCircle size={12} /> Figures in brackets are weighted scores
+          <LuCircleAlert size={12} /> Figures in brackets are weighted scores
         </p>
       )}
     </div>
@@ -442,7 +442,7 @@ function downloadCSV(subjects, summary) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 function Result() {
-  const { selectedStudent } = useContext(SelectedStudentContext) || {};
+  const { selectedStudent } = useSelectedStudent() || {};
 
   const [terms, setTerms] = useState([]);
   const [selectedTermId, setSelectedTermId] = useState('');
@@ -519,7 +519,7 @@ function Result() {
   if (!studentId) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <LuAlertCircle className="text-4xl text-gray-300 mb-3" />
+        <LuCircleAlert className="text-4xl text-gray-300 mb-3" />
         <p className="text-gray-500">Please select a child to view their results.</p>
       </div>
     );
@@ -657,7 +657,7 @@ function Result() {
               {/* Info notice */}
               <div className="px-6 py-3 border-t border-gray-50 bg-gray-50">
                 <p className="text-xs text-gray-400 flex items-center gap-1.5">
-                  <LuAlertCircle size={12} />
+                  <LuCircleAlert size={12} />
                   Scores are calculated based on test and exam assessment weights. For more details, click on any subject or download the full term report.
                 </p>
               </div>
