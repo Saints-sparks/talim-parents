@@ -5,7 +5,7 @@ function ChatHeader({ selectedChat, setShowSidebar, onToggleDetails }) {
   if (!selectedChat) return null;
 
   return (
-    <div className="flex items-center justify-between border-b border-[#E5EAF2] bg-white px-4 py-3">
+    <div className="flex shrink-0 items-center justify-between border-b border-[#E5EAF2] bg-white px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"

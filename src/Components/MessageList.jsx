@@ -8,7 +8,7 @@ function MessageList({ messages = [], messagesEndRef, isLoading }) {
   }, [messages.length, messagesEndRef]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8FAFD] p-4 md:p-6">
+    <div className="flex-1 overflow-y-auto overscroll-y-contain bg-[#F8FAFD] p-4 md:p-6">
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((item) => (

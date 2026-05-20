@@ -55,8 +55,8 @@ function MessagesSidebar({
   const totalUnread = rooms.reduce((sum, room) => sum + (room.unreadCount || 0), 0);
 
   return (
-    <aside className="h-full w-full border-r border-[#E5EAF2] bg-white">
-      <div className="border-b border-[#E5EAF2] px-4 pb-4 pt-6">
+    <aside className="flex h-full w-full flex-col border-r border-[#E5EAF2] bg-white">
+      <div className="shrink-0 border-b border-[#E5EAF2] px-4 pb-4 pt-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-[#101828]">Messages</h2>
@@ -110,7 +110,7 @@ function MessagesSidebar({
         </div>
       </div>
 
-      <div className="h-[calc(100%-176px)] overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((item) => (
