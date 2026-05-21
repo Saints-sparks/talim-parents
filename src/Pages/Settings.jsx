@@ -709,7 +709,7 @@ function AboutTalimModal({ onClose }) {
 function SettingsSkeleton() {
   return (
     <div className="animate-pulse">
-      <div className="mb-6">
+      <div data-guide="settings-header" className="mb-6">
         <div className="h-8 w-32 rounded-lg bg-[#EEF2F7]" />
         <div className="mt-2 h-4 w-72 rounded-lg bg-[#EEF2F7]" />
       </div>
@@ -846,7 +846,7 @@ export default function Settings() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-5">
-          <section className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
+          <section data-guide="settings-profile" className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-4">
               <h2 className="text-base font-bold text-[#101828]">Profile Information</h2>
               <button
@@ -889,7 +889,7 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
+          <section data-guide="settings-children" className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
             <div className="border-b border-[#EEF2F7] px-5 py-4">
               <h2 className="text-base font-bold text-[#101828]">My Children</h2>
               <p className="mt-0.5 text-xs text-[#667085]">
@@ -946,7 +946,7 @@ export default function Settings() {
         </div>
 
         <div className="space-y-5">
-          <section className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
+          <section data-guide="settings-security" className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
             <div className="border-b border-[#EEF2F7] px-5 py-4">
               <h2 className="text-base font-bold text-[#101828]">Security</h2>
             </div>
@@ -973,7 +973,7 @@ export default function Settings() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
+          <section data-guide="settings-preferences" className="rounded-xl border border-[#E5EAF2] bg-white shadow-sm">
             <div className="border-b border-[#EEF2F7] px-5 py-4">
               <h2 className="text-base font-bold text-[#101828]">Preferences</h2>
             </div>

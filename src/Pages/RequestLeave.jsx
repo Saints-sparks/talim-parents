@@ -96,7 +96,7 @@ function RequestLeave() {
 
   return (
     <div className="flex min-h-screen p-6 flex-col gap-6 relative">
-      <div className="flex justify-between items-center">
+      <div data-guide="leave-header" className="flex justify-between items-center">
         <div>
           <h1 className="text-[20px]">Request Leave</h1>
           <p className="text-[#aaaaaa] text-[18px]">
@@ -104,7 +104,7 @@ function RequestLeave() {
           </p>
         </div>
 
-        <div className="hidden sm:flex space-x-3 mt-auto">
+        <div data-guide="leave-new-request" className="hidden sm:flex space-x-3 mt-auto">
           <button
             onClick={handleNewRequest}
             className="flex gap-1 items-center text-white bg-[#003366] py-[10px] px-[15px] rounded-lg shadow-lg transition-transform hover:scale-105"
@@ -114,7 +114,7 @@ function RequestLeave() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[200px] p-4">
+      <div data-guide="leave-list" className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[200px] p-4">
         {(loading || wardsLoading) && <LeaveRequestTableSkeleton />}
 
         {!loading && !wardsLoading && error && (
@@ -144,7 +144,6 @@ function RequestLeave() {
 }
 
 export default RequestLeave;
-
 
 
 

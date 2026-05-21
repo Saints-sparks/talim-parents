@@ -206,7 +206,7 @@ function Attendance() {
   return (
     <div className="min-h-screen bg-white text-[#0F172A]">
       <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div data-guide="attendance-header" className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-[#101828]">Attendance</h1>
             <p className="mt-1 text-sm text-[#667085]">
@@ -233,7 +233,7 @@ function Attendance() {
           </div>
         ) : (
           <>
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section data-guide="attendance-summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {SUMMARY_CARDS.map(({ key, title }) => {
                 const meta = STATUS_META[key];
                 const Icon = meta.icon;
@@ -264,7 +264,7 @@ function Attendance() {
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
               <main className="space-y-5">
                 <section className="rounded-2xl border border-[#E6ECF3] bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)] sm:p-5">
-                  <div className="flex flex-col gap-4 border-b border-[#EEF2F6] pb-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div data-guide="attendance-controls" className="flex flex-col gap-4 border-b border-[#EEF2F6] pb-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="inline-flex rounded-xl bg-[#F4F7FB] p-1">
                       {["calendar", "list"].map((mode) => (
                         <button
@@ -320,7 +320,7 @@ function Attendance() {
                     </div>
                   </div>
 
-                  <div className="mt-5">
+                  <div data-guide="attendance-records" className="mt-5">
                     {viewMode === "calendar" ? (
                       <>
                         <div className="grid grid-cols-7 border-l border-t border-[#E6ECF3] text-center text-xs font-bold text-[#667085]">
@@ -455,7 +455,7 @@ function Attendance() {
                 </section>
               </main>
 
-              <aside className="xl:sticky xl:top-24 xl:self-start">
+              <aside data-guide="attendance-detail" className="xl:sticky xl:top-24 xl:self-start">
                 <div className="rounded-2xl border border-[#E6ECF3] bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-sm font-bold text-[#101828]">

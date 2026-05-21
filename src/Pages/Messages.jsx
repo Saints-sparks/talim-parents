@@ -207,8 +207,9 @@ function Messages() {
   };
 
   return (
-    <div className="relative flex h-[calc(100dvh-128px)] min-h-0 overflow-hidden rounded-xl border border-[#E5EAF2] bg-white max-md:h-[calc(100dvh-96px)] max-md:rounded-none max-md:border-x-0">
+    <div data-guide="messages-shell" className="relative flex h-[calc(100dvh-128px)] min-h-0 overflow-hidden rounded-xl border border-[#E5EAF2] bg-white max-md:h-[calc(100dvh-96px)] max-md:rounded-none max-md:border-x-0">
       <div
+        data-guide="messages-conversations"
         className={`fixed inset-y-0 left-0 z-50 w-screen bg-white transition-transform duration-300 md:static md:w-[360px] md:translate-x-0 ${
           showSidebar ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -226,7 +227,7 @@ function Messages() {
         />
       </div>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main data-guide="messages-chat-area" className="flex min-w-0 flex-1 flex-col">
         {selectedRoom ? (
           <>
             <ChatHeader
@@ -258,7 +259,7 @@ function Messages() {
                     onClick={() => setShowDetails(false)}
                     aria-label="Close conversation details overlay"
                   />
-                  <div className="fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none">
+                  <div data-guide="messages-details" className="fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none">
                     <ConversationDetails
                       room={selectedRoom}
                       messages={messages}

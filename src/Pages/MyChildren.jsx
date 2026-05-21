@@ -89,8 +89,8 @@ export default function MyChildren() {
   if (!wards.length) {
     return (
       <div className="space-y-6">
-        <PageTop />
-        <EmptyChildrenState />
+      <PageTop />
+      <EmptyChildrenState />
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function MyChildren() {
     <div className="space-y-6">
       <PageTop />
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div data-guide="children-list" className="grid gap-5 xl:grid-cols-2">
         {wards.map((child) => {
           const childId = getChildId(child);
           const isSelected = child?.isDefault || childId === selectedId || getChildUserId(child) === getChildUserId(selectedStudent);
@@ -115,12 +115,16 @@ export default function MyChildren() {
         })}
       </div>
 
-      <ChildrenOverviewCards overview={overviewData} />
+      <div data-guide="children-overview">
+        <ChildrenOverviewCards overview={overviewData} />
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <RecentUpdatesList updates={updates} />
         <div className="space-y-5">
-          <ParentQuickActions />
+          <div data-guide="children-actions">
+            <ParentQuickActions />
+          </div>
           <div className="flex gap-3 rounded-2xl bg-[#EAF2FF] p-5 text-[#0A4EA3]">
             <Info className="mt-0.5 h-5 w-5 shrink-0" />
             <p className="text-sm font-semibold text-[#344054]">
@@ -137,7 +141,7 @@ export default function MyChildren() {
 function PageTop() {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div data-guide="children-header" className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <div className="flex items-center gap-2 text-[#0A4EA3]">
           <UsersRound className="h-5 w-5" />

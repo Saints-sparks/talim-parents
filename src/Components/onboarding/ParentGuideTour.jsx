@@ -1,145 +1,344 @@
 import {
-  Bell,
-  CalendarCheck,
-  CalendarDays,
-  FileBadge,
-  LayoutDashboard,
-  MessageSquareText,
-  UsersRound,
+  ArrowLeft,
+  ArrowRight,
+  HelpCircle,
+  Lightbulb,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "../../services/auth.services";
+import { findGuideConfig } from "./parentGuideSteps";
 
-const TOUR_STEPS = {
-  "/dashboard": [
-    {
-      title: "Dashboard overview",
-      description: "See your selected ward, attendance summary, recent updates, and setup progress in one place.",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Ward switcher",
-      description: "Use the child selector in the top bar to switch between linked wards anytime.",
-      icon: UsersRound,
-    },
-  ],
-  "/attendance": [
-    {
-      title: "Track Attendance Easily",
-      description: "View daily, weekly, and monthly attendance records for your child.",
-      icon: CalendarCheck,
-    },
-  ],
-  "/timetable": [
-    {
-      title: "View Class Schedule",
-      description: "Check upcoming classes and download the timetable when needed.",
-      icon: CalendarDays,
-    },
-  ],
-  "/result": [
-    {
-      title: "Review Academic Results",
-      description: "See subject scores and exported result summaries shared by the school.",
-      icon: FileBadge,
-    },
-  ],
-  "/requestleave": [
-    {
-      title: "Request Leave",
-      description: "Submit leave requests and follow approval status for your child.",
-      icon: CalendarCheck,
-    },
-  ],
-  "/messages": [
-    {
-      title: "Open Messages",
-      description: "Read and reply to school or teacher conversations.",
-      icon: MessageSquareText,
-    },
-  ],
-  "/notifications": [
-    {
-      title: "Read Notifications",
-      description: "Stay current with school announcements, alerts, and updates.",
-      icon: Bell,
-    },
-  ],
-};
+const STORAGE_PREFIX = "talim_parent_guide";
 
-const storageKey = (pathname) => `parent_guide_seen_${pathname}`;
+function getTargetRect(target) {
+  const element = document.querySelector(`[data-guide="${target}"]`);
+  if (!element) return null;
 
-export default function ParentGuideTour() {
-  const location = useLocation();
-  const steps = useMemo(() => TOUR_STEPS[location.pathname] || [], [location.pathname]);
-  const [index, setIndex] = useState(0);
-  const [open, setOpen] = useState(() => {
-    if (!steps.length) return false;
-    return localStorage.getItem(storageKey(location.pathname)) !== "true";
+  const rect = element.getBoundingClientRect();
+  return {
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function getVisibleSteps(config) {
+  const visibleSteps = config.steps.filter((step) => {
+    const element = document.querySelector(`[data-guide="${step.target}"]`);
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    const styles = window.getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && styles.display !== "none" && styles.visibility !== "hidden";
   });
+  return visibleSteps.length > 0 ? visibleSteps : config.steps;
+}
 
-  useEffect(() => {
-    setIndex(0);
-    setOpen(Boolean(steps.length) && localStorage.getItem(storageKey(location.pathname)) !== "true");
-  }, [location.pathname, steps.length]);
+function getUserId(user) {
+  return user?.userId || user?._id || user?.id || localStorage.getItem("parent_id") || "guest";
+}
 
-  if (!steps.length || !open) return null;
+function getCompletedKey(guideId, userId) {
+  return `${STORAGE_PREFIX}:${userId}:${guideId}:completed`;
+}
 
-  const step = steps[index];
-  const Icon = step.icon;
+function getSeenKey(guideId, userId) {
+  return `${STORAGE_PREFIX}:${userId}:${guideId}:seen`;
+}
 
-  const close = () => {
-    localStorage.setItem(storageKey(location.pathname), "true");
-    setOpen(false);
+function getCardPosition(rect) {
+  if (!rect) {
+    return {
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      arrow: "hidden",
+    };
+  }
+
+  const cardWidth = Math.min(400, window.innerWidth - 32);
+  const cardHeight = 330;
+  const viewportPadding = 16;
+  const spaceRight = window.innerWidth - (rect.left + rect.width);
+  const spaceLeft = rect.left;
+  const canUseSide =
+    window.innerWidth >= 768 &&
+    (spaceRight > cardWidth + 32 || spaceLeft > cardWidth + 32);
+
+  if (canUseSide) {
+    const placeRight = spaceRight >= cardWidth + 32;
+    const top = Math.min(
+      Math.max(rect.top + rect.height / 2 - cardHeight / 2, viewportPadding),
+      Math.max(viewportPadding, window.innerHeight - cardHeight - viewportPadding)
+    );
+
+    return {
+      top: `${top}px`,
+      left: placeRight
+        ? `${Math.min(rect.left + rect.width + 24, window.innerWidth - cardWidth - viewportPadding)}px`
+        : `${Math.max(rect.left - cardWidth - 24, viewportPadding)}px`,
+      transform: "none",
+      arrow: placeRight ? "left" : "right",
+    };
+  }
+
+  const below = rect.top + rect.height + 20;
+  const fitsBelow = below + cardHeight < window.innerHeight;
+
+  return {
+    top: fitsBelow
+      ? `${below}px`
+      : `${Math.max(viewportPadding, rect.top - cardHeight - 20)}px`,
+    left: `${Math.min(
+      Math.max(rect.left + rect.width / 2 - cardWidth / 2, viewportPadding),
+      window.innerWidth - cardWidth - viewportPadding
+    )}px`,
+    transform: "none",
+    arrow: fitsBelow ? "top" : "bottom",
   };
+}
 
-  const next = () => {
-    if (index === steps.length - 1) {
-      close();
-      return;
-    }
-    setIndex((current) => current + 1);
-  };
+function TooltipArrow({ side }) {
+  const base =
+    "absolute h-5 w-5 rotate-45 border border-[#DDE8F6] bg-white dark:border-white/10 dark:bg-[#0B1220]";
+  if (side === "left") return <span className={`${base} -left-2 top-16`} />;
+  if (side === "right") return <span className={`${base} -right-2 top-16`} />;
+  if (side === "bottom") return <span className={`${base} -bottom-2 left-1/2 -translate-x-1/2`} />;
+  if (side === "top") return <span className={`${base} -top-2 left-1/2 -translate-x-1/2`} />;
+  return null;
+}
+
+function GuideCard({ step, current, total, rect, onBack, onNext, onDone, onClose }) {
+  const position = getCardPosition(rect);
+  const Icon = step.icon || Lightbulb;
+  const progress = Math.round(((current + 1) / total) * 100);
+  const isLast = current === total - 1;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/45 px-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl dark:border dark:border-[#2a3a5a] dark:bg-[#1a2540]">
-        <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-[#EAF2FB] text-[#003366] dark:bg-[#1e2d47] dark:text-[#93c5fd]">
-          <Icon className="h-12 w-12" />
-        </div>
-        <h2 className="mt-5 text-lg font-bold text-[#030E18] dark:text-slate-100">{step.title}</h2>
-        <p className="mt-2 text-sm leading-6 text-[#657386] dark:text-slate-300">{step.description}</p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="talim-parent-guide-title"
+      className="fixed z-[1001] w-[calc(100vw-2rem)] max-w-[400px]"
+      style={{
+        top: position.top,
+        left: position.left,
+        transform: position.transform,
+      }}
+    >
+      <TooltipArrow side={position.arrow} />
+      <div className="relative overflow-hidden rounded-[20px] border border-[#DDE8F6] bg-white/95 p-5 shadow-[0_24px_80px_rgba(3,14,24,0.22)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0B1220]/95">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-[#EAF2FB] via-white to-[#FFF4D8] opacity-90 dark:from-[#12395F] dark:via-[#0B1220] dark:to-[#46350F]" />
 
-        <div className="mt-6 flex items-center justify-between">
-          <button onClick={close} className="text-sm font-semibold text-[#657386] hover:text-[#003366] dark:text-slate-300 dark:hover:text-[#93c5fd]">
-            Skip
-          </button>
-          <div className="flex gap-1.5">
-            {steps.map((item, dotIndex) => (
-              <span
-                key={item.title}
-                className={`h-2 w-2 rounded-full ${dotIndex === index ? "bg-[#003366]" : "bg-[#D7DEE8]"}`}
-              />
-            ))}
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-[#003366] shadow-lg shadow-blue-950/20">
+              <Icon className="h-6 w-6 text-white" />
+              <span className="absolute -right-1 -top-1 rounded-full bg-[#F4B740] p-1">
+                <Sparkles className="h-3 w-3 text-[#003366]" />
+              </span>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#B88916] dark:text-[#F4B740]">
+                {step.eyebrow || "Talim guide"}
+              </p>
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500">
+                Step {current + 1} of {total}
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            {index > 0 && (
-              <button
-                onClick={() => setIndex((current) => current - 1)}
-                className="rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm font-semibold text-[#263442] dark:border-[#2a3a5a] dark:text-slate-100"
-              >
-                Back
-              </button>
-            )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close guide"
+            className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F4B740] dark:hover:bg-white/10 dark:hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="relative mt-5">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#F4B740]/40 bg-[#FFF8E8] px-3 py-1 text-xs font-semibold text-[#7A5600] dark:border-[#F4B740]/30 dark:bg-[#F4B740]/10 dark:text-[#FFE3A0]">
+            <Lightbulb className="h-3.5 w-3.5" />
+            Quick coach note
+          </div>
+
+          <h3 id="talim-parent-guide-title" className="text-xl font-bold tracking-normal text-[#030E18] dark:text-white">
+            {step.title}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+            {step.description}
+          </p>
+
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#EAF2FB] dark:bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#003366] via-[#1E5B91] to-[#F4B740] transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-3">
             <button
-              onClick={next}
-              className="rounded-lg bg-[#003366] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002244]"
+              type="button"
+              onClick={onBack}
+              disabled={current === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[#F4B740] dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
             >
-              {index === steps.length - 1 ? "Done" : "Next"}
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={isLast ? onDone : onNext}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#003366] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-950/20 transition hover:-translate-y-0.5 hover:bg-[#00264D] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[#F4B740] dark:bg-[#F4B740] dark:text-[#0B1220] dark:hover:bg-[#FFD06B]"
+            >
+              {isLast ? "Got it" : "Next"}
+              {isLast ? <Sparkles className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
             </button>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ParentGuideTour() {
+  const location = useLocation();
+  const { user } = useAuth();
+  const config = useMemo(() => findGuideConfig(location.pathname), [location.pathname]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [rect, setRect] = useState(null);
+  const [steps, setSteps] = useState([]);
+
+  const userId = getUserId(user);
+  const currentStep = steps[stepIndex];
+
+  useEffect(() => {
+    setStepIndex(0);
+    setRect(null);
+
+    if (!config || !user) {
+      setIsOpen(false);
+      setSteps([]);
+      return;
+    }
+
+    const completed = localStorage.getItem(getCompletedKey(config.id, userId)) === "done";
+    const seen = localStorage.getItem(getSeenKey(config.id, userId)) === "done";
+
+    window.requestAnimationFrame(() => {
+      setSteps(getVisibleSteps(config));
+      setIsOpen(!completed && !seen);
+    });
+  }, [config, config?.id, user, userId]);
+
+  useEffect(() => {
+    if (!isOpen || !currentStep) return;
+
+    const element = document.querySelector(`[data-guide="${currentStep.target}"]`);
+    element?.scrollIntoView({
+      block: "center",
+      inline: "center",
+      behavior: "smooth",
+    });
+  }, [isOpen, currentStep?.target]);
+
+  useEffect(() => {
+    if (!isOpen || !currentStep) return;
+
+    let frame = 0;
+    const update = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        setRect(getTargetRect(currentStep.target));
+      });
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [isOpen, currentStep?.target]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") close(false);
+      if (event.key === "ArrowRight") {
+        setStepIndex((value) => Math.min(value + 1, steps.length - 1));
+      }
+      if (event.key === "ArrowLeft") {
+        setStepIndex((value) => Math.max(value - 1, 0));
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, steps.length]);
+
+  const close = (markDone = false) => {
+    if (!config) return;
+    localStorage.setItem(getSeenKey(config.id, userId), "done");
+    if (markDone) localStorage.setItem(getCompletedKey(config.id, userId), "done");
+    setIsOpen(false);
+  };
+
+  if (!config || !user) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setSteps(getVisibleSteps(config));
+          setStepIndex(0);
+          setIsOpen(true);
+        }}
+        className="fixed bottom-5 right-5 z-[900] inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-4 py-3 text-sm font-bold text-[#003366] shadow-xl shadow-blue-950/10 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#F4B740] dark:border-white/10 dark:bg-[#0B1220]/90 dark:text-[#F4B740]"
+      >
+        <HelpCircle className="h-4 w-4" />
+        Guide
+      </button>
+
+      {isOpen && currentStep && (
+        <>
+          <div className="fixed inset-0 z-[999] bg-[#030E18]/35 backdrop-blur-[1px]" />
+
+          {rect && (
+            <div
+              className="pointer-events-none fixed z-[1000] rounded-[22px] border-2 border-[#F4B740] shadow-[0_0_0_9999px_rgba(3,14,24,0.28),0_0_34px_rgba(244,183,64,0.66)] transition-all duration-200"
+              style={{
+                top: Math.max(rect.top - 8, 8),
+                left: Math.max(rect.left - 8, 8),
+                width: rect.width + 16,
+                height: rect.height + 16,
+              }}
+            />
+          )}
+
+          <GuideCard
+            step={currentStep}
+            current={stepIndex}
+            total={steps.length}
+            rect={rect}
+            onBack={() => setStepIndex((value) => Math.max(value - 1, 0))}
+            onNext={() => setStepIndex((value) => Math.min(value + 1, steps.length - 1))}
+            onDone={() => close(true)}
+            onClose={() => close(false)}
+          />
+        </>
+      )}
+    </>
   );
 }

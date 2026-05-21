@@ -598,7 +598,7 @@ export default function Payments() {
     <div className="min-h-screen bg-gray-50 font-manrope">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Page Header */}
-        <div>
+        <div data-guide="payments-header">
           <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             View outstanding fees, make payments and manage receipts.
@@ -606,7 +606,7 @@ export default function Payments() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div data-guide="payments-summary" className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             label="Total Outstanding"
             value={NGN(totalOutstanding)}
@@ -641,7 +641,7 @@ export default function Payments() {
 
         {/* Children row (if summary has per-child data) */}
         {selectedStudent && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div data-guide="payments-child" className="bg-white rounded-2xl border border-gray-100 p-4">
             <p className="text-sm font-semibold text-gray-700 mb-3">Children</p>
             <div className="flex items-center gap-3 p-3 border-2 border-[#003366] rounded-xl bg-[#003366]/5 w-fit">
               <div className="w-9 h-9 rounded-full bg-orange-400 flex items-center justify-center text-white text-sm font-bold">
@@ -662,7 +662,7 @@ export default function Payments() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-200">
+        <div data-guide="payments-tabs" className="flex gap-1 border-b border-gray-200">
           {TABS.map((tab) => (
             <button
               key={tab}
@@ -689,16 +689,18 @@ export default function Payments() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'Due Fees' && (
-          <DueFeesTab fees={fees} loading={loadingFees} studentId={studentId} onRefresh={loadAll} />
-        )}
-        {activeTab === 'Paid History' && (
-          <PaidHistoryTab history={history} loading={loadingHistory} />
-        )}
-        {activeTab === 'Receipts' && (
-          <ReceiptsTab receipts={receipts} loading={loadingReceipts} onViewReceipt={setViewReceipt} />
-        )}
-        {activeTab === 'Payment Methods' && <PaymentMethodsTab />}
+        <div data-guide="payments-content">
+          {activeTab === 'Due Fees' && (
+            <DueFeesTab fees={fees} loading={loadingFees} studentId={studentId} onRefresh={loadAll} />
+          )}
+          {activeTab === 'Paid History' && (
+            <PaidHistoryTab history={history} loading={loadingHistory} />
+          )}
+          {activeTab === 'Receipts' && (
+            <ReceiptsTab receipts={receipts} loading={loadingReceipts} onViewReceipt={setViewReceipt} />
+          )}
+          {activeTab === 'Payment Methods' && <PaymentMethodsTab />}
+        </div>
 
         {/* Having issues */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between">

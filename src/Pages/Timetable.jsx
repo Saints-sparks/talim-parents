@@ -91,7 +91,7 @@ export default function Timetable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div data-guide="timetable-header" className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-[#101828] md:text-3xl">Timetable</h1>
           <p className="mt-1 text-sm font-medium text-[#667085] md:text-base">View your child’s class schedule.</p>
@@ -101,14 +101,16 @@ export default function Timetable() {
         </button>
       </div>
 
-      <SelectedChildCard selectedStudent={selectedStudent} wards={wards} wardsLoading={wardsLoading} onChange={updateSelectedStudent} />
+      <div data-guide="timetable-child">
+        <SelectedChildCard selectedStudent={selectedStudent} wards={wards} wardsLoading={wardsLoading} onChange={updateSelectedStudent} />
+      </div>
 
       {!selectedStudent ? (
         <EmptyTimetableState />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <main className="min-w-0 space-y-5">
-            <div className="rounded-2xl border border-[#E5EAF2] bg-white p-4 shadow-sm">
+            <div data-guide="timetable-controls" className="rounded-2xl border border-[#E5EAF2] bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="inline-flex rounded-xl bg-[#F4F7FB] p-1">
                   {["weekly", "list"].map((item) => (
@@ -135,16 +137,20 @@ export default function Timetable() {
             ) : !data?.timetableSlots?.length ? (
               <EmptyTimetableState />
             ) : view === "weekly" ? (
-              <TimetableGrid slots={data.timetableSlots} weekDays={data.weekDays} />
+              <div data-guide="timetable-grid">
+                <TimetableGrid slots={data.timetableSlots} weekDays={data.weekDays} />
+              </div>
             ) : (
-              <TimetableListView grouped={data.listView || []} />
+              <div data-guide="timetable-grid">
+                <TimetableListView grouped={data.listView || []} />
+              </div>
             )}
 
             <p className="mx-auto w-fit rounded-xl bg-[#F4F7FB] px-4 py-2 text-center text-sm font-semibold text-[#667085]">
               Timetable is subject to change. Please check regularly for updates.
             </p>
           </main>
-          <aside className="space-y-5">
+          <aside data-guide="timetable-sidecards" className="space-y-5">
             <TodayScheduleCard schedule={data?.todaySchedule || []} />
             <ClassInformationCard info={data?.classInformation || { schoolName: selectedStudent?.schoolName }} />
           </aside>
