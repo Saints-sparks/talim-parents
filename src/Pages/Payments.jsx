@@ -21,6 +21,13 @@ const NGN = (n) =>
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
+const normalizeDueFees = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.fees)) return payload.fees;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
 const PROVIDERS = {
   paystack: { name: 'Paystack', color: 'text-green-600', bg: 'bg-green-50', channels: 'Cards, Bank Transfer, USSD' },
   opay: { name: 'OPay', color: 'text-blue-600', bg: 'bg-blue-50', channels: 'Wallet, Transfer, Card' },
@@ -579,7 +586,7 @@ export default function Payments() {
         getReceipts({ studentId }).catch(() => ({ data: [], total: 0 })),
         getPaymentSummary().catch(() => null),
       ]);
-      setFees(Array.isArray(f) ? f : f?.data || []);
+      setFees(normalizeDueFees(f));
       setHistory(h);
       setReceipts(r);
       setSummary(s);
