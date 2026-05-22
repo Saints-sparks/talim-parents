@@ -29,6 +29,56 @@ const startOfWeek = (date) => {
 
 const toIsoDate = (date) => date.toISOString().slice(0, 10);
 
+const isUnassignedTeacher = (teacherName) =>
+  !teacherName || String(teacherName).trim().toLowerCase() === "unassigned teacher";
+
+const formatTeacherName = (teacher) => {
+  if (!teacher) return "";
+  if (typeof teacher === "string") return teacher;
+  const user = teacher.userId || teacher;
+  return [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+};
+
+const getClassTeacherName = (timetableData, selectedStudent) => {
+  const classInfoTeacher = timetableData?.classInformation?.classTeacher;
+  if (classInfoTeacher && !isUnassignedTeacher(classInfoTeacher)) return classInfoTeacher;
+
+  return (
+    formatTeacherName(timetableData?.child?.classIdLegacy?.classTeacherId) ||
+    formatTeacherName(selectedStudent?.classIdLegacy?.classTeacherId)
+  );
+};
+
+const resolveTeacherName = (slot, fallbackTeacherName) => {
+  if (slot?.type === "break") return slot.teacherName;
+  return isUnassignedTeacher(slot?.teacherName) && fallbackTeacherName
+    ? fallbackTeacherName
+    : slot?.teacherName;
+};
+
+const normalizeTimetableTeachers = (timetableData, selectedStudent) => {
+  if (!timetableData) return null;
+  const fallbackTeacherName = getClassTeacherName(timetableData, selectedStudent);
+  const normalizeSlot = (slot) => ({
+    ...slot,
+    teacherName: resolveTeacherName(slot, fallbackTeacherName),
+  });
+
+  return {
+    ...timetableData,
+    timetableSlots: (timetableData.timetableSlots || []).map(normalizeSlot),
+    todaySchedule: (timetableData.todaySchedule || []).map(normalizeSlot),
+    listView: (timetableData.listView || []).map((day) => ({
+      ...day,
+      classes: (day.classes || []).map(normalizeSlot),
+    })),
+    classInformation: {
+      ...timetableData.classInformation,
+      classTeacher: fallbackTeacherName || timetableData.classInformation?.classTeacher,
+    },
+  };
+};
+
 export default function Timetable() {
   const { selectedStudent, updateSelectedStudent } = useSelectedStudent();
   const { wards, wardsLoading } = useParentOnboarding();
@@ -49,6 +99,11 @@ export default function Timetable() {
     const format = (date) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
     return `${format(weekStart)} - ${format(end)}, ${end.getFullYear()}`;
   }, [weekStart]);
+
+  const timetableData = useMemo(
+    () => normalizeTimetableTeachers(data, selectedStudent),
+    [data, selectedStudent]
+  );
 
   useEffect(() => {
     if (!childId) return;
@@ -134,15 +189,15 @@ export default function Timetable() {
                 <h2 className="text-xl font-extrabold text-[#101828]">Failed to fetch timetable</h2>
                 <p className="mt-2 text-sm text-[#667085]">{error}</p>
               </div>
-            ) : !data?.timetableSlots?.length ? (
+            ) : !timetableData?.timetableSlots?.length ? (
               <EmptyTimetableState />
             ) : view === "weekly" ? (
               <div data-guide="timetable-grid">
-                <TimetableGrid slots={data.timetableSlots} weekDays={data.weekDays} />
+                <TimetableGrid slots={timetableData.timetableSlots} weekDays={timetableData.weekDays} />
               </div>
             ) : (
               <div data-guide="timetable-grid">
-                <TimetableListView grouped={data.listView || []} />
+                <TimetableListView grouped={timetableData.listView || []} />
               </div>
             )}
 
@@ -151,8 +206,8 @@ export default function Timetable() {
             </p>
           </main>
           <aside data-guide="timetable-sidecards" className="space-y-5">
-            <TodayScheduleCard schedule={data?.todaySchedule || []} />
-            <ClassInformationCard info={data?.classInformation || { schoolName: selectedStudent?.schoolName }} />
+            <TodayScheduleCard schedule={timetableData?.todaySchedule || []} />
+            <ClassInformationCard info={timetableData?.classInformation || { schoolName: selectedStudent?.schoolName }} />
           </aside>
         </div>
       )}

@@ -58,35 +58,37 @@ const PROVIDER_META = {
 
 function StepIndicator({ step, total = 3 }) {
   return (
-    <div className="flex items-center gap-0 mb-8">
-      {STEP_LABELS.slice(0, total).map((label, i) => {
-        const n = i + 1;
-        const done = step > n;
-        const active = step === n;
-        return (
-          <React.Fragment key={n}>
-            <div className="flex flex-col items-center gap-1 min-w-[60px]">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                  done
-                    ? 'bg-[#003366] text-white'
-                    : active
-                    ? 'bg-[#003366] text-white ring-4 ring-[#003366]/20'
-                    : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                {done ? <CheckCircle size={16} /> : n}
+    <div className="mb-8 overflow-x-auto pb-1">
+      <div className="flex min-w-[420px] items-center gap-0">
+        {STEP_LABELS.slice(0, total).map((label, i) => {
+          const n = i + 1;
+          const done = step > n;
+          const active = step === n;
+          return (
+            <React.Fragment key={n}>
+              <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                    done
+                      ? 'bg-[#003366] text-white'
+                      : active
+                      ? 'bg-[#003366] text-white ring-4 ring-[#003366]/20'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {done ? <CheckCircle size={16} /> : n}
+                </div>
+                <span className={`text-[10px] font-medium whitespace-nowrap ${active ? 'text-[#003366]' : done ? 'text-gray-600' : 'text-gray-400'}`}>
+                  {label}
+                </span>
               </div>
-              <span className={`text-[10px] font-medium whitespace-nowrap ${active ? 'text-[#003366]' : done ? 'text-gray-600' : 'text-gray-400'}`}>
-                {label}
-              </span>
-            </div>
-            {i < total - 1 && (
-              <div className={`flex-1 h-0.5 mb-5 ${done ? 'bg-[#003366]' : 'bg-gray-200'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
+              {i < total - 1 && (
+                <div className={`flex-1 h-0.5 mb-5 ${done ? 'bg-[#003366]' : 'bg-gray-200'}`} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -622,19 +624,27 @@ export default function MakePayment() {
   }
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="w-full max-w-2xl mx-auto px-4 sm:px-0">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => (step > 1 ? setStep(step - 1) : navigate('/payments'))}
-          className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition"
-        >
-          <ArrowLeft size={18} className="text-gray-600" />
-        </button>
-        <div>
-          <h1 className="text-lg font-bold text-gray-800">Make Payment</h1>
-          <p className="text-xs text-gray-400">Step {step} of 3</p>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            aria-label={step > 1 ? 'Go to previous payment step' : 'Back to payments'}
+            title={step > 1 ? 'Previous step' : 'Back to payments'}
+            onClick={() => (step > 1 ? setStep(step - 1) : navigate('/payments'))}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#003366]/30"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-gray-800">Make Payment</h1>
+            <p className="text-xs text-gray-400">Step {step} of 3</p>
+          </div>
         </div>
+        <span className="hidden shrink-0 rounded-full bg-[#003366]/10 px-3 py-1 text-xs font-semibold text-[#003366] sm:inline-flex">
+          {STEP_LABELS[step - 1]}
+        </span>
       </div>
 
       {/* Step Indicator */}
