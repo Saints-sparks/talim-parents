@@ -33,6 +33,7 @@ import {
   updateNotificationPreferences,
   updateThemePreference,
 } from "../services/settings.services";
+import { PushNotificationToggle } from "../Components/notifications/PushNotificationToggle";
 
 const CLOUDINARY_CLOUD_NAME = "ddbs7m7nt";
 const CLOUDINARY_UPLOAD_PRESET = "presetOne";
@@ -990,6 +991,9 @@ export default function Settings() {
                 description={themeLabel}
                 onClick={() => setActiveModal(MODALS.theme)}
               />
+              <div className="border-b border-[#EEF2F7] px-4 py-3 last:border-b-0">
+                <PushNotificationToggle />
+              </div>
             </div>
           </section>
 
