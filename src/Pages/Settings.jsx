@@ -481,28 +481,95 @@ function ChangePhoneModal({ currentPhone, onClose, onSuccess }) {
   );
 }
 
-const NOTIFICATION_FIELDS = [
-  { key: "attendanceAlerts", label: "Attendance Alerts", description: "Get notified about your child's attendance" },
-  { key: "academicUpdates", label: "Academic Updates", description: "Receive updates on results and grades" },
-  { key: "schoolAnnouncements", label: "School Announcements", description: "Important announcements from school" },
-  { key: "messages", label: "Messages", description: "Get notified about new messages" },
-  { key: "paymentReminders", label: "Payment Reminders", description: "Fee due dates and payment confirmations" },
-  { key: "feeDueDateReminders", label: "Fee Due Date Reminders", description: "Reminders before fee deadlines" },
-  { key: "resultsPublishedAlerts", label: "Results Published", description: "When academic results are released" },
-  { key: "leaveRequestUpdates", label: "Leave Request Updates", description: "Status updates on leave requests" },
+// Maps backend NotificationPreference fields → parent-friendly labels
+const NOTIF_BACKEND_FIELDS = [
+  { key: "announcementsEnabled", label: "School Announcements",         description: "Important announcements from your school" },
+  { key: "attendanceEnabled",    label: "Attendance Alerts",            description: "Your child's attendance and leave request updates" },
+  { key: "resultsEnabled",       label: "Academic Updates & Results",   description: "Grades, results, and academic progress notices" },
+  { key: "messagesEnabled",      label: "Messages",                     description: "New messages from teachers and school staff" },
+  { key: "feesEnabled",          label: "Fees & Payment Reminders",     description: "Fee due dates and payment confirmations" },
+  { key: "resourcesEnabled",     label: "Resources & Assignments",      description: "New learning materials and assignment notices" },
+  { key: "pushEnabled",          label: "Push notifications",           description: "Master switch for all push alerts on this device" },
+  { key: "emailEnabled",         label: "Email notifications",          description: "Receive the above updates via email" },
 ];
 
-function NotificationPreferencesModal({ notifications, onClose, onSave }) {
-  const [prefs, setPrefs] = useState({ ...notifications });
+const NOTIF_DEFAULTS = {
+  announcementsEnabled: true,
+  attendanceEnabled: true,
+  resultsEnabled: true,
+  messagesEnabled: true,
+  feesEnabled: true,
+  resourcesEnabled: true,
+  pushEnabled: true,
+  emailEnabled: true,
+  quietHoursEnabled: false,
+  quietHoursStart: "22:00",
+  quietHoursEnd: "07:00",
+};
+
+function getParentToken() {
+  return localStorage.getItem("access_token") || null;
+}
+
+async function notifAuthFetch(path, options = {}) {
+  const token = getParentToken();
+  return fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+}
+
+function NotificationPreferencesModal({ onClose }) {
+  const [prefs, setPrefs] = useState(NOTIF_DEFAULTS);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    notifAuthFetch("/notifications/preferences")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data && typeof data === "object") {
+          setPrefs((p) => ({ ...p, ...data }));
+        }
+      })
+      .catch(() => {
+        setError("Could not load preferences. Defaults shown — your changes will still be saved.");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const toggle = (key) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
 
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
     try {
-      await onSave(prefs);
+      const res = await notifAuthFetch("/notifications/preferences", {
+        method: "PATCH",
+        body: JSON.stringify({
+          announcementsEnabled: prefs.announcementsEnabled,
+          attendanceEnabled:    prefs.attendanceEnabled,
+          resultsEnabled:       prefs.resultsEnabled,
+          messagesEnabled:      prefs.messagesEnabled,
+          feesEnabled:          prefs.feesEnabled,
+          resourcesEnabled:     prefs.resourcesEnabled,
+          pushEnabled:          prefs.pushEnabled,
+          emailEnabled:         prefs.emailEnabled,
+          quietHoursEnabled:    prefs.quietHoursEnabled,
+          quietHoursStart:      prefs.quietHoursStart,
+          quietHoursEnd:        prefs.quietHoursEnd,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       onClose();
+    } catch {
+      setError("Failed to save preferences. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -511,31 +578,86 @@ function NotificationPreferencesModal({ notifications, onClose, onSave }) {
   return (
     <ModalShell title="Notification Preferences" onClose={onClose} maxWidth="max-w-lg">
       <div className="px-6 py-5">
-        <div className="space-y-3">
-          {NOTIFICATION_FIELDS.map(({ key, label, description }) => (
-            <div key={key} className="flex items-center justify-between gap-3 rounded-lg border border-[#EEF2F7] px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold text-[#101828]">{label}</p>
-                <p className="text-xs text-[#667085]">{description}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggle(key)}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-                  prefs[key] ? "bg-[#0A4EA3]" : "bg-[#D0D5DD]"
-                }`}
-                role="switch"
-                aria-checked={prefs[key]}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
-                    prefs[key] ? "translate-x-5" : "translate-x-0"
+        {error && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+            <p className="text-xs text-amber-700">{error}</p>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-14 rounded-lg bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {NOTIF_BACKEND_FIELDS.map(({ key, label, description }) => (
+              <div key={key} className="flex items-center justify-between gap-3 rounded-lg border border-[#EEF2F7] px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#101828]">{label}</p>
+                  <p className="text-xs text-[#667085]">{description}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggle(key)}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                    prefs[key] ? "bg-[#0A4EA3]" : "bg-[#D0D5DD]"
                   }`}
-                />
-              </button>
+                  role="switch"
+                  aria-checked={prefs[key]}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      prefs[key] ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
+
+            {/* Quiet hours */}
+            <div className="rounded-lg border border-[#EEF2F7] px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#101828]">Quiet hours</p>
+                  <p className="text-xs text-[#667085]">Suppress non-urgent notifications between set times</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggle("quietHoursEnabled")}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                    prefs.quietHoursEnabled ? "bg-[#0A4EA3]" : "bg-[#D0D5DD]"
+                  }`}
+                  role="switch"
+                  aria-checked={prefs.quietHoursEnabled}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      prefs.quietHoursEnabled ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+              {prefs.quietHoursEnabled && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {[["quietHoursStart", "Start time"], ["quietHoursEnd", "End time"]].map(([field, label]) => (
+                    <div key={field}>
+                      <p className="text-xs text-[#667085] mb-1">{label}</p>
+                      <input
+                        type="time"
+                        value={prefs[field]}
+                        onChange={(e) => setPrefs((p) => ({ ...p, [field]: e.target.value }))}
+                        className="w-full rounded-lg border border-[#D0D5DD] px-2 py-1.5 text-sm text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#0A4EA3]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
         <div className="mt-5 flex justify-end gap-3">
           <button
             type="button"
@@ -547,7 +669,7 @@ function NotificationPreferencesModal({ notifications, onClose, onSave }) {
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || loading}
             className="h-10 rounded-lg bg-[#0A4EA3] px-5 text-sm font-bold text-white hover:bg-[#083D82] disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Preferences"}
@@ -826,11 +948,7 @@ export default function Settings() {
         />
       )}
       {activeModal === MODALS.notifications && (
-        <NotificationPreferencesModal
-          notifications={notifications}
-          onClose={closeModal}
-          onSave={handleSaveNotifications}
-        />
+        <NotificationPreferencesModal onClose={closeModal} />
       )}
       {activeModal === MODALS.theme && (
         <ThemePreferenceModal currentTheme={theme} onClose={closeModal} onSave={handleSaveTheme} />
