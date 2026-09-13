@@ -45,8 +45,11 @@ export const useWebSocket = (userId, refreshAccessToken) => {
       reconnectionDelayMax: 10000,
     });
 
-    // One refresh attempt per failed handshake streak; reset once a connect succeeds.
+    // One refresh attempt per failed handshake streak. The server accepts the
+    // transport first and rejects a bad token right after `connect`, so the
+    // attempt only resets once a connection has stayed up for a few seconds.
     let refreshAttempted = false;
+    let stableTimer = null;
 
     const retryWithFreshToken = async () => {
       if (refreshAttempted || !refreshRef.current) {
@@ -64,12 +67,16 @@ export const useWebSocket = (userId, refreshAccessToken) => {
     };
 
     nextSocket.on("connect", () => {
-      refreshAttempted = false;
+      clearTimeout(stableTimer);
+      stableTimer = setTimeout(() => {
+        refreshAttempted = false;
+      }, 5000);
       setIsConnected(true);
       setConnectionStatus("connected");
     });
 
     nextSocket.on("disconnect", () => {
+      clearTimeout(stableTimer);
       setIsConnected(false);
       setConnectionStatus(nextSocket.active ? "reconnecting" : "disconnected");
     });
@@ -92,6 +99,7 @@ export const useWebSocket = (userId, refreshAccessToken) => {
     setSocket(nextSocket);
 
     return () => {
+      clearTimeout(stableTimer);
       nextSocket.removeAllListeners();
       nextSocket.disconnect();
       setSocket(null);
