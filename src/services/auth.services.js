@@ -2,7 +2,16 @@
 import { createContext, createElement, useContext, useMemo, useState } from 'react';
 import axios from 'axios';
 
-export const API_BASE_URL ='https://talim-be-dev.onrender.com';
+// The API origin comes from the environment (Vite inlines VITE_* at build time),
+// so each deployment points at its own backend and a missing value fails the build.
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+if (!configuredApiBaseUrl) {
+  throw new Error(
+    'VITE_API_BASE_URL is not set. Copy .env.example to .env for local development, or set it in the deployment environment.',
+  );
+}
+
+export const API_BASE_URL = configuredApiBaseUrl.replace(/\/+$/, '');
 
 const AuthContext = createContext(null);
 
