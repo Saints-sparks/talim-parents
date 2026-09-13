@@ -1,91 +1,21 @@
 /* eslint-disable react/prop-types */
-import { Download, FileText } from "lucide-react";
+import { Check, CheckCheck, Clock } from "lucide-react";
+import MessageAttachment from "./MessageAttachment";
 import { generateColorFromString, getUserInitials } from "../lib/colorUtils";
 import { formatMessageTime } from "../lib/chatMessages";
 
-const formatDuration = (seconds) => {
-  if (!seconds) return "";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${String(secs).padStart(2, "0")}`;
+/** Own-message delivery: clock while sending, one tick once stored, two accent ticks once read (1:1). */
+const ReceiptIcon = ({ state }) => {
+  if (state === "pending") return <Clock className="h-3.5 w-3.5" aria-label="Sending" />;
+  if (state === "read") return <CheckCheck className="h-3.5 w-3.5 text-[#0A4EA3]" aria-label="Read" />;
+  return <Check className="h-3.5 w-3.5" aria-label="Sent" />;
 };
 
-const Attachment = ({ attachment, isUserMessage, messageDuration }) => {
-  const type = attachment.type || "";
-  const mimeType = attachment.mimeType || "";
-
-  // Still uploading inside a pending bubble.
-  if (!attachment.url) {
-    return (
-      <div
-        className={`flex items-center gap-3 rounded-lg border p-3 ${
-          isUserMessage ? "border-blue-300 bg-blue-400 text-white" : "border-[#E5EAF2] bg-[#F8FAFD] text-[#101828]"
-        }`}
-      >
-        <FileText className="h-5 w-5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-          {type === "audio" ? "Voice note" : attachment.name || "Attachment"}
-        </span>
-      </div>
-    );
-  }
-
-  if (type === "image") {
-    return (
-      <a href={attachment.url} target="_blank" rel="noreferrer">
-        <img
-          src={attachment.url}
-          alt={attachment.name || "Image attachment"}
-          className="max-h-64 w-full rounded-lg object-cover"
-        />
-      </a>
-    );
-  }
-
-  if (type === "audio") {
-    const duration = attachment.duration || messageDuration;
-    return (
-      <div className="min-w-[240px]">
-        {/* A source type is only given when the server knows it; a wrong one stops playback. */}
-        {mimeType.startsWith("audio/") ? (
-          <audio controls preload="metadata" className="w-full">
-            <source src={attachment.url} type={mimeType} />
-          </audio>
-        ) : (
-          <audio controls preload="metadata" className="w-full" src={attachment.url} />
-        )}
-        {duration ? (
-          <p className={`mt-1 text-xs ${isUserMessage ? "text-blue-100" : "text-[#667085]"}`}>
-            {formatDuration(duration)}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (type === "video") {
-    return (
-      <video controls preload="metadata" className="max-h-64 w-full rounded-lg bg-black" src={attachment.url} />
-    );
-  }
-
-  return (
-    <a
-      href={attachment.url}
-      target="_blank"
-      rel="noreferrer"
-      className={`flex items-center gap-3 rounded-lg border p-3 ${
-        isUserMessage ? "border-blue-300 bg-blue-400 text-white" : "border-[#E5EAF2] bg-[#F8FAFD] text-[#101828]"
-      }`}
-    >
-      <FileText className="h-5 w-5 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{attachment.name || "Attachment"}</span>
-      <Download className="h-4 w-4 shrink-0" />
-    </a>
-  );
-};
-
-function MessageItem({ msg, onRetry, onDiscard }) {
+/**
+ * @param {{ state: string, readCount: number } | null} receipt - From `receiptOf`, own messages only.
+ * @param {boolean} showReadCount - Group chats: "Read by N" under the latest own message.
+ */
+function MessageItem({ msg, receipt, showReadCount, onRetry, onDiscard }) {
   const isUserMessage = Boolean(msg.isOwn);
   const senderName = msg.senderName || "Unknown";
   const bgColor = generateColorFromString(senderName);
@@ -114,7 +44,7 @@ function MessageItem({ msg, onRetry, onDiscard }) {
           }`}
         >
           {attachments.map((attachment, index) => (
-            <Attachment
+            <MessageAttachment
               key={`${attachment.url || attachment.name}-${index}`}
               attachment={attachment}
               isUserMessage={isUserMessage}
@@ -135,8 +65,12 @@ function MessageItem({ msg, onRetry, onDiscard }) {
                 Delete
               </button>
             </span>
-          ) : isPending ? (
-            <span className="text-[#98A2B3]">Sending…</span>
+          ) : receipt ? (
+            <span className="inline-flex items-center gap-1 text-[#98A2B3]">
+              {formatMessageTime(msg.createdAt)}
+              <ReceiptIcon state={receipt.state} />
+              {showReadCount && receipt.readCount > 0 ? <span>· Read by {receipt.readCount}</span> : null}
+            </span>
           ) : (
             <span className="text-[#98A2B3]">{formatMessageTime(msg.createdAt)}</span>
           )}

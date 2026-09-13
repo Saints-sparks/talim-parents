@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Fragment, useLayoutEffect, useRef } from "react";
 import MessageItem from "./MessageItem";
-import { formatDaySeparator } from "../lib/chatMessages";
+import { formatDaySeparator, receiptOf } from "../lib/chatMessages";
 
 const NEAR_BOTTOM_PX = 120;
 const LOAD_OLDER_THRESHOLD_PX = 80;
@@ -25,6 +25,9 @@ function MessageList({
   onLoadOlder,
   onRetryMessage,
   onDiscardMessage,
+  isGroup = false,
+  otherUserId = "",
+  currentUserId = "",
 }) {
   const containerRef = useRef(null);
   const nearBottomRef = useRef(true);
@@ -109,6 +112,10 @@ function MessageList({
       );
     }
 
+    const receiptContext = { isGroup, otherUserId, currentUserId };
+    // Groups show "Read by N" once, under the newest stored own message.
+    const latestOwnId = isGroup ? [...messages].reverse().find((message) => message.isOwn && message._id)?._id : null;
+
     return (
       <div className="space-y-4">
         {(hasMore || loadingOlder || olderError) && (
@@ -141,7 +148,13 @@ function MessageList({
                   <span className="h-px flex-1 bg-[#E5EAF2]" />
                 </div>
               )}
-              <MessageItem msg={msg} onRetry={onRetryMessage} onDiscard={onDiscardMessage} />
+              <MessageItem
+                msg={msg}
+                receipt={receiptOf(msg, receiptContext)}
+                showReadCount={Boolean(latestOwnId) && msg._id === latestOwnId}
+                onRetry={onRetryMessage}
+                onDiscard={onDiscardMessage}
+              />
             </Fragment>
           );
         })}

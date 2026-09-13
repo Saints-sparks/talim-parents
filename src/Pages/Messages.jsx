@@ -131,6 +131,7 @@ function Messages() {
     retryMessage,
     discardMessage,
     refreshChatRooms,
+    currentUserId,
   } = useRealtimeChat();
   const { setOpenRoomId } = useChatAlerts();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -299,6 +300,9 @@ function Messages() {
                   onLoadOlder={loadOlderMessages}
                   onRetryMessage={retryMessage}
                   onDiscardMessage={discardMessage}
+                  isGroup={Boolean(selectedRoom?.isGroup)}
+                  otherUserId={selectedRoom?.otherParticipantId || ""}
+                  currentUserId={currentUserId || ""}
                 />
                 <MessageInput
                   newMessage={draft.text}

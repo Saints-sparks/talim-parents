@@ -5,9 +5,12 @@ import { useAuth } from "../services/auth.services";
 import { uploadChatAttachment } from "../services/chat.services";
 import { generateColorFromString, getUserInitials } from "../lib/colorUtils";
 import {
+  applyMessagesRead,
   createClientMessageId,
+  isAtOrBefore,
   mergeMessages,
   messageTypeFor,
+  newestIncomingMessage,
   newestSavedMessageId,
   normalizeMessage,
   toId,
@@ -47,6 +50,8 @@ const attachmentTypeOfFile = (file) => {
   return "file";
 };
 
+const isAttentiveNow = () => document.visibilityState === "visible" && document.hasFocus();
+
 export const useRealtimeChat = () => {
   const { user } = useAuth();
   const currentUserId = user?.userId || user?._id || user?.id;
@@ -58,7 +63,8 @@ export const useRealtimeChat = () => {
   const [roomsError, setRoomsError] = useState(null);
   const [threads, setThreads] = useState({});
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [isPageVisible, setIsPageVisible] = useState(() => document.visibilityState === "visible");
+  // Messages count as seen only while the tab is visible and the window has focus.
+  const [isAttentive, setIsAttentive] = useState(isAttentiveNow);
 
   const selectedRoomIdRef = useRef(null);
   const joinedRoomIdRef = useRef(null);
@@ -68,7 +74,8 @@ export const useRealtimeChat = () => {
   const outboxRef = useRef(new Map());
   const backfillCursorRef = useRef({});
   const loadingOlderRef = useRef(new Set());
-  const markedReadRef = useRef(new Set());
+  // roomId -> { id, time } of the newest message a mark-room-read was sent for.
+  const readPositionRef = useRef({});
   const joinsInFlightRef = useRef(new Map());
   const webSocketRef = useRef(webSocket);
 
@@ -119,6 +126,7 @@ export const useRealtimeChat = () => {
         displayName,
         profilePic: avatar,
         otherParticipant,
+        otherParticipantId: toId(otherParticipant?._id) || toId(otherParticipant?.userId),
         isOnline: Boolean(otherParticipant?.isOnline),
         role: otherParticipant?.role,
         participantCount: participants.length,
@@ -355,6 +363,32 @@ export const useRealtimeChat = () => {
         );
       }),
 
+      // Another member read up to a point (only sent when they share read receipts).
+      webSocket.on("messages-read", (data) => {
+        const roomId = toId(data?.roomId);
+        if (!roomId || !data?.userId || !data.readAt) return;
+        updateThread(roomId, (thread) => {
+          const messages = applyMessagesRead(thread.messages, { userId: data.userId, readAt: data.readAt });
+          return messages === thread.messages ? thread : { ...thread, messages };
+        });
+      }),
+
+      // This user read the room, here or on another device.
+      webSocket.on("room-read", (data) => {
+        const roomId = toId(data?.roomId);
+        if (!roomId) return;
+        // readAt is the up-to message's createdAt: nothing at or before it needs acknowledging here.
+        const upTo = { _id: toId(data.upToMessageId), createdAt: data.readAt };
+        if (upTo._id && data.readAt && !isAtOrBefore(upTo, readPositionRef.current[roomId])) {
+          readPositionRef.current[roomId] = { id: upTo._id, time: new Date(data.readAt).getTime() };
+        }
+        setRawRooms((rooms) =>
+          rooms.map((room) =>
+            roomIdOf(room) === roomId ? { ...room, unreadCount: 0, lastReadAt: data.readAt || room.lastReadAt } : room
+          )
+        );
+      }),
+
       webSocket.on("error", (payload) => {
         const clientMessageId = payload?.clientMessageId;
         const entry = clientMessageId && outboxRef.current.get(clientMessageId);
@@ -369,23 +403,49 @@ export const useRealtimeChat = () => {
   }, [webSocket?.on, currentUserId]);
 
   useEffect(() => {
-    const handleVisibility = () => setIsPageVisible(document.visibilityState === "visible");
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    const handleAttention = () => setIsAttentive(isAttentiveNow());
+    document.addEventListener("visibilitychange", handleAttention);
+    window.addEventListener("focus", handleAttention);
+    window.addEventListener("blur", handleAttention);
+    return () => {
+      document.removeEventListener("visibilitychange", handleAttention);
+      window.removeEventListener("focus", handleAttention);
+      window.removeEventListener("blur", handleAttention);
+    };
   }, []);
 
   const selectedThread = selectedRoomId ? threads[selectedRoomId] || EMPTY_THREAD : EMPTY_THREAD;
 
-  // Read only what the user can actually see: the open room, in a visible tab, from other people.
+  // Read only what the user can actually see: the open room, in a visible and focused window.
+  // One mark-room-read for the newest message from someone else, again when newer ones arrive
+  // or focus returns, never for a message at or before one already sent or read elsewhere.
   useEffect(() => {
-    if (!selectedRoomId || !isPageVisible || !isConnected || !currentUserId) return;
-    selectedThread.messages.forEach((message) => {
-      if (!message._id || message.isOwn || message.readBy.includes(currentUserId)) return;
-      if (markedReadRef.current.has(message._id)) return;
-      markedReadRef.current.add(message._id);
-      webSocket.markMessageAsRead(message._id);
-    });
-  }, [selectedRoomId, selectedThread.messages, isPageVisible, isConnected, currentUserId]);
+    if (!webSocket || !selectedRoomId || !isAttentive || !isConnected || !currentUserId) return;
+    const roomId = selectedRoomId;
+    const target = newestIncomingMessage(selectedThread.messages);
+    if (!target) return;
+
+    const previous = readPositionRef.current[roomId];
+    if (isAtOrBefore(target, previous)) return;
+    const lastReadAt = new Date(roomsRef.current.find((room) => roomIdOf(room) === roomId)?.lastReadAt || "").getTime();
+    if (new Date(target.createdAt || 0).getTime() < lastReadAt) return;
+
+    const position = { id: target._id, time: new Date(target.createdAt || 0).getTime() };
+    readPositionRef.current[roomId] = position;
+    webSocket
+      .markRoomRead(roomId, target._id)
+      .then((ack) => {
+        setRawRooms((rooms) =>
+          rooms.map((room) =>
+            roomIdOf(room) === roomId ? { ...room, unreadCount: 0, lastReadAt: ack?.readAt || room.lastReadAt } : room
+          )
+        );
+      })
+      .catch(() => {
+        // Not acknowledged: allow the next focus, message or reconnect to send it again.
+        if (readPositionRef.current[roomId] === position) readPositionRef.current[roomId] = previous;
+      });
+  }, [selectedRoomId, selectedThread.messages, isAttentive, isConnected, currentUserId]);
 
   // Leaving the page leaves the room, so the server treats it as closed (and pushes again).
   useEffect(
@@ -542,5 +602,6 @@ export const useRealtimeChat = () => {
     retryMessage,
     discardMessage,
     refreshChatRooms,
+    currentUserId,
   };
 };

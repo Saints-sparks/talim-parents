@@ -150,11 +150,10 @@ export const useWebSocket = (userId, refreshAccessToken) => {
   const fetchMessages = useCallback((data) => emitWithAck("fetch-messages", data), [emitWithAck]);
   const fetchChatRooms = useCallback(() => emitWithAck("fetch-chat-rooms", {}), [emitWithAck]);
   const fetchUnreadCount = useCallback(() => emit("fetch-unread-count", {}), [emit]);
-  const markMessageAsRead = useCallback(
-    (messageId) => {
-      if (messageId) emit("mark-message-read", { messageId });
-    },
-    [emit]
+  /** Marks a room read up to (and including) a message. Resolves with `{ roomId, upToMessageId, readAt, unreadCount }`. */
+  const markRoomRead = useCallback(
+    (roomId, upToMessageId) => emitWithAck("mark-room-read", { roomId, ...(upToMessageId ? { upToMessageId } : {}) }),
+    [emitWithAck]
   );
 
   return useMemo(
@@ -167,7 +166,7 @@ export const useWebSocket = (userId, refreshAccessToken) => {
       joinChatRoom,
       leaveChatRoom,
       sendChatMessage,
-      markMessageAsRead,
+      markRoomRead,
       fetchChatRooms,
       fetchMessages,
       fetchUnreadCount,
@@ -181,7 +180,7 @@ export const useWebSocket = (userId, refreshAccessToken) => {
       joinChatRoom,
       leaveChatRoom,
       sendChatMessage,
-      markMessageAsRead,
+      markRoomRead,
       fetchChatRooms,
       fetchMessages,
       fetchUnreadCount,

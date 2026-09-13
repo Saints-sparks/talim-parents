@@ -139,6 +139,54 @@ export const mergeMessages = (existing = [], incoming = []) => {
   return [...Array.from(saved.values()).sort(compareMessages), ...unsent];
 };
 
+/** True when `message` is at or before `position` ({ id, time }) in the server's (createdAt, _id) order. */
+export const isAtOrBefore = (message, position) => {
+  if (!message || !position) return false;
+  const time = timeOf(message);
+  return time < position.time || (time === position.time && String(message._id) <= String(position.id));
+};
+
+/** The newest stored message from someone else: what `mark-room-read` acknowledges. */
+export const newestIncomingMessage = (messages = []) => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]._id && !messages[index].isOwn) return messages[index];
+  }
+  return null;
+};
+
+/**
+ * `messages-read`: adds the reader to `readBy` on messages from other senders
+ * created up to `readAt`. Returns the same array when nothing changes.
+ */
+export const applyMessagesRead = (messages = [], { userId, readAt } = {}) => {
+  const reader = toId(userId);
+  const limit = new Date(readAt || "").getTime();
+  if (!reader || Number.isNaN(limit)) return messages;
+
+  let changed = false;
+  const next = messages.map((message) => {
+    if (!message._id || message.senderId === reader || timeOf(message) > limit) return message;
+    if ((message.readBy || []).includes(reader)) return message;
+    changed = true;
+    return { ...message, readBy: [...(message.readBy || []), reader] };
+  });
+  return changed ? next : messages;
+};
+
+/**
+ * Delivery state of an own message: `pending` (not acked), `failed`, `sent`
+ * (stored) or `read` (1:1, the other person is in `readBy`). `readCount` is
+ * `readBy` without the sender, for groups.
+ */
+export const receiptOf = (message, { isGroup = false, otherUserId = "", currentUserId = "" } = {}) => {
+  if (!message?.isOwn) return null;
+  if (message.status === "failed") return { state: "failed", readCount: 0 };
+  if (message.status === "pending" || !message._id) return { state: "pending", readCount: 0 };
+  const readers = (message.readBy || []).filter((id) => id && id !== message.senderId && id !== currentUserId);
+  const isRead = !isGroup && Boolean(otherUserId) && readers.includes(otherUserId);
+  return { state: isRead ? "read" : "sent", readCount: readers.length };
+};
+
 /** The newest message the server has stored, used as the cursor to catch up after a reconnect. */
 export const newestSavedMessageId = (messages = []) => {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
