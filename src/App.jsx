@@ -24,6 +24,7 @@ import { AuthProvider } from './services/auth.services';
 import { SelectedStudentProvider } from './contexts/SelectedStudentContext';
 import { ParentOnboardingProvider, useParentOnboarding } from './contexts/ParentOnboardingContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
+import { ChatAlertsProvider } from './contexts/ChatAlertsContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ParentGuideTour from './Components/onboarding/ParentGuideTour';
 import { ToastViewport } from './Components/CustomToast';
@@ -74,6 +75,7 @@ function App() {
         <ParentOnboardingProvider>
           <WebSocketProvider>
             <Router>
+              <ChatAlertsProvider>
               <OnboardingRouteTracker />
               <ToastViewport />
               <Routes>
@@ -102,6 +104,7 @@ function App() {
 
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </ChatAlertsProvider>
             </Router>
           </WebSocketProvider>
         </ParentOnboardingProvider>

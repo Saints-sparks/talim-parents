@@ -16,6 +16,7 @@ import logo from "../assets/logo.svg";
 
 import { useAuth } from "../services/auth.services"; // adjust path if needed
 import { useSchool } from "../hooks/useSchools";     // import the hook
+import { useChatAlerts } from "../contexts/ChatAlertsContext";
 
 export default function Sidebar() {
   const location = useLocation();
@@ -23,6 +24,7 @@ export default function Sidebar() {
 
   const { logout, loading: authLoading, error: authError } = useAuth();
   const { school, loading: schoolLoading, error: schoolError } = useSchool();
+  const { unreadCount: unreadMessages } = useChatAlerts();
   const [isOpen, setIsOpen] = useState(false); // Mobile toggle
   const [isMobile, setIsMobile] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false); // Desktop toggle
@@ -58,7 +60,7 @@ export default function Sidebar() {
     { path: "/timetable", name: "Timetable", icon: <IoMdTime className="text-[24px]" /> },
     { path: "/result", name: "Results", icon: <SlBadge className="text-[24px]" /> },
     { path: "/requestleave", name: "Leave Requests", icon: <LeaveRequestIcon className="text-[24px]" /> },
-    { path: "/messages", name: "Messages", icon: <TbMessageDots className="text-[24px]" /> },
+    { path: "/messages", name: "Messages", icon: <TbMessageDots className="text-[24px]" />, badge: unreadMessages },
     { path: "/notifications", name: "Notifications", icon: <IoMdNotificationsOutline className="text-[24px]" /> },
     { path: "/payments", name: "Payments", icon: <MdOutlinePayments className="text-[24px]" /> },
     { path: "/settings", name: "Settings", icon: <MdOutlineSettings className="text-[24px]" /> },
@@ -154,7 +156,7 @@ export default function Sidebar() {
         {/* Navigation Menu */}
         <nav className="flex flex-col flex-grow mt-[10px]" aria-label="Main navigation">
           <ul className="space-y-0">
-            {menuItems.map(({ path, name, icon }) => (
+            {menuItems.map(({ path, name, icon, badge }) => (
               <li key={path}>
                 <Link
                   to={path}
@@ -162,9 +164,20 @@ export default function Sidebar() {
                     location.pathname === path ? "bg-[#bfccd8] text-[#184674]" : "hover:bg-gray-50"
                   }`}
                   onClick={handleLinkClick}
+                  aria-label={badge > 0 ? `${name}, ${badge} unread` : undefined}
                 >
-                  <span className="mr-3">{icon}</span>
+                  <span className="relative mr-3">
+                    {icon}
+                    {badge > 0 && isCollapsed && (
+                      <span className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-red-500" />
+                    )}
+                  </span>
                   {!isCollapsed && name}
+                  {badge > 0 && !isCollapsed && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </Link>
               </li>
             ))}

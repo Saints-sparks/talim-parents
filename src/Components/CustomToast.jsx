@@ -10,10 +10,11 @@ const normalizeOptions = (titleOrOptions, duration) => {
   return {
     title: titleOrOptions?.title,
     duration: titleOrOptions?.duration ?? duration,
+    onClick: titleOrOptions?.onClick,
   };
 };
 
-function Toast({ id, type, title, message, duration = 4000, onClose }) {
+function Toast({ id, type, title, message, duration = 4000, onClose, onClick }) {
   const [isVisible, setIsVisible] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -87,7 +88,26 @@ function Toast({ id, type, title, message, duration = 4000, onClose }) {
         <Icon className={`h-6 w-6 ${config.iconColor}`} />
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div
+        className={`min-w-0 flex-1 ${onClick ? "cursor-pointer" : ""}`}
+        {...(onClick
+          ? {
+              role: "button",
+              tabIndex: 0,
+              onClick: () => {
+                onClick();
+                handleClose();
+              },
+              onKeyDown: (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onClick();
+                  handleClose();
+                }
+              },
+            }
+          : {})}
+      >
         {title && (
           <h4 className="mb-1 text-sm font-semibold leading-tight text-gray-900">
             {title}
