@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../services/auth.services";
 import { notificationService } from "../services/notification.services";
+import { useWebSocketContextSafe } from "../contexts/WebSocketContext";
 
 const DEFAULT_COUNTS = {
   all: 0,
@@ -47,32 +48,58 @@ const hasReadByUser = (readBy, userId) => {
   return readBy.some((reader) => getUserId(reader) === userId || reader === userId);
 };
 
+const TYPE_CATEGORIES = {
+  chat_message: "messages",
+  announcement: "announcement",
+  attendance_alert: "attendance",
+  fee_reminder: "payments",
+  fee_overdue: "payments",
+  payment_confirmed: "payments",
+  receipt_generated: "payments",
+  result_published: "grading",
+  grade_released: "grading",
+  timetable_update: "academics",
+  assessment_reminder: "academics",
+  class_assigned: "academics",
+  class_unassigned: "academics",
+  course_assigned: "academics",
+  course_unassigned: "academics",
+  assignment_due: "resources",
+  assignment_or_resource: "resources",
+  security_alert: "account",
+  login_alert: "account",
+  system_alert: "other",
+  system_notice: "other",
+  app_update: "other",
+};
+
 const textBlob = (item) =>
-  [
-    item?.type,
-    item?.title,
-    item?.message,
-    item?.content,
-    item?.body,
-    item?.category,
-    item?.metadata?.category,
-    item?.metadata?.module,
-  ]
+  [item?.title, item?.message, item?.content, item?.body]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
+const hasWord = (text, pattern) => new RegExp(`\\b(?:${pattern})\\b`).test(text);
+
 const inferCategory = (item, fallback = "other") => {
+  // The server's type decides; text matching is only for items without a known type.
+  const type = String(item?.type || "").toLowerCase();
+  if (TYPE_CATEGORIES[type]) return TYPE_CATEGORIES[type];
+  const declared = item?.category || item?.metadata?.category;
+  if (declared && Object.prototype.hasOwnProperty.call(DEFAULT_COUNTS, declared) && !["all", "unread"].includes(declared)) {
+    return declared;
+  }
+
   const text = textBlob(item);
-  if (text.includes("attendance") || text.includes("absence") || text.includes("absent")) return "attendance";
-  if (text.includes("fee") || text.includes("payment") || text.includes("invoice")) return "payments";
-  if (text.includes("grade") || text.includes("result") || text.includes("report")) return "grading";
-  if (text.includes("assignment") || text.includes("academic") || text.includes("curriculum")) return "academics";
-  if (text.includes("resource") || text.includes("material") || text.includes("pdf")) return "resources";
-  if (text.includes("message") || text.includes("chat")) return "messages";
-  if (text.includes("event") || text.includes("exhibition") || text.includes("meeting")) return "event";
-  if (text.includes("account") || text.includes("password") || text.includes("security")) return "account";
-  if (text.includes("announcement")) return "announcement";
+  if (hasWord(text, "attendance|absences?|absent")) return "attendance";
+  if (hasWord(text, "fees?|payments?|invoices?")) return "payments";
+  if (hasWord(text, "grades?|results?|report cards?")) return "grading";
+  if (hasWord(text, "assignments?|academics?|curriculum")) return "academics";
+  if (hasWord(text, "resources?|materials?|pdf")) return "resources";
+  if (hasWord(text, "messages?|chats?")) return "messages";
+  if (hasWord(text, "events?|exhibitions?|meetings?")) return "event";
+  if (hasWord(text, "account|password|security")) return "account";
+  if (hasWord(text, "announcements?")) return "announcement";
   return fallback;
 };
 
@@ -242,6 +269,15 @@ export const useNotifications = () => {
     const interval = setInterval(fetchNotifications, 1000 * 60 * 5);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // A live in-app notification refreshes the list and the bell count.
+  const subscribe = useWebSocketContextSafe()?.on;
+  useEffect(() => {
+    if (!subscribe) return undefined;
+    return subscribe("notification", (notification) => {
+      if (notification?.type !== "chat_message") fetchNotifications();
+    });
+  }, [subscribe, fetchNotifications]);
 
   const markAsRead = useCallback(
     async (notificationId) => {
