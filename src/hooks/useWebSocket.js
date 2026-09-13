@@ -37,9 +37,11 @@ export const useWebSocket = () => {
       setConnectionStatus("connecting");
       userIdRef.current = userId;
 
+      // The server authenticates the socket with the access token. The callback runs
+      // on every connect and reconnect, so a refreshed token is always used.
       const socket = io(API_BASE_URL, {
+        auth: (cb) => cb({ token: localStorage.getItem("access_token") }),
         query: { userId },
-        auth: { userId },
         transports: ["websocket", "polling"],
         timeout: 20000,
         reconnection: false,
