@@ -489,7 +489,7 @@ const NOTIF_BACKEND_FIELDS = [
   { key: "messagesEnabled",      label: "Messages",                     description: "New messages from teachers and school staff" },
   { key: "feesEnabled",          label: "Fees & Payment Reminders",     description: "Fee due dates and payment confirmations" },
   { key: "resourcesEnabled",     label: "Resources & Assignments",      description: "New learning materials and assignment notices" },
-  { key: "pushEnabled",          label: "Push notifications",           description: "Master switch for all push alerts on this device" },
+  { key: "pushEnabled",          label: "Push notifications",           description: "Alerts on your phone from the Talim mobile app" },
   { key: "emailEnabled",         label: "Email notifications",          description: "Receive the above updates via email" },
 ];
 

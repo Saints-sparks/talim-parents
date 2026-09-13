@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types, react-hooks/exhaustive-deps */
 import { createContext, createElement, useContext, useMemo, useState } from 'react';
 import axios from 'axios';
+import { unsubscribeWebPushOnLogout } from '../hooks/usePushNotifications';
 
 // The API origin comes from the environment (Vite inlines VITE_* at build time),
 // so each deployment points at its own backend and a missing value fails the build.
@@ -138,6 +139,11 @@ export const AuthProvider = ({ children }) => {
     const currentParentId = parentId;
 
     try {
+      // While the token is still valid: this browser stops receiving this user's pushes.
+      await Promise.race([
+        unsubscribeWebPushOnLogout(currentParentId),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
       if (authToken) {
         await axios.post(
           `${API_BASE_URL}/auth/logout`,

@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { API_BASE_URL } from "../services/auth.services";
+import { API_BASE_URL, useAuth } from "../services/auth.services";
 
-const STORAGE_KEY = "talim:push-subscribed";
+const LEGACY_STORAGE_KEY = "talim:push-subscribed";
 const SW_PATH = "/sw.js";
+
+// The "subscribed" flag belongs to one user, so the next person on this browser starts switched off.
+const storageKeyFor = (userId) => `talim:push-subscribed:${userId}`;
+
+const isPushSupported = () =>
+  typeof window !== "undefined" &&
+  "serviceWorker" in navigator &&
+  "PushManager" in window &&
+  "Notification" in window;
 
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -20,7 +29,7 @@ function getAccessToken() {
 }
 
 async function authFetch(url, options = {}) {
-  const token = getAccessToken();
+  const token = options.token ?? getAccessToken();
   return fetch(url, {
     ...options,
     headers: {
@@ -31,19 +40,50 @@ async function authFetch(url, options = {}) {
   });
 }
 
-/** Sync pushEnabled to NotificationPreference — best-effort, never throws. */
-async function syncPushPreference(enabled) {
+/** Sync webPushEnabled (browsers only; pushEnabled is the phone switch) — best-effort, never throws. */
+async function syncWebPushPreference(enabled) {
   try {
     await authFetch(`${API_BASE_URL}/notifications/preferences`, {
       method: "PATCH",
-      body: JSON.stringify({ pushEnabled: enabled }),
+      body: JSON.stringify({ webPushEnabled: enabled }),
     });
   } catch {
     // Non-fatal
   }
 }
 
+async function getCurrentSubscription() {
+  const registration = await navigator.serviceWorker.getRegistration(SW_PATH);
+  return (await registration?.pushManager.getSubscription()) || null;
+}
+
+/**
+ * Removes this browser's push subscription on sign-out, so the next user of
+ * the browser never receives the previous user's notifications. Call it while
+ * the access token is still valid. Never throws.
+ */
+export async function unsubscribeWebPushOnLogout(userId) {
+  if (userId) localStorage.removeItem(storageKeyFor(userId));
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  if (!isPushSupported()) return;
+
+  try {
+    const subscription = await getCurrentSubscription();
+    if (!subscription) return;
+    const { endpoint } = subscription;
+    await subscription.unsubscribe().catch(() => {});
+    await authFetch(`${API_BASE_URL}/notifications/web-push/subscribe`, {
+      method: "DELETE",
+      body: JSON.stringify({ endpoint }),
+    }).catch(() => {});
+  } catch {
+    // Signing out must never fail because of push cleanup.
+  }
+}
+
 export function usePushNotifications() {
+  const { user, parentId } = useAuth();
+  const userId = user?.userId || user?._id || user?.id || parentId;
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -51,16 +91,31 @@ export function usePushNotifications() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (
-      "serviceWorker" in navigator &&
-      "PushManager" in window &&
-      "Notification" in window
-    ) {
-      setIsSupported(true);
-      setPermission(Notification.permission);
-      setIsSubscribed(localStorage.getItem(STORAGE_KEY) === "true");
-    }
-  }, []);
+    if (!isPushSupported()) return undefined;
+    let cancelled = false;
+    setIsSupported(true);
+    setPermission(Notification.permission);
+
+    // The toggle reflects the browser's real subscription, not just a stored flag.
+    getCurrentSubscription()
+      .then((subscription) => {
+        if (cancelled || !userId) return;
+        const key = storageKeyFor(userId);
+        // One-time move from the old flag shared by every user on this browser.
+        if (subscription && localStorage.getItem(LEGACY_STORAGE_KEY) === "true") {
+          localStorage.setItem(key, "true");
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+        }
+        setIsSubscribed(Boolean(subscription) && localStorage.getItem(key) === "true");
+      })
+      .catch(() => {
+        if (!cancelled) setIsSubscribed(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const getVapidKey = useCallback(async () => {
     const res = await fetch(`${API_BASE_URL}/notifications/web-push/vapid-public-key`);
@@ -120,29 +175,26 @@ export function usePushNotifications() {
         throw new Error(body?.message || "Failed to save push subscription on server");
       }
 
-      localStorage.setItem(STORAGE_KEY, "true");
+      if (userId) localStorage.setItem(storageKeyFor(userId), "true");
       setIsSubscribed(true);
 
-      // Sync pushEnabled=true to NotificationPreference
-      await syncPushPreference(true);
+      await syncWebPushPreference(true);
     } catch (err) {
       setError(err.message || "Failed to enable push notifications");
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [getVapidKey, getOrRegisterSW]);
+  }, [getVapidKey, getOrRegisterSW, userId]);
 
   const unsubscribe = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Sync pushEnabled=false to NotificationPreference before removing subscription
-      await syncPushPreference(false);
+      await syncWebPushPreference(false);
 
-      const reg = await navigator.serviceWorker.getRegistration(SW_PATH);
-      const subscription = await reg?.pushManager.getSubscription();
+      const subscription = await getCurrentSubscription();
 
       if (subscription) {
         await authFetch(`${API_BASE_URL}/notifications/web-push/subscribe`, {
@@ -152,7 +204,8 @@ export function usePushNotifications() {
         await subscription.unsubscribe();
       }
 
-      localStorage.removeItem(STORAGE_KEY);
+      if (userId) localStorage.removeItem(storageKeyFor(userId));
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
       setIsSubscribed(false);
     } catch (err) {
       setError(err.message || "Failed to disable push notifications");
@@ -160,7 +213,7 @@ export function usePushNotifications() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   return { isSupported, permission, isSubscribed, isLoading, error, subscribe, unsubscribe };
 }
