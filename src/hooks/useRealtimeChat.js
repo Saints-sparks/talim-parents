@@ -69,9 +69,12 @@ export const useRealtimeChat = () => {
   const backfillCursorRef = useRef({});
   const loadingOlderRef = useRef(new Set());
   const markedReadRef = useRef(new Set());
+  const joinsInFlightRef = useRef(new Map());
+  const webSocketRef = useRef(webSocket);
 
   threadsRef.current = threads;
   roomsRef.current = rawRooms;
+  webSocketRef.current = webSocket;
 
   const updateThread = useCallback((roomId, updater) => {
     if (!roomId) return;
@@ -172,7 +175,7 @@ export const useRealtimeChat = () => {
         error: null,
       }));
 
-      webSocket.joinChatRoom(roomId).catch((error) => {
+      const request = webSocket.joinChatRoom(roomId).catch((error) => {
         if (joinedRoomIdRef.current === roomId) joinedRoomIdRef.current = null;
         // Offline: the join runs again on reconnect.
         if (error.code === "OFFLINE" || selectedRoomIdRef.current !== roomId) return;
@@ -180,9 +183,22 @@ export const useRealtimeChat = () => {
           thread.historyLoaded ? thread : { ...thread, status: "error", error: "Couldn't load this chat" }
         );
       });
+      joinsInFlightRef.current.set(roomId, request);
+      request.finally(() => {
+        if (joinsInFlightRef.current.get(roomId) === request) joinsInFlightRef.current.delete(roomId);
+      });
     },
     [webSocket, updateThread]
   );
+
+  // Leaves once any join still in flight has settled (otherwise the server could finish
+  // the join after the leave), and not at all if the room was reopened meanwhile.
+  const leaveRoom = useCallback((roomId) => {
+    if (!roomId) return;
+    (joinsInFlightRef.current.get(roomId) || Promise.resolve()).then(() => {
+      if (selectedRoomIdRef.current !== roomId) webSocketRef.current?.leaveChatRoom(roomId);
+    });
+  }, []);
 
   const deliver = useCallback(
     async (clientMessageId) => {
@@ -371,14 +387,13 @@ export const useRealtimeChat = () => {
     });
   }, [selectedRoomId, selectedThread.messages, isPageVisible, isConnected, currentUserId]);
 
-  const webSocketRef = useRef(webSocket);
-  webSocketRef.current = webSocket;
-
   // Leaving the page leaves the room, so the server treats it as closed (and pushes again).
   useEffect(
     () => () => {
-      if (joinedRoomIdRef.current) webSocketRef.current?.leaveChatRoom(joinedRoomIdRef.current);
+      const roomId = joinedRoomIdRef.current;
+      selectedRoomIdRef.current = null;
       joinedRoomIdRef.current = null;
+      leaveRoom(roomId);
     },
     []
   );
@@ -389,12 +404,13 @@ export const useRealtimeChat = () => {
       const nextRoomId = roomId || null;
       if (nextRoomId === selectedRoomIdRef.current && (!nextRoomId || joinedRoomIdRef.current === nextRoomId)) return;
 
-      if (joinedRoomIdRef.current && joinedRoomIdRef.current !== nextRoomId) {
-        webSocket?.leaveChatRoom(joinedRoomIdRef.current);
+      const previousRoomId = joinedRoomIdRef.current;
+      selectedRoomIdRef.current = nextRoomId;
+      if (previousRoomId && previousRoomId !== nextRoomId) {
         joinedRoomIdRef.current = null;
+        leaveRoom(previousRoomId);
       }
 
-      selectedRoomIdRef.current = nextRoomId;
       setSelectedRoomId(nextRoomId);
       if (!nextRoomId) return;
 
@@ -403,7 +419,7 @@ export const useRealtimeChat = () => {
       setRawRooms((rooms) => rooms.map((room) => (roomIdOf(room) === nextRoomId ? { ...room, unreadCount: 0 } : room)));
       joinRoom(nextRoomId);
     },
-    [webSocket?.leaveChatRoom, joinRoom, updateThread]
+    [leaveRoom, joinRoom, updateThread]
   );
 
   const retryJoin = useCallback(() => {
