@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { ArrowLeft, MoreVertical, Phone, Video } from "lucide-react";
 
-function ChatHeader({ selectedChat, setShowSidebar, onToggleDetails }) {
+function ChatHeader({ selectedChat, onBack, onToggleDetails }) {
   if (!selectedChat) return null;
 
   return (
@@ -10,7 +10,7 @@ function ChatHeader({ selectedChat, setShowSidebar, onToggleDetails }) {
         <button
           type="button"
           className="rounded-lg p-2 text-[#667085] hover:bg-[#F2F4F7] md:hidden"
-          onClick={() => setShowSidebar(true)}
+          onClick={onBack}
           aria-label="Back to conversations"
         >
           <ArrowLeft className="h-5 w-5" />

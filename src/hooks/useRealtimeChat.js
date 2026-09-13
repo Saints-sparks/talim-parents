@@ -1,11 +1,34 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "../Components/CustomToast";
 import { useWebSocketContextSafe } from "../contexts/WebSocketContext";
 import { useAuth } from "../services/auth.services";
+import { uploadChatAttachment } from "../services/chat.services";
 import { generateColorFromString, getUserInitials } from "../lib/colorUtils";
+import {
+  createClientMessageId,
+  mergeMessages,
+  messageTypeFor,
+  newestSavedMessageId,
+  normalizeMessage,
+  toId,
+} from "../lib/chatMessages";
 
-const asId = (value) => value?._id || value?.userId || value?.id || value?.toString?.() || "";
+const PAGE_SIZE = 20;
+const BACKFILL_PAGE_SIZE = 50;
+const MAX_BACKFILL_PAGES = 10;
+
+const EMPTY_THREAD = {
+  messages: [],
+  historyLoaded: false,
+  hasMore: false,
+  nextCursor: null,
+  status: "idle",
+  error: null,
+  loadingOlder: false,
+  olderError: null,
+};
+
+const roomIdOf = (room) => toId(room?._id) || toId(room?.roomId) || toId(room?.id);
 
 const getParticipantName = (participant) =>
   [participant?.firstName, participant?.lastName].filter(Boolean).join(" ") ||
@@ -13,87 +36,86 @@ const getParticipantName = (participant) =>
   participant?.email ||
   "User";
 
-const normalizeAttachment = (attachment) => {
-  if (!attachment) return null;
-  if (typeof attachment === "string") {
-    return { url: attachment, name: attachment.split("/").pop() || "Attachment", type: "file" };
-  }
-  return {
-    ...attachment,
-    url: attachment.url || attachment.secure_url || attachment.fileURL,
-    name: attachment.name || attachment.originalName || attachment.fileName || "Attachment",
-    mimeType: attachment.mimeType || attachment.mimetype,
-    type: attachment.type || "file",
-  };
-};
+const roomTime = (room) => new Date(room?.lastMessage?.createdAt || room?.updatedAt || 0).getTime();
+const sortRooms = (rooms) => [...rooms].sort((a, b) => roomTime(b) - roomTime(a));
 
-export const normalizeMessage = (message, currentUserId, fallbackRoomId) => {
-  const attachments = (message?.attachments || [])
-    .map(normalizeAttachment)
-    .filter((attachment) => attachment?.url);
-  const primaryAttachment = attachments[0];
-
-  return {
-    id: message?._id || message?.id || `${message?.roomId || fallbackRoomId}-${message?.timestamp}`,
-    _id: message?._id || message?.id,
-    senderId: asId(message?.senderId),
-    senderName: message?.senderName || getParticipantName(message?.senderId),
-    sender: asId(message?.senderId) === currentUserId ? "user" : "other",
-    senderType: asId(message?.senderId) === currentUserId ? "self" : "other",
-    text: message?.content || message?.text || "",
-    content: message?.content || message?.text || "",
-    roomId: message?.roomId || message?.chatRoomId || fallbackRoomId,
-    type: attachments.length ? "file" : message?.type || "text",
-    messageType: message?.type || (primaryAttachment?.type === "audio" ? "voice" : "text"),
-    fileURL: primaryAttachment?.url,
-    fileType: primaryAttachment?.mimeType || primaryAttachment?.type || "",
-    fileName: primaryAttachment?.name,
-    attachments,
-    duration: message?.duration || primaryAttachment?.duration,
-    timestamp: message?.timestamp
-      ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(
-          new Date(message.timestamp)
-        )
-      : "",
-    rawTimestamp: message?.timestamp || message?.createdAt,
-    readBy: message?.readBy || [],
-    isRead: Boolean(message?.isRead),
-    userAvatar: message?.senderAvatar || message?.userAvatar,
-  };
+const attachmentTypeOfFile = (file) => {
+  const mime = file?.type || "";
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime.startsWith("video/")) return "video";
+  return "file";
 };
 
 export const useRealtimeChat = () => {
   const { user } = useAuth();
   const currentUserId = user?.userId || user?._id || user?.id;
   const webSocket = useWebSocketContextSafe();
-  const selectedRoomIdRef = useRef(null);
-  const mountedRef = useRef(true);
+  const isConnected = Boolean(webSocket?.isConnected);
 
-  const [chatRooms, setChatRooms] = useState([]);
-  const [messagesByRoom, setMessagesByRoom] = useState({});
+  const [rawRooms, setRawRooms] = useState([]);
+  const [roomsStatus, setRoomsStatus] = useState("idle");
+  const [roomsError, setRoomsError] = useState(null);
+  const [threads, setThreads] = useState({});
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [error, setError] = useState(null);
+  const [isPageVisible, setIsPageVisible] = useState(() => document.visibilityState === "visible");
+
+  const selectedRoomIdRef = useRef(null);
+  const joinedRoomIdRef = useRef(null);
+  const threadsRef = useRef(threads);
+  const roomsRef = useRef(rawRooms);
+  // clientMessageId -> { roomId, text, file, type, duration, attachments, inFlight, failed }
+  const outboxRef = useRef(new Map());
+  const backfillCursorRef = useRef({});
+  const loadingOlderRef = useRef(new Set());
+  const markedReadRef = useRef(new Set());
+
+  threadsRef.current = threads;
+  roomsRef.current = rawRooms;
+
+  const updateThread = useCallback((roomId, updater) => {
+    if (!roomId) return;
+    setThreads((current) => {
+      const previous = current[roomId] || EMPTY_THREAD;
+      const next = updater(previous);
+      return next === previous ? current : { ...current, [roomId]: next };
+    });
+  }, []);
+
+  const mergeIntoThread = useCallback(
+    (roomId, messages) => updateThread(roomId, (thread) => ({ ...thread, messages: mergeMessages(thread.messages, messages) })),
+    [updateThread]
+  );
+
+  const setMessageStatus = useCallback(
+    (roomId, clientMessageId, status, error = null) =>
+      updateThread(roomId, (thread) => ({
+        ...thread,
+        messages: thread.messages.map((message) =>
+          message.clientMessageId === clientMessageId && !message._id ? { ...message, status, error } : message
+        ),
+      })),
+    [updateThread]
+  );
 
   const transformRoom = useCallback(
     (room) => {
       const participants = room?.participants || [];
+      const roomId = roomIdOf(room);
       const otherParticipant =
         room?.type === "one_to_one"
-          ? participants.find((participant) => asId(participant) !== currentUserId)
+          ? participants.find((participant) => (toId(participant?._id) || toId(participant?.userId)) !== currentUserId)
           : null;
-      const displayName = otherParticipant
-        ? getParticipantName(otherParticipant)
-        : room?.name || "Chat Room";
+      const displayName = otherParticipant ? getParticipantName(otherParticipant) : room?.name || "Chat Room";
       const avatar = otherParticipant?.userAvatar || otherParticipant?.avatar;
 
       return {
         ...room,
-        id: room.roomId || room._id || room.id,
-        roomId: room.roomId || room._id || room.id,
+        id: roomId,
+        roomId,
         displayName,
         profilePic: avatar,
+        otherParticipant,
         isOnline: Boolean(otherParticipant?.isOnline),
         role: otherParticipant?.role,
         participantCount: participants.length,
@@ -105,176 +127,382 @@ export const useRealtimeChat = () => {
               value: getUserInitials(displayName),
               bgColor: generateColorFromString(displayName),
             },
-        lastMessage: room?.lastMessage,
-        unreadCount: room?.roomId === selectedRoomIdRef.current ? 0 : room?.unreadCount || 0,
+        unreadCount: roomId === selectedRoomId ? 0 : room?.unreadCount || 0,
       };
     },
-    [currentUserId]
+    [currentUserId, selectedRoomId]
   );
 
-  useEffect(() => {
-    selectedRoomIdRef.current = selectedRoomId;
-  }, [selectedRoomId]);
+  const refreshChatRooms = useCallback(() => {
+    if (!webSocket) return;
+    setRoomsStatus((status) => (status === "ready" ? status : "loading"));
+    webSocket.fetchChatRooms().catch((error) => {
+      if (error.code === "OFFLINE") return;
+      setRoomsError("Couldn't load your conversations");
+      setRoomsStatus((status) => (status === "ready" ? status : "error"));
+    });
+  }, [webSocket]);
 
+  const fetchNewerMessages = useCallback(
+    (roomId, cursor, page = 0) => {
+      if (!webSocket || !cursor || page >= MAX_BACKFILL_PAGES) return;
+      webSocket
+        .fetchMessages({ roomId, cursor, direction: "after", limit: BACKFILL_PAGE_SIZE })
+        .then((ack) => {
+          if (ack?.hasMore && ack.prevCursor && selectedRoomIdRef.current === roomId) {
+            fetchNewerMessages(roomId, ack.prevCursor, page + 1);
+          }
+        })
+        .catch(() => {
+          // A later reconnect or rejoin catches up again.
+        });
+    },
+    [webSocket]
+  );
+
+  const joinRoom = useCallback(
+    (roomId) => {
+      if (!webSocket || !roomId) return;
+      joinedRoomIdRef.current = roomId;
+      // Whatever arrived while this room wasn't joined is fetched after the join lands.
+      backfillCursorRef.current[roomId] = newestSavedMessageId(threadsRef.current[roomId]?.messages);
+      updateThread(roomId, (thread) => ({
+        ...thread,
+        status: thread.historyLoaded ? "ready" : "loading",
+        error: null,
+      }));
+
+      webSocket.joinChatRoom(roomId).catch((error) => {
+        if (joinedRoomIdRef.current === roomId) joinedRoomIdRef.current = null;
+        // Offline: the join runs again on reconnect.
+        if (error.code === "OFFLINE" || selectedRoomIdRef.current !== roomId) return;
+        updateThread(roomId, (thread) =>
+          thread.historyLoaded ? thread : { ...thread, status: "error", error: "Couldn't load this chat" }
+        );
+      });
+    },
+    [webSocket, updateThread]
+  );
+
+  const deliver = useCallback(
+    async (clientMessageId) => {
+      const entry = outboxRef.current.get(clientMessageId);
+      if (!entry || entry.inFlight || !webSocket) return;
+      entry.inFlight = true;
+
+      try {
+        if (entry.file && !entry.attachments) {
+          const uploaded = await uploadChatAttachment(entry.file);
+          entry.attachments = [entry.duration ? { ...uploaded, duration: entry.duration } : uploaded];
+        }
+
+        const attachments = entry.attachments || [];
+        const payload = {
+          roomId: entry.roomId,
+          text: entry.text,
+          type: entry.type || messageTypeFor(attachments),
+          clientMessageId,
+          ...(attachments.length ? { attachments } : {}),
+          ...(entry.duration ? { duration: entry.duration } : {}),
+        };
+
+        const ack = await webSocket.sendChatMessage(payload);
+        outboxRef.current.delete(clientMessageId);
+        if (ack?.message) {
+          mergeIntoThread(entry.roomId, [normalizeMessage(ack.message, currentUserId, entry.roomId)]);
+        }
+      } catch (error) {
+        entry.inFlight = false;
+        // Typed offline: stays pending and is sent on reconnect.
+        if (error.code === "OFFLINE" || !outboxRef.current.has(clientMessageId)) return;
+        entry.failed = true;
+        const message = error.isAxiosError
+          ? error.response?.data?.message || "Upload failed"
+          : error.ack
+          ? error.message
+          : "Not sent";
+        setMessageStatus(entry.roomId, clientMessageId, "failed", message);
+      }
+    },
+    [webSocket, currentUserId, mergeIntoThread, setMessageStatus]
+  );
+
+  // Every connect, first or reconnect: rejoin the open room (then backfill), refresh the list, flush unsent messages.
   useEffect(() => {
-    if (!webSocket?.isConnected || !currentUserId) {
-      setIsLoading(false);
+    if (!isConnected) {
+      joinedRoomIdRef.current = null;
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
-    webSocket.fetchChatRooms();
-  }, [webSocket?.isConnected, currentUserId]);
-
-  useEffect(() => {
-    if (!webSocket?.isConnected) return undefined;
-
-    return webSocket.onChatRoomsUpdate((data) => {
-      if (!mountedRef.current) return;
-      if (!Array.isArray(data?.rooms)) {
-        setError("Unable to load chat rooms");
-        setIsLoading(false);
-        return;
-      }
-
-      const rooms = data.rooms.map(transformRoom).sort((a, b) => {
-        const aTime = new Date(a.lastMessage?.createdAt || a.updatedAt || 0).getTime();
-        const bTime = new Date(b.lastMessage?.createdAt || b.updatedAt || 0).getTime();
-        return bTime - aTime;
-      });
-
-      setChatRooms(rooms);
-      setIsLoading(false);
-      setError(null);
+    if (selectedRoomIdRef.current) joinRoom(selectedRoomIdRef.current);
+    refreshChatRooms();
+    outboxRef.current.forEach((entry, clientMessageId) => {
+      if (!entry.failed) deliver(clientMessageId);
     });
-  }, [webSocket?.isConnected, webSocket?.onChatRoomsUpdate, transformRoom]);
+  }, [isConnected]);
 
   useEffect(() => {
-    if (!webSocket?.isConnected) return undefined;
+    if (!webSocket) return undefined;
 
-    return webSocket.onChatRoomJoined((data) => {
-      if (!mountedRef.current) return;
-      const roomMessages = (data?.messages || [])
-        .map((message) => normalizeMessage(message, currentUserId, data.roomId))
-        .reverse();
+    const unsubscribers = [
+      webSocket.on("chat-rooms-update", (data) => {
+        if (!Array.isArray(data?.rooms)) return;
+        setRawRooms(sortRooms(data.rooms));
+        setRoomsStatus("ready");
+        setRoomsError(null);
+      }),
 
-      setMessagesByRoom((current) => ({ ...current, [data.roomId]: roomMessages }));
-      setIsLoadingMessages(false);
+      webSocket.on("chat-room-joined", (data) => {
+        const roomId = toId(data?.roomId);
+        // A late answer for a room the user already left.
+        if (!roomId || roomId !== selectedRoomIdRef.current) return;
 
-      roomMessages
-        .filter((message) => message.senderId !== currentUserId && !message.readBy?.includes(currentUserId))
-        .forEach((message) => webSocket.markMessageAsRead(message._id));
-    });
-  }, [webSocket?.isConnected, webSocket?.onChatRoomJoined, webSocket?.markMessageAsRead, currentUserId]);
+        const incoming = (data.messages || []).map((message) => normalizeMessage(message, currentUserId, roomId));
+        updateThread(roomId, (thread) => ({
+          ...thread,
+          messages: mergeMessages(thread.messages, incoming),
+          // Keep the oldest cursor already reached; the join only returns the newest page.
+          hasMore: thread.historyLoaded ? thread.hasMore : Boolean(data.hasMore),
+          nextCursor: thread.historyLoaded ? thread.nextCursor : data.nextCursor || null,
+          historyLoaded: true,
+          status: "ready",
+          error: null,
+        }));
 
-  useEffect(() => {
-    if (!webSocket?.isConnected) return undefined;
+        if (data.room || data.participants) {
+          setRawRooms((rooms) => {
+            const index = rooms.findIndex((room) => roomIdOf(room) === roomId);
+            const base = index >= 0 ? rooms[index] : {};
+            const updated = {
+              ...base,
+              ...(data.room || {}),
+              participants: data.participants?.length ? data.participants : data.room?.participants || base.participants,
+              unreadCount: 0,
+            };
+            if (index < 0) return data.room ? sortRooms([...rooms, updated]) : rooms;
+            const next = [...rooms];
+            next[index] = updated;
+            return next;
+          });
+        }
 
-    return webSocket.onMessagesUpdate((data) => {
-      const normalized = (data?.messages || [])
-        .map((message) => normalizeMessage(message, currentUserId, data.roomId))
-        .reverse();
-      setMessagesByRoom((current) => ({ ...current, [data.roomId]: normalized }));
-      setIsLoadingMessages(false);
-    });
-  }, [webSocket?.isConnected, webSocket?.onMessagesUpdate, currentUserId]);
+        const cursor = backfillCursorRef.current[roomId];
+        delete backfillCursorRef.current[roomId];
+        if (cursor) fetchNewerMessages(roomId, cursor);
+      }),
 
-  useEffect(() => {
-    if (!webSocket?.isConnected) return undefined;
+      webSocket.on("messages-update", (data) => {
+        const roomId = toId(data?.roomId);
+        if (!roomId || roomId !== selectedRoomIdRef.current) return;
+        const incoming = (data.messages || []).map((message) => normalizeMessage(message, currentUserId, roomId));
+        updateThread(roomId, (thread) => ({
+          ...thread,
+          messages: mergeMessages(thread.messages, incoming),
+          ...(data.direction === "after"
+            ? {}
+            : { hasMore: Boolean(data.hasMore), nextCursor: data.nextCursor || null, loadingOlder: false, olderError: null }),
+        }));
+      }),
 
-    return webSocket.onChatMessage((message) => {
-      const normalized = normalizeMessage(message, currentUserId, message.roomId);
+      webSocket.on("chat-message", (raw) => {
+        const message = normalizeMessage(raw, currentUserId);
+        if (!message.roomId) return;
+        const isOwnPending = message.clientMessageId && outboxRef.current.has(message.clientMessageId);
+        if (message.clientMessageId) outboxRef.current.delete(message.clientMessageId);
+        if (message.roomId === selectedRoomIdRef.current || isOwnPending) mergeIntoThread(message.roomId, [message]);
+      }),
 
-      setMessagesByRoom((current) => {
-        const existing = current[normalized.roomId] || [];
-        if (existing.some((item) => item._id === normalized._id)) return current;
-        return { ...current, [normalized.roomId]: [...existing, normalized] };
-      });
+      webSocket.on("chat-room-activity", (data) => {
+        const roomId = toId(data?.roomId);
+        const lastMessage = data?.lastMessage;
+        if (!roomId || !lastMessage) return;
 
-      setChatRooms((current) =>
-        current
-          .map((room) =>
-            room.roomId === normalized.roomId
-              ? {
-                  ...room,
-                  lastMessage: {
-                    content: normalized.content,
-                    senderId: normalized.senderId,
-                    senderName: normalized.senderName,
-                    createdAt: normalized.rawTimestamp,
-                    type: normalized.messageType,
-                    attachments: normalized.attachments,
-                  },
-                  unreadCount:
-                    normalized.senderId !== currentUserId && normalized.roomId !== selectedRoomIdRef.current
-                      ? (room.unreadCount || 0) + 1
-                      : room.unreadCount,
-                }
-              : room
+        if (!roomsRef.current.some((room) => roomIdOf(room) === roomId)) {
+          // A conversation this list hasn't seen yet.
+          refreshChatRooms();
+          return;
+        }
+
+        const countsAsUnread = toId(lastMessage.senderId) !== currentUserId && roomId !== selectedRoomIdRef.current;
+        setRawRooms((rooms) =>
+          sortRooms(
+            rooms.map((room) =>
+              roomIdOf(room) === roomId
+                ? {
+                    ...room,
+                    lastMessage: { ...lastMessage, content: lastMessage.preview },
+                    updatedAt: lastMessage.createdAt || room.updatedAt,
+                    unreadCount: countsAsUnread ? (room.unreadCount || 0) + 1 : room.unreadCount,
+                  }
+                : room
+            )
           )
-          .sort((a, b) => {
-            const aTime = new Date(a.lastMessage?.createdAt || a.updatedAt || 0).getTime();
-            const bTime = new Date(b.lastMessage?.createdAt || b.updatedAt || 0).getTime();
-            return bTime - aTime;
-          })
-      );
+        );
+      }),
 
-      if (normalized.senderId !== currentUserId && normalized.roomId === selectedRoomIdRef.current) {
-        webSocket.markMessageAsRead(normalized._id);
-      } else if (normalized.senderId !== currentUserId) {
-        toast.success(`New message from ${normalized.senderName}`);
-      }
-    });
-  }, [webSocket?.isConnected, webSocket?.onChatMessage, webSocket?.markMessageAsRead, currentUserId]);
+      webSocket.on("error", (payload) => {
+        const clientMessageId = payload?.clientMessageId;
+        const entry = clientMessageId && outboxRef.current.get(clientMessageId);
+        if (entry && !entry.inFlight) {
+          entry.failed = true;
+          setMessageStatus(entry.roomId, clientMessageId, "failed", payload.message || "Not sent");
+        }
+      }),
+    ];
 
-  useEffect(() => {
-    if (!webSocket?.isConnected) return undefined;
-    return webSocket.onUnreadMessagesUpdate(() => webSocket.fetchChatRooms());
-  }, [webSocket?.isConnected, webSocket?.onUnreadMessagesUpdate, webSocket?.fetchChatRooms]);
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [webSocket?.on, currentUserId]);
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (selectedRoomIdRef.current) webSocket?.leaveChatRoom(selectedRoomIdRef.current);
-    };
+    const handleVisibility = () => setIsPageVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
+  const selectedThread = selectedRoomId ? threads[selectedRoomId] || EMPTY_THREAD : EMPTY_THREAD;
+
+  // Read only what the user can actually see: the open room, in a visible tab, from other people.
+  useEffect(() => {
+    if (!selectedRoomId || !isPageVisible || !isConnected || !currentUserId) return;
+    selectedThread.messages.forEach((message) => {
+      if (!message._id || message.isOwn || message.readBy.includes(currentUserId)) return;
+      if (markedReadRef.current.has(message._id)) return;
+      markedReadRef.current.add(message._id);
+      webSocket.markMessageAsRead(message._id);
+    });
+  }, [selectedRoomId, selectedThread.messages, isPageVisible, isConnected, currentUserId]);
+
+  const webSocketRef = useRef(webSocket);
+  webSocketRef.current = webSocket;
+
+  // Leaving the page leaves the room, so the server treats it as closed (and pushes again).
+  useEffect(
+    () => () => {
+      if (joinedRoomIdRef.current) webSocketRef.current?.leaveChatRoom(joinedRoomIdRef.current);
+      joinedRoomIdRef.current = null;
+    },
+    []
+  );
+
+  /** Opens a room (joins it) or, with no id, closes the open one (leaves it). */
   const selectRoom = useCallback(
     (roomId) => {
-      if (!roomId || !webSocket?.isConnected) return;
-      if (selectedRoomIdRef.current && selectedRoomIdRef.current !== roomId) {
-        webSocket.leaveChatRoom(selectedRoomIdRef.current);
+      const nextRoomId = roomId || null;
+      if (nextRoomId === selectedRoomIdRef.current && (!nextRoomId || joinedRoomIdRef.current === nextRoomId)) return;
+
+      if (joinedRoomIdRef.current && joinedRoomIdRef.current !== nextRoomId) {
+        webSocket?.leaveChatRoom(joinedRoomIdRef.current);
+        joinedRoomIdRef.current = null;
       }
-      selectedRoomIdRef.current = roomId;
-      setSelectedRoomId(roomId);
-      setIsLoadingMessages(true);
-      setChatRooms((current) =>
-        current.map((room) => (room.roomId === roomId ? { ...room, unreadCount: 0 } : room))
-      );
-      webSocket.joinChatRoom(roomId);
+
+      selectedRoomIdRef.current = nextRoomId;
+      setSelectedRoomId(nextRoomId);
+      if (!nextRoomId) return;
+
+      loadingOlderRef.current.delete(nextRoomId);
+      updateThread(nextRoomId, (thread) => ({ ...thread, loadingOlder: false }));
+      setRawRooms((rooms) => rooms.map((room) => (roomIdOf(room) === nextRoomId ? { ...room, unreadCount: 0 } : room)));
+      joinRoom(nextRoomId);
     },
-    [webSocket?.isConnected, webSocket?.joinChatRoom, webSocket?.leaveChatRoom]
+    [webSocket?.leaveChatRoom, joinRoom, updateThread]
   );
 
-  const sendMessage = useCallback(
-    ({ content = "", attachments = [], type = "text", duration }) => {
-      if (!selectedRoomId || !webSocket?.isConnected) return toast.error("Please select a chat first");
-      if (!content.trim() && attachments.length === 0) return toast.error("Message cannot be empty");
+  const retryJoin = useCallback(() => {
+    if (selectedRoomIdRef.current) joinRoom(selectedRoomIdRef.current);
+  }, [joinRoom]);
 
-      webSocket.sendChatMessage({
-        content: content.trim(),
-        roomId: selectedRoomId,
-        senderName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You",
+  const loadOlderMessages = useCallback(() => {
+    const roomId = selectedRoomIdRef.current;
+    const thread = threadsRef.current[roomId];
+    if (!webSocket || !roomId || !thread?.hasMore || !thread.nextCursor) return;
+    if (loadingOlderRef.current.has(roomId)) return;
+
+    loadingOlderRef.current.add(roomId);
+    updateThread(roomId, (current) => ({ ...current, loadingOlder: true, olderError: null }));
+    webSocket
+      .fetchMessages({ roomId, cursor: thread.nextCursor, direction: "before", limit: PAGE_SIZE })
+      .then(() => updateThread(roomId, (current) => ({ ...current, loadingOlder: false })))
+      .catch((error) =>
+        updateThread(roomId, (current) => ({
+          ...current,
+          loadingOlder: false,
+          olderError: error.code === "OFFLINE" ? "You're offline" : "Couldn't load older messages",
+        }))
+      )
+      .finally(() => loadingOlderRef.current.delete(roomId));
+  }, [webSocket, updateThread]);
+
+  /**
+   * Sends optimistically: the bubble appears at once and holds the text, so a
+   * failed send never loses it. Retries reuse the same clientMessageId.
+   */
+  const sendMessage = useCallback(
+    ({ roomId, text = "", file = null, type, duration }) => {
+      const targetRoomId = roomId || selectedRoomIdRef.current;
+      const trimmed = text.trim();
+      if (!targetRoomId || (!trimmed && !file)) return false;
+
+      const clientMessageId = createClientMessageId();
+      outboxRef.current.set(clientMessageId, {
+        roomId: targetRoomId,
+        text: trimmed,
+        file,
         type,
         duration,
-        attachments,
+        attachments: null,
+        inFlight: false,
+        failed: false,
       });
+
+      mergeIntoThread(targetRoomId, [
+        {
+          id: clientMessageId,
+          clientMessageId,
+          roomId: targetRoomId,
+          senderId: currentUserId,
+          senderName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You",
+          isOwn: true,
+          text: trimmed,
+          type: type || (file ? messageTypeFor([{ type: attachmentTypeOfFile(file) }]) : "text"),
+          attachments: file ? [{ name: file.name, type: attachmentTypeOfFile(file), mimeType: file.type }] : [],
+          duration,
+          createdAt: new Date().toISOString(),
+          readBy: [],
+          status: "pending",
+        },
+      ]);
+
+      deliver(clientMessageId);
+      return true;
     },
-    [selectedRoomId, webSocket?.isConnected, webSocket?.sendChatMessage, user?.firstName, user?.lastName]
+    [currentUserId, user?.firstName, user?.lastName, mergeIntoThread, deliver]
   );
 
+  const retryMessage = useCallback(
+    (message) => {
+      const entry = outboxRef.current.get(message?.clientMessageId);
+      if (!entry) return;
+      entry.failed = false;
+      setMessageStatus(entry.roomId, message.clientMessageId, "pending");
+      deliver(message.clientMessageId);
+    },
+    [deliver, setMessageStatus]
+  );
+
+  const discardMessage = useCallback(
+    (message) => {
+      const clientMessageId = message?.clientMessageId;
+      const entry = outboxRef.current.get(clientMessageId);
+      if (!entry || entry.inFlight) return;
+      outboxRef.current.delete(clientMessageId);
+      updateThread(entry.roomId, (thread) => ({
+        ...thread,
+        messages: thread.messages.filter((item) => item._id || item.clientMessageId !== clientMessageId),
+      }));
+    },
+    [updateThread]
+  );
+
+  const chatRooms = useMemo(() => rawRooms.map(transformRoom), [rawRooms, transformRoom]);
   const selectedRoom = useMemo(
     () => chatRooms.find((room) => room.roomId === selectedRoomId) || null,
     [chatRooms, selectedRoomId]
@@ -282,15 +510,21 @@ export const useRealtimeChat = () => {
 
   return {
     chatRooms,
-    messages: selectedRoomId ? messagesByRoom[selectedRoomId] || [] : [],
+    messages: selectedThread.messages,
     selectedRoom,
     selectedRoomId,
-    isLoading,
-    isLoadingMessages,
-    isConnected: Boolean(webSocket?.isConnected),
-    error,
+    thread: selectedThread,
+    isLoading: roomsStatus === "idle" || roomsStatus === "loading",
+    isLoadingMessages: selectedThread.status === "loading" || selectedThread.status === "idle",
+    isConnected,
+    connectionStatus: webSocket?.connectionStatus || "disconnected",
+    error: roomsStatus === "error" ? roomsError : null,
     selectRoom,
+    retryJoin,
+    loadOlderMessages,
     sendMessage,
-    refreshChatRooms: webSocket?.fetchChatRooms || (() => {}),
+    retryMessage,
+    discardMessage,
+    refreshChatRooms,
   };
 };

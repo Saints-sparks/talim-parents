@@ -1,155 +1,182 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import { toast } from "../Components/CustomToast";
 import { API_BASE_URL } from "../services/auth.services";
 
-const FETCH_COOLDOWN_MS = 2000;
+export const ACK_TIMEOUT_MS = 10000;
 
-export const useWebSocket = () => {
-  const socketRef = useRef(null);
-  const userIdRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
-  const reconnectAttemptsRef = useRef(0);
-  const lastFetchTimeRef = useRef(0);
-  const isFetchingRef = useRef(false);
+const isUnauthenticated = (payload) =>
+  payload?.error?.code === "UNAUTHENTICATED" ||
+  payload?.code === "UNAUTHENTICATED" ||
+  payload?.data?.code === "UNAUTHENTICATED";
+
+const ackError = (message, code, ack) => Object.assign(new Error(message), { code, ack });
+
+/**
+ * One Socket.IO connection for the signed-in user.
+ *
+ * Socket.IO's own reconnection does all retrying. The token is read on every
+ * (re)connect, and a rejected handshake refreshes the token once before trying again.
+ *
+ * @param {string | undefined} userId - The signed-in user; no socket without one.
+ * @param {() => Promise<string>} refreshAccessToken - The app's token refresh.
+ */
+export const useWebSocket = (userId, refreshAccessToken) => {
+  const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  const refreshRef = useRef(refreshAccessToken);
 
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
+  useEffect(() => {
+    refreshRef.current = refreshAccessToken;
+  }, [refreshAccessToken]);
 
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
+  useEffect(() => {
+    if (!userId) return undefined;
 
-    setIsConnected(false);
-    setConnectionStatus("disconnected");
-  }, []);
+    const nextSocket = io(API_BASE_URL, {
+      // A function, so every reconnect sends the current token.
+      auth: (cb) => cb({ token: localStorage.getItem("access_token") }),
+      // Legacy fallback the server still accepts while WS_LEGACY_QUERY_AUTH is on.
+      query: { userId },
+      transports: ["websocket", "polling"],
+      timeout: 20000,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelayMax: 10000,
+    });
 
-  const connect = useCallback(
-    (userId) => {
-      if (!userId || socketRef.current?.connected || connectionStatus === "connecting") return;
+    // One refresh attempt per failed handshake streak; reset once a connect succeeds.
+    let refreshAttempted = false;
 
-      setConnectionStatus("connecting");
-      userIdRef.current = userId;
+    const retryWithFreshToken = async () => {
+      if (refreshAttempted || !refreshRef.current) {
+        setConnectionStatus("unauthenticated");
+        return;
+      }
+      refreshAttempted = true;
+      try {
+        await refreshRef.current();
+        nextSocket.connect();
+      } catch {
+        // Refresh failed: the session is over and the app's sign-in flow takes it from here.
+        setConnectionStatus("unauthenticated");
+      }
+    };
 
-      // The server authenticates the socket with the access token. The callback runs
-      // on every connect and reconnect, so a refreshed token is always used.
-      const socket = io(API_BASE_URL, {
-        auth: (cb) => cb({ token: localStorage.getItem("access_token") }),
-        query: { userId },
-        transports: ["websocket", "polling"],
-        timeout: 20000,
-        reconnection: false,
-      });
+    nextSocket.on("connect", () => {
+      refreshAttempted = false;
+      setIsConnected(true);
+      setConnectionStatus("connected");
+    });
 
-      socket.on("connect", () => {
-        reconnectAttemptsRef.current = 0;
-        setIsConnected(true);
-        setConnectionStatus("connected");
-      });
+    nextSocket.on("disconnect", () => {
+      setIsConnected(false);
+      setConnectionStatus(nextSocket.active ? "reconnecting" : "disconnected");
+    });
 
-      socket.on("connect_error", () => {
-        setIsConnected(false);
-        setConnectionStatus("error");
-      });
+    nextSocket.on("connect_error", (error) => {
+      setIsConnected(false);
+      if (isUnauthenticated(error) || /unauthori[sz]ed|unauthenticated/i.test(error?.message || "")) {
+        retryWithFreshToken();
+      } else {
+        setConnectionStatus("reconnecting");
+      }
+    });
 
-      socket.on("disconnect", (reason) => {
-        setIsConnected(false);
-        setConnectionStatus("disconnected");
+    // The server rejects a bad token by emitting this and then disconnecting.
+    nextSocket.on("exception", (payload) => {
+      if (isUnauthenticated(payload)) retryWithFreshToken();
+    });
 
-        if (reason !== "io client disconnect" && reconnectAttemptsRef.current < 3) {
-          reconnectAttemptsRef.current += 1;
-          const delay = Math.min(3000 * 2 ** (reconnectAttemptsRef.current - 1), 30000);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            disconnect();
-            connect(userIdRef.current);
-          }, delay);
-        }
-      });
+    setConnectionStatus("connecting");
+    setSocket(nextSocket);
 
-      socket.on("error", (error) => {
-        const message = error?.message || "Realtime chat error";
-        toast.error(message);
-      });
+    return () => {
+      nextSocket.removeAllListeners();
+      nextSocket.disconnect();
+      setSocket(null);
+      setIsConnected(false);
+      setConnectionStatus("disconnected");
+    };
+  }, [userId]);
 
-      socketRef.current = socket;
+  /** Subscribes to a server event on the current socket; returns the unsubscribe. */
+  const on = useCallback(
+    (eventName, handler) => {
+      if (!socket) return () => {};
+      socket.on(eventName, handler);
+      return () => socket.off(eventName, handler);
     },
-    [connectionStatus, disconnect]
+    [socket]
   );
 
-  const joinChatRoom = useCallback((roomId) => {
-    if (!socketRef.current?.connected) return toast.error("Not connected to chat service");
-    socketRef.current.emit("join-chat-room", { roomId });
-  }, []);
-
-  const leaveChatRoom = useCallback((roomId) => {
-    if (socketRef.current?.connected) socketRef.current.emit("leave-chat-room", { roomId });
-  }, []);
-
-  const sendChatMessage = useCallback((message) => {
-    if (!socketRef.current?.connected) return toast.error("Not connected to chat service");
-    socketRef.current.emit("send-chat-message", message);
-  }, []);
-
-  const markMessageAsRead = useCallback((messageId) => {
-    if (socketRef.current?.connected && messageId) {
-      socketRef.current.emit("mark-message-read", { messageId });
-    }
-  }, []);
-
-  const fetchChatRooms = useCallback(() => {
-    if (!socketRef.current?.connected) return;
-    const now = Date.now();
-    if (isFetchingRef.current || now - lastFetchTimeRef.current < FETCH_COOLDOWN_MS) return;
-
-    isFetchingRef.current = true;
-    lastFetchTimeRef.current = now;
-    socketRef.current.emit("fetch-chat-rooms");
-    setTimeout(() => {
-      isFetchingRef.current = false;
-    }, 1000);
-  }, []);
-
-  const fetchMessages = useCallback((data) => {
-    if (socketRef.current?.connected) socketRef.current.emit("fetch-messages", data);
-  }, []);
-
-  const listen = useCallback((eventName, callback, afterEvent) => {
-    if (!socketRef.current) return () => {};
-    const handler = (data) => {
-      afterEvent?.();
-      callback(data);
-    };
-    socketRef.current.on(eventName, handler);
-    return () => socketRef.current?.off(eventName, handler);
-  }, []);
-
-  useEffect(() => disconnect, [disconnect]);
-
-  return {
-    socket: socketRef.current,
-    isConnected,
-    connectionStatus,
-    connect,
-    disconnect,
-    joinChatRoom,
-    leaveChatRoom,
-    sendChatMessage,
-    markMessageAsRead,
-    fetchChatRooms,
-    fetchMessages,
-    onChatMessage: (callback) => listen("chat-message", callback),
-    onChatRoomsUpdate: (callback) =>
-      listen("chat-rooms-update", callback, () => {
-        isFetchingRef.current = false;
+  /** Emits with an acknowledgement. Rejects when offline, on timeout, or when the ack says `ok: false`. */
+  const emitWithAck = useCallback(
+    (eventName, payload = {}, timeout = ACK_TIMEOUT_MS) =>
+      new Promise((resolve, reject) => {
+        if (!socket?.connected) {
+          reject(ackError("You're offline", "OFFLINE"));
+          return;
+        }
+        socket.timeout(timeout).emit(eventName, payload, (err, ack) => {
+          if (err) return reject(ackError("The server didn't respond in time", "TIMEOUT"));
+          if (ack && ack.ok === false) {
+            return reject(ackError(ack.error?.message || "Request failed", ack.error?.code, ack));
+          }
+          return resolve(ack);
+        });
       }),
-    onChatRoomJoined: (callback) => listen("chat-room-joined", callback),
-    onMessagesUpdate: (callback) => listen("messages-update", callback),
-    onUnreadMessagesUpdate: (callback) => listen("unread-messages-update", callback),
-  };
+    [socket]
+  );
+
+  const emit = useCallback(
+    (eventName, payload = {}) => {
+      if (socket?.connected) socket.emit(eventName, payload);
+    },
+    [socket]
+  );
+
+  const joinChatRoom = useCallback((roomId) => emitWithAck("join-chat-room", { roomId }), [emitWithAck]);
+  const leaveChatRoom = useCallback((roomId) => emit("leave-chat-room", { roomId }), [emit]);
+  const sendChatMessage = useCallback((message) => emitWithAck("send-chat-message", message), [emitWithAck]);
+  const fetchMessages = useCallback((data) => emitWithAck("fetch-messages", data), [emitWithAck]);
+  const fetchChatRooms = useCallback(() => emitWithAck("fetch-chat-rooms", {}), [emitWithAck]);
+  const fetchUnreadCount = useCallback(() => emit("fetch-unread-count", {}), [emit]);
+  const markMessageAsRead = useCallback(
+    (messageId) => {
+      if (messageId) emit("mark-message-read", { messageId });
+    },
+    [emit]
+  );
+
+  return useMemo(
+    () => ({
+      socket,
+      isConnected,
+      connectionStatus,
+      on,
+      emitWithAck,
+      joinChatRoom,
+      leaveChatRoom,
+      sendChatMessage,
+      markMessageAsRead,
+      fetchChatRooms,
+      fetchMessages,
+      fetchUnreadCount,
+    }),
+    [
+      socket,
+      isConnected,
+      connectionStatus,
+      on,
+      emitWithAck,
+      joinChatRoom,
+      leaveChatRoom,
+      sendChatMessage,
+      markMessageAsRead,
+      fetchChatRooms,
+      fetchMessages,
+      fetchUnreadCount,
+    ]
+  );
 };

@@ -22,7 +22,7 @@ function MessageInput({
   const handleKeyDown = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (canSend) onSendText();
+      if (canSend && !isRecording) onSendText();
     }
   };
 
@@ -43,14 +43,20 @@ function MessageInput({
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(event) => onFileSelected(event.target.files?.[0])}
+          onChange={(event) => {
+            onFileSelected(event.target.files?.[0]);
+            event.target.value = "";
+          }}
         />
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*,audio/*,application/pdf,.doc,.docx"
           className="hidden"
-          onChange={(event) => onFileSelected(event.target.files?.[0])}
+          onChange={(event) => {
+            onFileSelected(event.target.files?.[0]);
+            event.target.value = "";
+          }}
         />
 
         <button
@@ -80,7 +86,7 @@ function MessageInput({
           disabled={isUploading}
         />
 
-        {canSend ? (
+        {canSend && !isRecording ? (
           <button
             type="button"
             onClick={onSendText}

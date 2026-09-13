@@ -18,6 +18,7 @@ const formatRoomTime = (room) => {
 const getPreview = (room) => {
   const lastMessage = room?.lastMessage;
   if (!lastMessage) return "No messages yet";
+  if (lastMessage.preview) return lastMessage.preview;
   if (lastMessage.content) return lastMessage.content;
   const attachment = lastMessage.attachments?.[0];
   if (!attachment) return "Attachment";
@@ -33,6 +34,8 @@ function MessagesSidebar({
   onSelectRoom,
   isLoading,
   isConnected,
+  error,
+  onRetry,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -116,6 +119,17 @@ function MessagesSidebar({
             {[1, 2, 3].map((item) => (
               <div key={item} className="h-20 animate-pulse rounded-xl bg-[#F2F4F7]" />
             ))}
+          </div>
+        ) : error && !rooms.length ? (
+          <div className="px-4 py-12 text-center text-sm text-[#667085]">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 rounded-lg bg-[#0A4EA3] px-4 py-2 text-sm font-semibold text-white hover:bg-[#083F83]"
+            >
+              Retry
+            </button>
           </div>
         ) : filteredRooms.length ? (
           filteredRooms.map((room) => (

@@ -1,36 +1,15 @@
-/* eslint-disable react/prop-types, react-hooks/exhaustive-deps, react-refresh/only-export-components */
-import { createContext, useContext, useEffect } from "react";
+/* eslint-disable react/prop-types, react-refresh/only-export-components */
+import { createContext, useContext } from "react";
 import { useAuth } from "../services/auth.services";
 import { useWebSocket } from "../hooks/useWebSocket";
 
 const WebSocketContext = createContext(null);
 
 export const WebSocketProvider = ({ children }) => {
-  const { isAuthenticated, user, parentId } = useAuth();
-  const webSocket = useWebSocket();
-
-  useEffect(() => {
-    const userId = user?.userId || user?._id || user?.id || parentId;
-
-    if (
-      isAuthenticated &&
-      userId &&
-      !webSocket.isConnected &&
-      webSocket.connectionStatus !== "connecting"
-    ) {
-      webSocket.connect(userId);
-    } else if (!isAuthenticated && webSocket.isConnected) {
-      webSocket.disconnect();
-    }
-  }, [
-    isAuthenticated,
-    user?.userId,
-    user?._id,
-    user?.id,
-    parentId,
-    webSocket.isConnected,
-    webSocket.connectionStatus,
-  ]);
+  const { isAuthenticated, user, parentId, refreshTokenHandler } = useAuth();
+  const userId = isAuthenticated ? user?.userId || user?._id || user?.id || parentId : undefined;
+  // The hook owns the single socket: created when a user signs in, closed when they sign out.
+  const webSocket = useWebSocket(userId, refreshTokenHandler);
 
   return <WebSocketContext.Provider value={webSocket}>{children}</WebSocketContext.Provider>;
 };
