@@ -2,9 +2,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWebSocketContextSafe } from "../contexts/WebSocketContext";
 import { useAuth } from "../services/auth.services";
-import { uploadChatAttachment } from "../services/chat.services";
+import { removeChatParticipant, uploadChatAttachment } from "../services/chat.services";
 import { generateColorFromString, getUserInitials } from "../lib/colorUtils";
 import {
+  LEAVABLE_ROOM_TYPES,
   applyMessagesRead,
   createClientMessageId,
   isAtOrBefore,
@@ -52,7 +53,13 @@ const attachmentTypeOfFile = (file) => {
 
 const isAttentiveNow = () => document.visibilityState === "visible" && document.hasFocus();
 
-export const useRealtimeChat = () => {
+/**
+ * The Messages page's chat store.
+ *
+ * @param {{ onRoomRemoved?: (event: { roomId: string, name: string }) => void }} [options]
+ *   Called when someone else removes the user from a room (the room is already dropped).
+ */
+export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
   const { user } = useAuth();
   const currentUserId = user?.userId || user?._id || user?.id;
   const webSocket = useWebSocketContextSafe();
@@ -76,12 +83,16 @@ export const useRealtimeChat = () => {
   const loadingOlderRef = useRef(new Set());
   // roomId -> { id, time } of the newest message a mark-room-read was sent for.
   const readPositionRef = useRef({});
+  // Rooms the user is leaving themselves, so the removal event doesn't read as "You were removed".
+  const leavingRoomIdsRef = useRef(new Set());
+  const onRoomRemovedRef = useRef(onRoomRemoved);
   const joinsInFlightRef = useRef(new Map());
   const webSocketRef = useRef(webSocket);
 
   threadsRef.current = threads;
   roomsRef.current = rawRooms;
   webSocketRef.current = webSocket;
+  onRoomRemovedRef.current = onRoomRemoved;
 
   const updateThread = useCallback((roomId, updater) => {
     if (!roomId) return;
@@ -117,7 +128,11 @@ export const useRealtimeChat = () => {
           ? participants.find((participant) => (toId(participant?._id) || toId(participant?.userId)) !== currentUserId)
           : null;
       const displayName = otherParticipant ? getParticipantName(otherParticipant) : room?.name || "Chat Room";
-      const avatar = otherParticipant?.userAvatar || otherParticipant?.avatar;
+      const avatar = otherParticipant
+        ? otherParticipant.userAvatar || otherParticipant.avatar
+        : room?.type === "one_to_one"
+        ? null
+        : room?.avatarUrl;
 
       return {
         ...room,
@@ -131,6 +146,7 @@ export const useRealtimeChat = () => {
         role: otherParticipant?.role,
         participantCount: participants.length,
         isGroup: room?.type !== "one_to_one",
+        canLeave: LEAVABLE_ROOM_TYPES.includes(room?.type),
         avatarInfo: avatar
           ? { type: "image", value: avatar }
           : {
@@ -206,6 +222,30 @@ export const useRealtimeChat = () => {
     (joinsInFlightRef.current.get(roomId) || Promise.resolve()).then(() => {
       if (selectedRoomIdRef.current !== roomId) webSocketRef.current?.leaveChatRoom(roomId);
     });
+  }, []);
+
+  /** Forgets a room the user is no longer in: list entry, history, unsent messages and read position. */
+  const dropRoom = useCallback((roomId) => {
+    const room = roomsRef.current.find((item) => roomIdOf(item) === roomId) || null;
+    setRawRooms((rooms) => rooms.filter((item) => roomIdOf(item) !== roomId));
+    setThreads((current) => {
+      if (!current[roomId]) return current;
+      const next = { ...current };
+      delete next[roomId];
+      return next;
+    });
+    outboxRef.current.forEach((entry, clientMessageId) => {
+      if (entry.roomId === roomId) outboxRef.current.delete(clientMessageId);
+    });
+    delete readPositionRef.current[roomId];
+    delete backfillCursorRef.current[roomId];
+    // The server already took this user's sockets out of the room, so there is nothing to leave.
+    if (selectedRoomIdRef.current === roomId) {
+      selectedRoomIdRef.current = null;
+      if (joinedRoomIdRef.current === roomId) joinedRoomIdRef.current = null;
+      setSelectedRoomId(null);
+    }
+    return room;
   }, []);
 
   const deliver = useCallback(
@@ -387,6 +427,41 @@ export const useRealtimeChat = () => {
             roomIdOf(room) === roomId ? { ...room, unreadCount: 0, lastReadAt: data.readAt || room.lastReadAt } : room
           )
         );
+      }),
+
+      webSocket.on("room-updated", (data) => {
+        const roomId = toId(data?.roomId);
+        if (!roomId) return;
+        const changes = {};
+        if (data.name) changes.name = data.name;
+        if ("description" in data) changes.description = data.description || "";
+        if ("avatarUrl" in data) changes.avatarUrl = data.avatarUrl || "";
+        setRawRooms((rooms) => rooms.map((room) => (roomIdOf(room) === roomId ? { ...room, ...changes } : room)));
+      }),
+
+      webSocket.on("participants-changed", (data) => {
+        const roomId = toId(data?.roomId);
+        if (!roomId || !currentUserId) return;
+        const removed = (data.removed || []).map(toId);
+        const added = (data.added || []).map(toId);
+
+        if (removed.includes(currentUserId)) {
+          const room = dropRoom(roomId);
+          if (leavingRoomIdsRef.current.has(roomId)) return;
+          if (room) onRoomRemovedRef.current?.({ roomId, name: room.name || "" });
+          return;
+        }
+
+        if (added.includes(currentUserId)) leavingRoomIdsRef.current.delete(roomId);
+        if (!roomsRef.current.some((room) => roomIdOf(room) === roomId)) {
+          if (added.includes(currentUserId)) refreshChatRooms();
+          return;
+        }
+        if (Array.isArray(data.participants)) {
+          setRawRooms((rooms) =>
+            rooms.map((room) => (roomIdOf(room) === roomId ? { ...room, participants: data.participants } : room))
+          );
+        }
       }),
 
       webSocket.on("error", (payload) => {
@@ -578,6 +653,24 @@ export const useRealtimeChat = () => {
     [updateThread]
   );
 
+  /** Removes the user from a group. Rejects with the server's error (e.g. 403) so the caller can show it. */
+  const leaveGroup = useCallback(
+    async (roomId) => {
+      if (!roomId || !currentUserId) return null;
+      const room = roomsRef.current.find((item) => roomIdOf(item) === roomId) || null;
+      leavingRoomIdsRef.current.add(roomId);
+      try {
+        await removeChatParticipant(roomId, currentUserId);
+      } catch (error) {
+        leavingRoomIdsRef.current.delete(roomId);
+        throw error;
+      }
+      dropRoom(roomId);
+      return room;
+    },
+    [currentUserId, dropRoom]
+  );
+
   const chatRooms = useMemo(() => rawRooms.map(transformRoom), [rawRooms, transformRoom]);
   const selectedRoom = useMemo(
     () => chatRooms.find((room) => room.roomId === selectedRoomId) || null,
@@ -602,6 +695,7 @@ export const useRealtimeChat = () => {
     retryMessage,
     discardMessage,
     refreshChatRooms,
+    leaveGroup,
     currentUserId,
   };
 };

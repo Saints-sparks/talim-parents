@@ -187,6 +187,26 @@ export const receiptOf = (message, { isGroup = false, otherUserId = "", currentU
   return { state: isRead ? "read" : "sent", readCount: readers.length };
 };
 
+const ROLE_LABELS = {
+  teacher: "Teacher",
+  parent: "Parent",
+  student: "Student",
+  admin: "Admin",
+  school_admin: "School admin",
+  school_sub_admin: "School sub-admin",
+};
+
+/** A user role as shown to people ("school_admin" -> "School admin"). */
+export const formatRoleLabel = (role) => {
+  if (!role) return "";
+  if (ROLE_LABELS[role]) return ROLE_LABELS[role];
+  const words = String(role).replace(/[_-]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+/** Group types every member may leave; the school manages membership of the others. */
+export const LEAVABLE_ROOM_TYPES = ["custom_group", "parent_group"];
+
 /** The newest message the server has stored, used as the cursor to catch up after a reconnect. */
 export const newestSavedMessageId = (messages = []) => {
   for (let index = messages.length - 1; index >= 0; index -= 1) {

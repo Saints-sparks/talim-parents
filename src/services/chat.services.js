@@ -73,3 +73,13 @@ export const uploadChatAttachment = async (file) => {
         : "file"),
   };
 };
+
+/** Removes a member from a group. A member removing themselves leaves the group. */
+export const removeChatParticipant = async (roomId, userId) => {
+  const response = await axios.patch(
+    `${API_BASE_URL}/chat/rooms/${encodeURIComponent(roomId)}/participants/${encodeURIComponent(userId)}/remove`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return response.data;
+};

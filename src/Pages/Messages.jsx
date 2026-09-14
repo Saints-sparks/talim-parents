@@ -1,8 +1,7 @@
-/* eslint-disable react/prop-types */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Mail, Phone, UserRound, X } from "lucide-react";
 import ChatHeader from "../Components/ChatHeader";
+import ConversationDetails from "../Components/ConversationDetails";
 import MessageInput from "../Components/MessageInput";
 import MessageList from "../Components/MessageList";
 import MessagesSidebar from "../Components/MessagesSidebar";
@@ -10,109 +9,31 @@ import { toast } from "../Components/CustomToast";
 import { useChatAlerts } from "../contexts/ChatAlertsContext";
 import { useRealtimeChat } from "../hooks/useRealtimeChat";
 
-const getSharedAttachments = (messages, type) =>
-  messages.flatMap((message) => message.attachments || []).filter((attachment) => attachment.type === type);
-
-// The other person in a direct chat (the participant who isn't the current user), resolved by the chat hook.
-const getPrimaryParticipant = (room) => (room && !room.isGroup ? room.otherParticipant || null : null);
-
 const EMPTY_DRAFT = { text: "", file: null };
 
 const releaseStream = (stream) => stream?.getTracks().forEach((track) => track.stop());
 
-function ConversationDetails({ room, messages, onClose }) {
-  const images = useMemo(() => getSharedAttachments(messages, "image"), [messages]);
-  const audio = useMemo(() => getSharedAttachments(messages, "audio"), [messages]);
-  const participant = getPrimaryParticipant(room);
-
-  if (!room) return null;
-
-  return (
-    <aside className="flex h-full w-full max-w-[360px] shrink-0 flex-col overflow-y-auto border-l border-[#E5EAF2] bg-white p-5">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <h3 className="text-base font-bold text-[#101828]">Conversation Details</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-2 text-[#667085] hover:bg-[#F2F4F7]"
-          aria-label="Close conversation details"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="text-center">
-        {room.avatarInfo?.type === "image" ? (
-          <img src={room.avatarInfo.value} alt="" className="mx-auto h-20 w-20 rounded-full object-cover" />
-        ) : (
-          <span
-            className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-xl font-bold text-white"
-            style={{ backgroundColor: room.avatarInfo?.bgColor || "#0A4EA3" }}
-          >
-            {room.avatarInfo?.value || "U"}
-          </span>
-        )}
-        <h4 className="mt-3 text-lg font-bold text-[#101828]">{room.displayName}</h4>
-        <p className="text-sm text-[#667085]">{room.isGroup ? `${room.participantCount} members` : room.role || "Teacher"}</p>
-      </div>
-
-      <div className="my-7 grid grid-cols-3 gap-3 border-b border-[#E5EAF2] pb-6">
-        {[
-          [UserRound, "Profile"],
-          [Phone, "Call"],
-          [Mail, "Email"],
-        ].map(([Icon, label]) => (
-          <button key={label} type="button" className="rounded-lg p-2 text-center text-[#344054] hover:bg-[#F8FAFD]">
-            <Icon className="mx-auto mb-1 h-5 w-5" />
-            <span className="text-xs font-semibold">{label}</span>
-          </button>
-        ))}
-      </div>
-
-      <section className="border-b border-[#E5EAF2] pb-6">
-        <h4 className="mb-3 text-sm font-bold text-[#101828]">About</h4>
-        <p className="text-sm leading-6 text-[#667085]">
-          {room.isGroup
-            ? "Group conversation for school updates and class communication."
-            : `${room.displayName} is available for school communication through Talim messages.`}
-        </p>
-        {participant?.email && <p className="mt-2 text-sm text-[#667085]">{participant.email}</p>}
-      </section>
-
-      <section className="mt-6 border-b border-[#E5EAF2] pb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-bold text-[#101828]">Voice Notes</h4>
-          <span className="text-xs font-semibold text-[#0A4EA3]">{audio.length}</span>
-        </div>
-        <div className="space-y-2">
-          {audio.slice(0, 2).map((item) => (
-            <audio key={item.url} controls preload="metadata" className="w-full" src={item.url} />
-          ))}
-          {!audio.length && <p className="text-sm text-[#98A2B3]">No voice notes yet.</p>}
-        </div>
-      </section>
-
-      <section className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-bold text-[#101828]">Shared Photos</h4>
-          <span className="text-xs font-semibold text-[#0A4EA3]">{images.length}</span>
-        </div>
-        {images.length ? (
-          <div className="grid grid-cols-3 gap-2">
-            {images.slice(0, 6).map((image) => (
-              <a key={image.url} href={image.url} target="_blank" rel="noreferrer">
-                <img src={image.url} alt="" className="aspect-square rounded-lg object-cover" />
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-[#98A2B3]">No shared photos yet.</p>
-        )}
-      </section>
-    </aside>
-  );
-}
+/** Takes ?room= off the URL if it still points at `roomId`, which closes the room. */
+const withoutRoom = (roomId) => (params) => {
+  if (roomId && params.get("room") !== roomId) return params;
+  const next = new URLSearchParams(params);
+  next.delete("room");
+  return next;
+};
 
 function Messages() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roomParam = searchParams.get("room");
+
+  // Removed by someone else: the store already dropped the room; tell the user and go back to the list.
+  const handleRoomRemoved = useCallback(
+    ({ roomId, name }) => {
+      toast.info(name ? `You were removed from ${name}` : "You were removed from a group");
+      setSearchParams(withoutRoom(roomId), { replace: true });
+    },
+    [setSearchParams]
+  );
+
   const {
     chatRooms,
     messages,
@@ -131,11 +52,10 @@ function Messages() {
     retryMessage,
     discardMessage,
     refreshChatRooms,
+    leaveGroup,
     currentUserId,
-  } = useRealtimeChat();
+  } = useRealtimeChat({ onRoomRemoved: handleRoomRemoved });
   const { setOpenRoomId } = useChatAlerts();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const roomParam = searchParams.get("room");
 
   // Composer state belongs to a room, so nothing typed or attached for one chat is sent to another.
   const [drafts, setDrafts] = useState({});
@@ -250,6 +170,17 @@ function Messages() {
     }
   };
 
+  const handleLeaveGroup = async (room) => {
+    try {
+      await leaveGroup(room.roomId);
+      setShowDetails(false);
+      setSearchParams(withoutRoom(room.roomId), { replace: true });
+      toast.success(`You left ${room.displayName || "the group"}`);
+    } catch (leaveError) {
+      toast.error(leaveError?.response?.data?.message || "Couldn't leave the group");
+    }
+  };
+
   const showConnectionBanner = !isConnected && connectionStatus !== "connecting";
 
   return (
@@ -329,7 +260,9 @@ function Messages() {
                     <ConversationDetails
                       room={selectedRoom}
                       messages={messages}
+                      currentUserId={currentUserId}
                       onClose={() => setShowDetails(false)}
+                      onLeave={handleLeaveGroup}
                     />
                   </div>
                 </>

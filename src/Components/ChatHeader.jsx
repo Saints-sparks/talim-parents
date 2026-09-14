@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import { ArrowLeft, MoreVertical, Phone, Video } from "lucide-react";
+import { ArrowLeft, MoreVertical } from "lucide-react";
+import { formatRoleLabel } from "../lib/chatMessages";
 
 function ChatHeader({ selectedChat, onBack, onToggleDetails }) {
   if (!selectedChat) return null;
@@ -36,22 +37,16 @@ function ChatHeader({ selectedChat, onBack, onToggleDetails }) {
               ? `${selectedChat.participantCount || 0} members`
               : selectedChat.isOnline
               ? "Online"
-              : selectedChat.role || "Conversation"}
+              : formatRoleLabel(selectedChat.role) || "Conversation"}
           </p>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <button type="button" className="hidden rounded-lg border border-[#E5EAF2] p-2 text-[#344054] sm:block">
-          <Phone className="h-5 w-5" />
-        </button>
-        <button type="button" className="hidden rounded-lg border border-[#E5EAF2] p-2 text-[#344054] sm:block">
-          <Video className="h-5 w-5" />
-        </button>
         <button
           type="button"
           onClick={onToggleDetails}
           className="rounded-lg border border-[#E5EAF2] p-2 text-[#344054]"
-          aria-label="Conversation details"
+          aria-label={selectedChat.isGroup ? "Group info" : "Conversation details"}
         >
           <MoreVertical className="h-5 w-5" />
         </button>
