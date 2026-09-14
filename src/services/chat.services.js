@@ -22,7 +22,8 @@ const canvasToBlob = (canvas) =>
   });
 
 export const compressImageAttachment = async (file) => {
-  if (!file.type.startsWith("image/")) return file;
+  // GIFs would lose their animation on a canvas.
+  if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
 
   const image = await readImage(file);
   const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.width, image.height));
@@ -45,8 +46,16 @@ export const compressImageAttachment = async (file) => {
   });
 };
 
-export const uploadChatAttachment = async (file) => {
-  const uploadFile = file.type.startsWith("image/") ? await compressImageAttachment(file) : file;
+/**
+ * Uploads one chat attachment (`POST /upload/chat-attachment`). Matches the chat
+ * kit's upload function: `onProgress` gets 0–1 while the file is sent.
+ *
+ * @param {File} file
+ * @param {(fraction: number) => void} [onProgress]
+ * @returns {Promise<{ url: string, name: string, mimeType: string, size: number, type?: string, width?: number, height?: number, duration?: number }>}
+ */
+export const uploadChatAttachment = async (file, onProgress) => {
+  const uploadFile = await compressImageAttachment(file);
   const formData = new FormData();
   formData.append("file", uploadFile);
 
@@ -55,22 +64,17 @@ export const uploadChatAttachment = async (file) => {
       ...getAuthHeaders(),
       "Content-Type": "multipart/form-data",
     },
+    onUploadProgress: (event) => {
+      if (onProgress && event.total) onProgress(event.loaded / event.total);
+    },
   });
 
+  // The kit works out `type` from the file when the server doesn't send one.
   return {
     ...response.data,
     name: response.data?.name || file.name,
     mimeType: response.data?.mimeType || uploadFile.type,
     size: response.data?.size || uploadFile.size,
-    type:
-      response.data?.type ||
-      (uploadFile.type.startsWith("image/")
-        ? "image"
-        : uploadFile.type.startsWith("audio/")
-        ? "audio"
-        : uploadFile.type.startsWith("video/")
-        ? "video"
-        : "file"),
   };
 };
 

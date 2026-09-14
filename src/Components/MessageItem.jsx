@@ -19,7 +19,6 @@ function MessageItem({ msg, receipt, showReadCount, onRetry, onDiscard }) {
   const isUserMessage = Boolean(msg.isOwn);
   const senderName = msg.senderName || "Unknown";
   const bgColor = generateColorFromString(senderName);
-  const attachments = msg.attachments || [];
   const isPending = msg.status === "pending";
   const isFailed = msg.status === "failed";
 
@@ -43,14 +42,7 @@ function MessageItem({ msg, receipt, showReadCount, onRetry, onDiscard }) {
               : "rounded-bl-md border border-[#E5EAF2] bg-white text-[#101828]"
           }`}
         >
-          {attachments.map((attachment, index) => (
-            <MessageAttachment
-              key={`${attachment.url || attachment.name}-${index}`}
-              attachment={attachment}
-              isUserMessage={isUserMessage}
-              messageDuration={msg.duration}
-            />
-          ))}
+          <MessageAttachment message={msg} isUserMessage={isUserMessage} />
           {msg.text ? <p className="whitespace-pre-wrap break-words text-sm leading-6">{msg.text}</p> : null}
         </div>
         <div className={`mt-1 text-xs ${isUserMessage ? "text-right" : "text-left"}`}>

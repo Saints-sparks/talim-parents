@@ -1,12 +1,24 @@
 /* eslint-disable react/prop-types */
 import { useMemo, useState } from "react";
 import { LogOut, X } from "lucide-react";
-import MessageAttachment from "./MessageAttachment";
+import { Lightbox, VoicePlayer, attachmentKind } from "./chat-kit";
 import { formatRoleLabel, toId } from "../lib/chatMessages";
 import { generateColorFromString, getUserInitials } from "../lib/colorUtils";
 
-const getSharedAttachments = (messages, type) =>
-  messages.flatMap((message) => message.attachments || []).filter((attachment) => attachment.type === type);
+const VOICE_NOTES_SHOWN = 3;
+const PHOTOS_SHOWN = 6;
+
+/** Stored attachments of one kind from the loaded messages, newest first (voice notes keep the message's length). */
+const getSharedAttachments = (messages, kind) =>
+  messages
+    .filter((message) => message._id)
+    .flatMap((message) =>
+      (message.attachments || []).map((attachment) =>
+        attachment.duration || !message.duration ? attachment : { ...attachment, duration: message.duration }
+      )
+    )
+    .filter((attachment) => attachment.url && attachmentKind(attachment) === kind)
+    .reverse();
 
 const participantIdOf = (participant) => toId(participant?._id) || toId(participant?.userId);
 
@@ -71,6 +83,7 @@ function ConfirmLeaveDialog({ roomName, isLeaving, onCancel, onConfirm }) {
 function ConversationDetails({ room, messages, currentUserId, onClose, onLeave }) {
   const images = useMemo(() => getSharedAttachments(messages, "image"), [messages]);
   const audio = useMemo(() => getSharedAttachments(messages, "audio"), [messages]);
+  const [photoIndex, setPhotoIndex] = useState(null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
@@ -190,8 +203,13 @@ function ConversationDetails({ room, messages, currentUserId, onClose, onLeave }
           <span className="text-xs font-semibold text-[#0A4EA3]">{audio.length}</span>
         </div>
         <div className="space-y-2">
-          {audio.slice(0, 2).map((item) => (
-            <MessageAttachment key={item.url} attachment={item} />
+          {audio.slice(0, VOICE_NOTES_SHOWN).map((item, index) => (
+            <VoicePlayer
+              key={`${item.url}-${index}`}
+              url={item.url}
+              playbackUrl={item.playbackUrl}
+              duration={item.duration}
+            />
           ))}
           {!audio.length && <p className="text-sm text-[#98A2B3]">No voice notes yet.</p>}
         </div>
@@ -204,16 +222,37 @@ function ConversationDetails({ room, messages, currentUserId, onClose, onLeave }
         </div>
         {images.length ? (
           <div className="grid grid-cols-3 gap-2">
-            {images.slice(0, 6).map((image) => (
-              <a key={image.url} href={image.url} target="_blank" rel="noreferrer">
-                <img src={image.url} alt="" className="aspect-square rounded-lg object-cover" />
-              </a>
+            {images.slice(0, PHOTOS_SHOWN).map((image, index) => (
+              <button
+                key={`${image.url}-${index}`}
+                type="button"
+                onClick={() => setPhotoIndex(index)}
+                className="relative overflow-hidden rounded-lg"
+                aria-label={`Open photo ${index + 1} of ${images.length}`}
+              >
+                <img src={image.url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+                {index === PHOTOS_SHOWN - 1 && images.length > PHOTOS_SHOWN && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-semibold text-white">
+                    +{images.length - PHOTOS_SHOWN}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
         ) : (
           <p className="text-sm text-[#98A2B3]">No shared photos yet.</p>
         )}
+        <Lightbox
+          images={images.map((image) => ({ url: image.url, name: image.name }))}
+          index={photoIndex}
+          onClose={() => setPhotoIndex(null)}
+          onIndexChange={setPhotoIndex}
+        />
       </section>
+
+      {(audio.length > 0 || images.length > 0) && (
+        <p className="mt-3 text-xs text-[#98A2B3]">From loaded messages</p>
+      )}
 
       {room.canLeave && onLeave && (
         <button

@@ -1,17 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ChatHeader from "../Components/ChatHeader";
 import ConversationDetails from "../Components/ConversationDetails";
 import MessageInput from "../Components/MessageInput";
 import MessageList from "../Components/MessageList";
 import MessagesSidebar from "../Components/MessagesSidebar";
+import { addToSelection } from "../Components/chat-kit";
 import { toast } from "../Components/CustomToast";
 import { useChatAlerts } from "../contexts/ChatAlertsContext";
 import { useRealtimeChat } from "../hooks/useRealtimeChat";
 
-const EMPTY_DRAFT = { text: "", file: null };
-
-const releaseStream = (stream) => stream?.getTracks().forEach((track) => track.stop());
+const EMPTY_DRAFT = { text: "", files: [], errors: [] };
 
 /** Takes ?room= off the URL if it still points at `roomId`, which closes the room. */
 const withoutRoom = (roomId) => (params) => {
@@ -59,14 +58,7 @@ function Messages() {
 
   // Composer state belongs to a room, so nothing typed or attached for one chat is sent to another.
   const [drafts, setDrafts] = useState({});
-  const [recordingRoomId, setRecordingRoomId] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const recordingRef = useRef(null);
-  const selectedRoomIdRef = useRef(selectedRoomId);
-  const sendMessageRef = useRef(sendMessage);
-
-  selectedRoomIdRef.current = selectedRoomId;
-  sendMessageRef.current = sendMessage;
 
   // The URL decides which room is open, so /messages?room=<id> works from toasts, pushes and reloads.
   useEffect(() => {
@@ -90,26 +82,6 @@ function Messages() {
   // Back to the list (phones): the room is closed and left, so nothing is marked read behind the list.
   const closeRoom = () => setSearchParams({}, { replace: true });
 
-  /** Stops a recording. Discarded recordings are never sent; the mic is released either way. */
-  const stopRecording = useCallback((discard) => {
-    const session = recordingRef.current;
-    if (!session) return;
-    recordingRef.current = null;
-    session.discard = discard;
-    setRecordingRoomId(null);
-    if (session.recorder.state !== "inactive") {
-      session.recorder.stop();
-    } else {
-      releaseStream(session.stream);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (recordingRef.current && recordingRef.current.roomId !== selectedRoomId) stopRecording(true);
-  }, [selectedRoomId, stopRecording]);
-
-  useEffect(() => () => stopRecording(true), [stopRecording]);
-
   const draft = (selectedRoomId && drafts[selectedRoomId]) || EMPTY_DRAFT;
 
   const updateDraft = (roomId, changes) =>
@@ -117,58 +89,26 @@ function Messages() {
 
   const handleSend = () => {
     const roomId = selectedRoomId;
-    if (!roomId || (!draft.text.trim() && !draft.file)) return;
-    // The pending bubble now holds the text and file; a failed send is retried from the bubble.
-    if (sendMessage({ roomId, text: draft.text, file: draft.file })) {
+    if (!roomId || (!draft.text.trim() && !draft.files.length)) return;
+    // The pending bubble now holds the text and files; a failed send is retried from the bubble.
+    if (sendMessage({ roomId, text: draft.text, files: draft.files })) {
       setDrafts((current) => ({ ...current, [roomId]: EMPTY_DRAFT }));
     }
   };
 
-  const handleStartRecording = async () => {
-    const roomId = selectedRoomId;
-    if (!roomId || recordingRef.current) return;
-    let stream;
+  /** Adds picked files to a room's draft; unsupported, oversized and over-limit files come back as errors. */
+  const addFiles = (roomId, picked) =>
+    setDrafts((current) => {
+      const previous = current[roomId] || EMPTY_DRAFT;
+      const { files, errors } = addToSelection(previous.files, picked);
+      return { ...current, [roomId]: { ...previous, files, errors } };
+    });
 
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // The user switched chats or left the page while the permission prompt was open.
-      if (selectedRoomIdRef.current !== roomId) {
-        releaseStream(stream);
-        return;
-      }
-
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
-      const session = { recorder, stream, roomId, chunks: [], startedAt: Date.now(), discard: false };
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) session.chunks.push(event.data);
-      };
-
-      recorder.onstop = () => {
-        releaseStream(stream);
-        if (session.discard || !session.chunks.length) return;
-        const duration = Math.max(1, Math.round((Date.now() - session.startedAt) / 1000));
-        const blob = new Blob(session.chunks, { type: "audio/webm" });
-        const file = new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" });
-        sendMessageRef.current({ roomId: session.roomId, file, type: "voice", duration });
-      };
-
-      recorder.onerror = () => {
-        if (recordingRef.current === session) stopRecording(true);
-        releaseStream(stream);
-        toast.error("Recording stopped unexpectedly");
-      };
-
-      recordingRef.current = session;
-      recorder.start();
-      setRecordingRoomId(roomId);
-    } catch {
-      releaseStream(stream);
-      if (recordingRef.current?.stream === stream) recordingRef.current = null;
-      setRecordingRoomId(null);
-      toast.error("Microphone access is required to record voice notes");
-    }
-  };
+  const removeFile = (roomId, index) =>
+    setDrafts((current) => {
+      const previous = current[roomId] || EMPTY_DRAFT;
+      return { ...current, [roomId]: { ...previous, files: previous.files.filter((_, i) => i !== index) } };
+    });
 
   const handleLeaveGroup = async (room) => {
     try {
@@ -235,17 +175,20 @@ function Messages() {
                   otherUserId={selectedRoom?.otherParticipantId || ""}
                   currentUserId={currentUserId || ""}
                 />
+                {/* Keyed by room: switching chats unmounts the composer, which throws away a recording in progress. */}
                 <MessageInput
-                  newMessage={draft.text}
-                  setNewMessage={(text) => updateDraft(selectedRoomId, { text })}
-                  onSendText={handleSend}
-                  onFileSelected={(file) => file && updateDraft(selectedRoomId, { file })}
-                  selectedFile={draft.file}
-                  onClearFile={() => updateDraft(selectedRoomId, { file: null })}
-                  isUploading={false}
-                  isRecording={recordingRoomId === selectedRoomId}
-                  onStartRecording={handleStartRecording}
-                  onStopRecording={() => stopRecording(false)}
+                  key={selectedRoomId}
+                  text={draft.text}
+                  onTextChange={(text) => updateDraft(selectedRoomId, { text })}
+                  files={draft.files}
+                  errors={draft.errors}
+                  onAddFiles={(picked) => addFiles(selectedRoomId, picked)}
+                  onRemoveFile={(index) => removeFile(selectedRoomId, index)}
+                  onDismissErrors={() => updateDraft(selectedRoomId, { errors: [] })}
+                  onSend={handleSend}
+                  onSendVoice={({ file, duration }) =>
+                    sendMessage({ roomId: selectedRoomId, files: [file], voice: true, duration })
+                  }
                 />
               </div>
               {showDetails && selectedRoom && (

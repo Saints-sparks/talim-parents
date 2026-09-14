@@ -246,11 +246,3 @@ export const formatDaySeparator = (value) => {
     ...(date.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
   }).format(date);
 };
-
-/** Message type to send for a set of uploaded attachments. */
-export const messageTypeFor = (attachments = []) => {
-  if (!attachments.length) return "text";
-  if (attachments.some((attachment) => attachment.type === "audio")) return "voice";
-  if (attachments.every((attachment) => attachment.type === "image")) return "image";
-  return "file";
-};

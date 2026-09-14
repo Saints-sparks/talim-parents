@@ -4,13 +4,13 @@ import { useWebSocketContextSafe } from "../contexts/WebSocketContext";
 import { useAuth } from "../services/auth.services";
 import { removeChatParticipant, uploadChatAttachment } from "../services/chat.services";
 import { generateColorFromString, getUserInitials } from "../lib/colorUtils";
+import { fileKind, messageTypeFor, useAttachmentUpload } from "../Components/chat-kit";
 import {
   LEAVABLE_ROOM_TYPES,
   applyMessagesRead,
   createClientMessageId,
   isAtOrBefore,
   mergeMessages,
-  messageTypeFor,
   newestIncomingMessage,
   newestSavedMessageId,
   normalizeMessage,
@@ -43,13 +43,14 @@ const getParticipantName = (participant) =>
 const roomTime = (room) => new Date(room?.lastMessage?.createdAt || room?.updatedAt || 0).getTime();
 const sortRooms = (rooms) => [...rooms].sort((a, b) => roomTime(b) - roomTime(a));
 
-const attachmentTypeOfFile = (file) => {
-  const mime = file?.type || "";
-  if (mime.startsWith("image/")) return "image";
-  if (mime.startsWith("audio/")) return "audio";
-  if (mime.startsWith("video/")) return "video";
-  return "file";
-};
+/** Local previews for a pending bubble: object URLs for images and videos, nothing for other files. */
+const createPreviewUrl = (file, kind) =>
+  (kind === "image" || kind === "video") && typeof URL !== "undefined" ? URL.createObjectURL(file) : "";
+
+const revokePreviews = (entry) =>
+  entry?.previews?.forEach((url) => {
+    if (url) URL.revokeObjectURL(url);
+  });
 
 const isAttentiveNow = () => document.visibilityState === "visible" && document.hasFocus();
 
@@ -77,7 +78,7 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
   const joinedRoomIdRef = useRef(null);
   const threadsRef = useRef(threads);
   const roomsRef = useRef(rawRooms);
-  // clientMessageId -> { roomId, text, file, type, duration, attachments, inFlight, failed }
+  // clientMessageId -> { roomId, text, items: UploadItem[], previews, progressSteps, type, voice, duration, inFlight, failed }
   const outboxRef = useRef(new Map());
   const backfillCursorRef = useRef({});
   const loadingOlderRef = useRef(new Set());
@@ -93,6 +94,16 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
   roomsRef.current = rawRooms;
   webSocketRef.current = webSocket;
   onRoomRemovedRef.current = onRoomRemoved;
+
+  const { upload } = useAttachmentUpload(uploadChatAttachment);
+
+  /** Drops an outbox entry and frees its local previews. */
+  const releaseOutboxEntry = useCallback((clientMessageId) => {
+    const entry = outboxRef.current.get(clientMessageId);
+    if (!entry) return;
+    outboxRef.current.delete(clientMessageId);
+    revokePreviews(entry);
+  }, []);
 
   const updateThread = useCallback((roomId, updater) => {
     if (!roomId) return;
@@ -235,7 +246,7 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
       return next;
     });
     outboxRef.current.forEach((entry, clientMessageId) => {
-      if (entry.roomId === roomId) outboxRef.current.delete(clientMessageId);
+      if (entry.roomId === roomId) releaseOutboxEntry(clientMessageId);
     });
     delete readPositionRef.current[roomId];
     delete backfillCursorRef.current[roomId];
@@ -246,7 +257,28 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
       setSelectedRoomId(null);
     }
     return room;
-  }, []);
+  }, [releaseOutboxEntry]);
+
+  /** Upload progress of one file in a pending bubble, in 5% steps so the list doesn't re-render per byte. */
+  const reportUploadProgress = useCallback(
+    (clientMessageId, index, fraction) => {
+      const entry = outboxRef.current.get(clientMessageId);
+      if (!entry) return;
+      const step = Math.round(fraction * 20);
+      if (entry.progressSteps[index] === step) return;
+      entry.progressSteps[index] = step;
+      updateThread(entry.roomId, (thread) => ({
+        ...thread,
+        messages: thread.messages.map((message) => {
+          if (message._id || message.clientMessageId !== clientMessageId) return message;
+          const uploadProgress = [...(message.uploadProgress || [])];
+          uploadProgress[index] = step / 20;
+          return { ...message, uploadProgress };
+        }),
+      }));
+    },
+    [updateThread]
+  );
 
   const deliver = useCallback(
     async (clientMessageId) => {
@@ -255,23 +287,24 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
       entry.inFlight = true;
 
       try {
-        if (entry.file && !entry.attachments) {
-          const uploaded = await uploadChatAttachment(entry.file);
-          entry.attachments = [entry.duration ? { ...uploaded, duration: entry.duration } : uploaded];
-        }
+        // Files already uploaded on an earlier attempt are skipped.
+        const attachments = entry.items.length
+          ? await upload(entry.items, {
+              onProgress: (index, fraction) => reportUploadProgress(clientMessageId, index, fraction),
+            })
+          : [];
 
-        const attachments = entry.attachments || [];
         const payload = {
           roomId: entry.roomId,
           text: entry.text,
-          type: entry.type || messageTypeFor(attachments),
+          type: entry.type,
           clientMessageId,
           ...(attachments.length ? { attachments } : {}),
-          ...(entry.duration ? { duration: entry.duration } : {}),
+          ...(entry.voice && entry.duration ? { duration: entry.duration } : {}),
         };
 
         const ack = await webSocket.sendChatMessage(payload);
-        outboxRef.current.delete(clientMessageId);
+        releaseOutboxEntry(clientMessageId);
         if (ack?.message) {
           mergeIntoThread(entry.roomId, [normalizeMessage(ack.message, currentUserId, entry.roomId)]);
         }
@@ -284,11 +317,13 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
           ? error.response?.data?.message || "Upload failed"
           : error.ack
           ? error.message
+          : entry.items.some((item) => !item.uploaded)
+          ? "Upload failed"
           : "Not sent";
         setMessageStatus(entry.roomId, clientMessageId, "failed", message);
       }
     },
-    [webSocket, currentUserId, mergeIntoThread, setMessageStatus]
+    [webSocket, currentUserId, upload, reportUploadProgress, releaseOutboxEntry, mergeIntoThread, setMessageStatus]
   );
 
   // Every connect, first or reconnect: rejoin the open room (then backfill), refresh the list, flush unsent messages.
@@ -371,7 +406,7 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
         const message = normalizeMessage(raw, currentUserId);
         if (!message.roomId) return;
         const isOwnPending = message.clientMessageId && outboxRef.current.has(message.clientMessageId);
-        if (message.clientMessageId) outboxRef.current.delete(message.clientMessageId);
+        if (message.clientMessageId) releaseOutboxEntry(message.clientMessageId);
         if (message.roomId === selectedRoomIdRef.current || isOwnPending) mergeIntoThread(message.roomId, [message]);
       }),
 
@@ -529,6 +564,7 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
       selectedRoomIdRef.current = null;
       joinedRoomIdRef.current = null;
       leaveRoom(roomId);
+      outboxRef.current.forEach(revokePreviews);
     },
     []
   );
@@ -583,23 +619,35 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
   }, [webSocket, updateThread]);
 
   /**
-   * Sends optimistically: the bubble appears at once and holds the text, so a
-   * failed send never loses it. Retries reuse the same clientMessageId.
+   * Sends optimistically: the bubble appears at once with the text and local
+   * previews of the files, so a failed send never loses them. Files upload
+   * (two at a time, with progress) before the message is sent; retries reuse
+   * the same clientMessageId and only upload files that didn't make it.
+   *
+   * @param {{ roomId?: string, text?: string, files?: File[], voice?: boolean, duration?: number }} message
+   *   `voice` marks a single recorded file as a voice note of `duration` seconds.
    */
   const sendMessage = useCallback(
-    ({ roomId, text = "", file = null, type, duration }) => {
+    ({ roomId, text = "", files = [], voice = false, duration }) => {
       const targetRoomId = roomId || selectedRoomIdRef.current;
       const trimmed = text.trim();
-      if (!targetRoomId || (!trimmed && !file)) return false;
+      if (!targetRoomId || (!trimmed && !files.length)) return false;
+
+      const items = files.map((file) => (voice ? { file, kind: "audio", duration } : { file }));
+      const kinds = items.map((item) => item.kind || fileKind(item.file));
+      const previews = items.map((item, index) => createPreviewUrl(item.file, kinds[index]));
+      const type = messageTypeFor(kinds, voice);
 
       const clientMessageId = createClientMessageId();
       outboxRef.current.set(clientMessageId, {
         roomId: targetRoomId,
         text: trimmed,
-        file,
+        items,
+        previews,
+        progressSteps: items.map(() => 0),
         type,
+        voice,
         duration,
-        attachments: null,
         inFlight: false,
         failed: false,
       });
@@ -613,9 +661,17 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
           senderName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You",
           isOwn: true,
           text: trimmed,
-          type: type || (file ? messageTypeFor([{ type: attachmentTypeOfFile(file) }]) : "text"),
-          attachments: file ? [{ name: file.name, type: attachmentTypeOfFile(file), mimeType: file.type }] : [],
-          duration,
+          type,
+          attachments: items.map((item, index) => ({
+            url: previews[index],
+            name: item.file.name,
+            type: kinds[index],
+            mimeType: item.file.type,
+            size: item.file.size,
+            ...(item.duration ? { duration: item.duration } : {}),
+          })),
+          uploadProgress: items.map(() => 0),
+          duration: voice ? duration : undefined,
           createdAt: new Date().toISOString(),
           readBy: [],
           status: "pending",
@@ -644,13 +700,13 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
       const clientMessageId = message?.clientMessageId;
       const entry = outboxRef.current.get(clientMessageId);
       if (!entry || entry.inFlight) return;
-      outboxRef.current.delete(clientMessageId);
+      releaseOutboxEntry(clientMessageId);
       updateThread(entry.roomId, (thread) => ({
         ...thread,
         messages: thread.messages.filter((item) => item._id || item.clientMessageId !== clientMessageId),
       }));
     },
-    [updateThread]
+    [updateThread, releaseOutboxEntry]
   );
 
   /** Removes the user from a group. Rejects with the server's error (e.g. 403) so the caller can show it. */
