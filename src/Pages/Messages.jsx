@@ -24,10 +24,10 @@ function Messages() {
   const [searchParams, setSearchParams] = useSearchParams();
   const roomParam = searchParams.get("room");
 
-  // Removed by someone else: the store already dropped the room; tell the user and go back to the list.
+  // Removed by someone else: the store already dropped the room, so go back to the list
+  // (ChatAlertsContext shows the "You were removed" toast on every page).
   const handleRoomRemoved = useCallback(
-    ({ roomId, name }) => {
-      toast.info(name ? `You were removed from ${name}` : "You were removed from a group");
+    ({ roomId }) => {
       setSearchParams(withoutRoom(roomId), { replace: true });
     },
     [setSearchParams]

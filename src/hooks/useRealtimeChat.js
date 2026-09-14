@@ -58,7 +58,8 @@ const isAttentiveNow = () => document.visibilityState === "visible" && document.
  * The Messages page's chat store.
  *
  * @param {{ onRoomRemoved?: (event: { roomId: string, name: string }) => void }} [options]
- *   Called when someone else removes the user from a room (the room is already dropped).
+ *   Called when someone else removes the user from a room (the room is already dropped;
+ *   the "You were removed" toast is ChatAlertsContext's).
  */
 export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
   const { user } = useAuth();
@@ -482,8 +483,8 @@ export const useRealtimeChat = ({ onRoomRemoved } = {}) => {
 
         if (removed.includes(currentUserId)) {
           const room = dropRoom(roomId);
-          if (leavingRoomIdsRef.current.has(roomId)) return;
-          if (room) onRoomRemovedRef.current?.({ roomId, name: room.name || "" });
+          const leftThemselves = toId(data.by) === currentUserId || leavingRoomIdsRef.current.has(roomId);
+          if (!leftThemselves) onRoomRemovedRef.current?.({ roomId, name: room?.name || "" });
           return;
         }
 

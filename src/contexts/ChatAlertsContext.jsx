@@ -26,8 +26,9 @@ const toRouterPath = (url) => {
 
 /**
  * App-wide chat signals, mounted once inside the router: the unread badge and
- * tab title, a toast for messages in rooms that aren't open, in-app
- * notification toasts, and routing for service-worker notification clicks.
+ * tab title, a toast for messages in rooms that aren't open, a toast when
+ * someone removes the user from a group, in-app notification toasts, and
+ * routing for service-worker notification clicks.
  */
 export const ChatAlertsProvider = ({ children }) => {
   const { user, parentId } = useAuth();
@@ -41,6 +42,8 @@ export const ChatAlertsProvider = ({ children }) => {
   const openRoomIdRef = useRef(null);
   const pathnameRef = useRef(location.pathname);
   const navigateRef = useRef(navigate);
+  // roomId -> group name, from whatever room data passes by, for the "You were removed" toast.
+  const roomNamesRef = useRef(new Map());
 
   pathnameRef.current = location.pathname;
   navigateRef.current = navigate;
@@ -61,7 +64,27 @@ export const ChatAlertsProvider = ({ children }) => {
   useEffect(() => {
     if (!webSocket?.on) return undefined;
 
+    const rememberRoomName = (room) => {
+      const roomId = room?._id || room?.roomId;
+      if (roomId && room.name) roomNamesRef.current.set(String(roomId), room.name);
+    };
+
     const unsubscribers = [
+      webSocket.on("chat-rooms-update", (data) => data?.rooms?.forEach?.(rememberRoomName)),
+      webSocket.on("chat-room-joined", (data) => rememberRoomName(data?.room)),
+      webSocket.on("room-updated", (data) => rememberRoomName({ _id: data?.roomId, name: data?.name })),
+
+      // Removed by someone else (leaving a group yourself has `by` = you): tell the user wherever they are.
+      webSocket.on("participants-changed", (data) => {
+        const roomId = data?.roomId && String(data.roomId);
+        if (!roomId || !currentUserId) return;
+        const me = String(currentUserId);
+        if (!(data.removed || []).some((id) => String(id) === me)) return;
+        if (data.by && String(data.by) === me) return;
+        const name = roomNamesRef.current.get(roomId);
+        toast.info(name ? `You were removed from ${name}` : "You were removed from a group");
+      }),
+
       webSocket.on("unread-messages-update", (data) => {
         if (data?.userId && currentUserId && String(data.userId) !== String(currentUserId)) return;
         if (typeof data?.unreadCount === "number") setUnreadCount(Math.max(0, data.unreadCount));
