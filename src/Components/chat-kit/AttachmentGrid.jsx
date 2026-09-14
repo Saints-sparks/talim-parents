@@ -18,6 +18,7 @@ import { attachmentKind, fitWithin, formatBytes } from "./mediaTypes";
  * @property {Array<number | undefined>} [progress] Upload progress per attachment index (0–1) while a
  *   message is still sending. Items below 1 show a progress overlay.
  * @property {boolean} [pending] The message isn't stored yet (local previews, no downloads).
+ * @property {boolean} [failed] The message failed to send: no spinners or progress, shown as not sent.
  * @property {string} [className]
  * @property {(message: string) => void} [onPlaybackError] Called with a user-facing message when a voice note can't play.
  */
@@ -53,11 +54,14 @@ export function AttachmentGrid({
   tone = "default",
   progress,
   pending = false,
+  failed = false,
   className = "",
   onPlaybackError,
 }) {
   const [lightboxIndex, setLightboxIndex] = useState(/** @type {number | null} */ (null));
   const inverted = tone === "inverted";
+  // A failed message isn't uploading any more: no progress overlays.
+  const shownProgress = failed ? undefined : progress;
 
   /** @type {Indexed[]} */
   const items = useMemo(
@@ -93,7 +97,7 @@ export function AttachmentGrid({
             height={size?.height}
             className={size ? "h-full w-full object-contain" : "block h-auto max-h-[360px] w-auto max-w-[280px] object-contain"}
           />
-          <ProgressOverlay value={progress?.[index]} />
+          <ProgressOverlay value={shownProgress?.[index]} />
         </button>
       );
     }
@@ -118,7 +122,7 @@ export function AttachmentGrid({
               loading="lazy"
               className="h-full w-full object-cover"
             />
-            <ProgressOverlay value={progress?.[index]} />
+            <ProgressOverlay value={shownProgress?.[index]} />
             {tile === GRID_TILES - 1 && extra > 0 && (
               <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-xl font-semibold text-white">
                 +{extra}
@@ -133,7 +137,7 @@ export function AttachmentGrid({
   /** @param {Indexed} item */
   const renderOther = ({ attachment, index, kind }) => {
     const key = `${attachment.url || attachment.name || "file"}-${index}`;
-    const itemProgress = progress?.[index];
+    const itemProgress = shownProgress?.[index];
 
     if (kind === "video" && attachment.url) {
       const size = fitWithin(attachment.width, attachment.height, MEDIA_MAX_WIDTH, MEDIA_MAX_HEIGHT);
@@ -162,6 +166,7 @@ export function AttachmentGrid({
           duration={attachment.duration}
           tone={tone}
           pending={pending || !attachment.url}
+          failed={failed}
           onError={onPlaybackError}
         />
       );

@@ -4,7 +4,7 @@
  * or drag, and elapsed / total. Only one voice note plays at a time.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Pause, Play } from "lucide-react";
+import { AlertCircle, Loader2, Pause, Play } from "lucide-react";
 import { formatDuration } from "./mediaTypes";
 import { activePlayerController } from "./activePlayer";
 
@@ -17,6 +17,7 @@ export const VOICE_PLAY_ERROR = "Can't play this voice note";
  * @property {number} [duration] Length in seconds from the message, used when the file doesn't report one (WebM).
  * @property {"default" | "inverted"} [tone] `inverted` for light-on-dark bubbles (your own messages).
  * @property {boolean} [pending] Shows a spinner instead of the play button (still uploading).
+ * @property {boolean} [failed] The message failed to send: a static warning instead of the spinner.
  * @property {string} [className]
  * @property {(message: string) => void} [onError] Called with a user-facing message when playback fails.
  */
@@ -38,6 +39,7 @@ export function VoicePlayer({
   duration,
   tone = "default",
   pending = false,
+  failed = false,
   className = "",
   onError,
 }) {
@@ -196,7 +198,9 @@ export function VoicePlayer({
             inverted ? "bg-white/20 text-white hover:bg-white/30" : "bg-gray-900/10 text-gray-900 hover:bg-gray-900/15"
           }`}
         >
-          {pending ? (
+          {failed ? (
+            <AlertCircle size={16} aria-hidden />
+          ) : pending ? (
             <Loader2 size={16} className="animate-spin" aria-hidden />
           ) : playing ? (
             <Pause size={16} fill="currentColor" aria-hidden />

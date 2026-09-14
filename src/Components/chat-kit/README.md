@@ -77,3 +77,12 @@ const { upload, isUploading, progress } = useAttachmentUpload(uploadFn);
   (`messageTypeFor`). Caption goes in `text`.
 - Voice files are named `voice-note-<ts>.<m4a|aac|webm|ogg>` so the backend's
   extension allowlist accepts them.
+
+## Notes
+
+- **Lightbox inside dialogs:** `Lightbox` renders in a portal on `document.body`.
+  A modal dialog that traps focus and blocks outside pointer events makes the
+  lightbox unusable. Open it from a non-modal panel, or close the dialog first.
+- **Failed messages:** pass `failed` to `AttachmentGrid` for messages that
+  couldn't be sent, so voice notes show a warning instead of a spinner and no
+  progress overlays remain. (Ported from Talim-Sch-Admin ea7dca6.)

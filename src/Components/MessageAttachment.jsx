@@ -31,6 +31,7 @@ function MessageAttachment({ message, isUserMessage = false }) {
       attachments={attachments}
       tone={isUserMessage ? "inverted" : "default"}
       pending={isUnsent}
+      failed={message.status === "failed"}
       progress={message.status === "pending" ? message.uploadProgress : undefined}
     />
   );
