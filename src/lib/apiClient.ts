@@ -294,6 +294,80 @@ class ApiClient {
   }
 
   /**
+   * Uploads a `FormData` body with progress, over `XMLHttpRequest`.
+   *
+   * `fetch` cannot report upload progress, and a parent on a slow connection
+   * sending a photo or a voice note needs to see one. This keeps the rest of
+   * the contract: the same base URL, the same bearer token, the same
+   * `ApiError` on failure — so callers never special-case uploads.
+   *
+   * There is no token refresh here: an upload that 401s is re-attempted by
+   * the caller rather than silently replayed, because replaying a large body
+   * on a metered connection is not something to do behind someone's back.
+   *
+   * @typeParam T - Shape of the successful payload.
+   * @param url - Path relative to the API origin.
+   * @param formData - The multipart body.
+   * @param onProgress - Called with 0–1 as the bytes go out.
+   * @returns The parsed payload.
+   * @throws {ApiError} On any non-2xx, or when the request never completes.
+   */
+  upload<T>(
+    url: string,
+    formData: FormData,
+    onProgress?: (fraction: number) => void,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open('POST', this.buildUrl(url), true);
+      request.withCredentials = true;
+
+      const token = sessionStore.getToken();
+      if (token) request.setRequestHeader('Authorization', `Bearer ${token}`);
+      // Content-Type is deliberately unset: the browser has to add the
+      // multipart boundary itself.
+
+      if (onProgress) {
+        request.upload.onprogress = (event) => {
+          if (event.lengthComputable && event.total) onProgress(event.loaded / event.total);
+        };
+      }
+
+      request.onload = () => {
+        let body: unknown = null;
+        try {
+          body = request.responseText ? JSON.parse(request.responseText) : null;
+        } catch {
+          body = null;
+        }
+
+        if (request.status >= 200 && request.status < 300) {
+          resolve((isEnvelope(body) ? body.data : body) as T);
+          return;
+        }
+
+        const response = new Response(null, { status: request.status });
+        const error = ApiError.fromResponse(response, body);
+        this.emitError(error);
+        reject(error);
+      };
+
+      request.onerror = () => {
+        const error = ApiError.unreachable();
+        this.emitError(error);
+        reject(error);
+      };
+      request.ontimeout = () => {
+        const error = ApiError.timeout();
+        this.emitError(error);
+        reject(error);
+      };
+
+      request.send(formData);
+    });
+  }
+
+  /**
    * Builds a JSON (or `FormData`) request config for a body-carrying method.
    *
    * @param method - The HTTP method.

@@ -28,6 +28,9 @@ const LeaveRequestTable = ({ leaveRequests, onNewRequest }) => {
   };
 
   const StatusBadge = ({ status }) => {
+    // The API's LeaveStatus enum is Pending | Approved | Rejected. This badge
+    // matched "FAILED", which the API never sends, so every rejected request
+    // fell through to the neutral grey branch.
     const s = status?.toUpperCase();
     return (
       <span
@@ -37,14 +40,14 @@ const LeaveRequestTable = ({ leaveRequests, onNewRequest }) => {
             ? "bg-green-100 text-green-700"
             : s === "PENDING"
             ? "bg-yellow-100 text-yellow-700"
-            : s === "FAILED"
+            : s === "REJECTED"
             ? "bg-red-100 text-red-700"
             : "bg-gray-100 text-gray-700"
         }`}
       >
         {s === "APPROVED" && <AiOutlineCheckCircle className="h-4 w-4" />}
         {s === "PENDING" && <IoMdTime className="h-4 w-4" />}
-        {s === "FAILED" && <AiOutlineCloseCircle className="h-4 w-4" />}
+        {s === "REJECTED" && <AiOutlineCloseCircle className="h-4 w-4" />}
         {s ? s.charAt(0) + s.slice(1).toLowerCase() : ""}
       </span>
     );
