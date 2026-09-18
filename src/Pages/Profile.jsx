@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth, API_BASE_URL } from "../services/auth.services";
 import { getParentByUserId, updateParentProfile } from "../services/parent.services";
-import { useSchool } from "../hooks/useSchools";
+import { useSchool } from "../hooks/useSchool";
 import { useParentOnboarding } from "../contexts/ParentOnboardingContext";
 import { useSelectedStudent } from "../contexts/SelectedStudentContext";
 import { Avatar, AvatarFallback, AvatarImage } from "../lib/ui/avatar";
@@ -327,7 +327,7 @@ function EditProfileModal({ user, onClose, onSave }) {
 
 export default function Profile() {
   const { user, parentId, authToken, updateUser } = useAuth();
-  const { school, loading: schoolLoading } = useSchool();
+  const { data: school, isPending: schoolLoading } = useSchool();
   const { wards = [], wardsLoading, refreshWards } = useParentOnboarding();
   const { selectedStudent, updateSelectedStudent } = useSelectedStudent();
   const [parentProfile, setParentProfile] = useState(null);

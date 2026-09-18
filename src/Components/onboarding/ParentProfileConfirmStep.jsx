@@ -2,7 +2,7 @@
 import { ArrowRight, Camera, Info, UserRound } from "lucide-react";
 import { useRef, useState } from "react";
 import { useAuth } from "../../services/auth.services";
-import { useSchool } from "../../hooks/useSchools";
+import { useSchool } from "../../hooks/useSchool";
 import { useParentOnboarding } from "../../contexts/ParentOnboardingContext";
 import ParentOnboardingLayout from "./ParentOnboardingLayout";
 import { getInitials } from "./onboardingUtils";
@@ -10,7 +10,7 @@ import { getInitials } from "./onboardingUtils";
 export default function ParentProfileConfirmStep() {
   const inputRef = useRef(null);
   const { user, updateUser } = useAuth();
-  const { school, loading: schoolLoading } = useSchool();
+  const { data: school, isPending: schoolLoading } = useSchool();
   const { markStepComplete } = useParentOnboarding();
   const [preview, setPreview] = useState(user?.userAvatar || "");
 

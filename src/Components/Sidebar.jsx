@@ -15,7 +15,7 @@ import LeaveRequestIcon from '../lib/ui/LeaveRequestIcon';
 import logo from "../assets/logo.svg";
 
 import { useAuth } from "../services/auth.services"; // adjust path if needed
-import { useSchool } from "../hooks/useSchools";     // import the hook
+import { useSchool } from "../hooks/useSchool";     // import the hook
 import { useChatAlerts } from "../contexts/ChatAlertsContext";
 
 export default function Sidebar() {
@@ -23,7 +23,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   const { logout, loading: authLoading, error: authError } = useAuth();
-  const { school, loading: schoolLoading, error: schoolError } = useSchool();
+  const { data: school, isPending: schoolLoading, error: schoolError } = useSchool();
   const { unreadCount: unreadMessages } = useChatAlerts();
   const [isOpen, setIsOpen] = useState(false); // Mobile toggle
   const [isMobile, setIsMobile] = useState(false);
