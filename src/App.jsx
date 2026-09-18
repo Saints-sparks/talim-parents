@@ -14,7 +14,6 @@ import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
 import NotificationDetail from './Pages/NotificationDetail';
 import Profile from './Pages/Profile';
-import EmptyState from './Pages/EmptyState';
 import Settings from './Pages/Settings';
 import ProtectedRoute from './Pages/ProtectedRoute';
 import Payments from './Pages/Payments';
