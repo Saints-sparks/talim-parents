@@ -3,6 +3,12 @@ import { api, apiClient, buildQuery, AUTH_LOGOUT_EVENT } from '../apiClient';
 import { ApiError } from '../apiError';
 import { sessionStore, STORAGE_KEYS } from '../session';
 
+/** Narrows a caught value to `ApiError`, failing the test when it is not one. */
+function asApiError(err: unknown): ApiError {
+  expect(err).toBeInstanceOf(ApiError);
+  return err as ApiError;
+}
+
 /** Builds a `fetch` Response with a JSON body. */
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -76,8 +82,7 @@ describe('apiClient', () => {
       ),
     );
 
-    const err = await api.post('/leave-requests', {}).catch((e) => e);
-    expect(err).toBeInstanceOf(ApiError);
+    const err = asApiError(await api.post('/leave-requests', {}).catch((e) => e));
     expect(err.code).toBe('VALIDATION_FAILED');
     expect(err.fieldErrors()).toEqual({ leaveType: 'must be a valid enum value' });
   });
@@ -116,8 +121,7 @@ describe('apiClient', () => {
     const onLogout = vi.fn();
     window.addEventListener(AUTH_LOGOUT_EVENT, onLogout);
 
-    const err = await api.get('/parents/me/children').catch((e) => e);
-    expect(err).toBeInstanceOf(ApiError);
+    const err = asApiError(await api.get('/parents/me/children').catch((e) => e));
     expect(err.isAuthError).toBe(true);
     expect(onLogout).toHaveBeenCalledTimes(1);
     window.removeEventListener(AUTH_LOGOUT_EVENT, onLogout);
@@ -134,8 +138,7 @@ describe('apiClient', () => {
 
   it('reports an unreachable server as a transient SERVICE_UNAVAILABLE', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
-    const err = await api.get('/parents/me/children').catch((e) => e);
-    expect(err).toBeInstanceOf(ApiError);
+    const err = asApiError(await api.get('/parents/me/children').catch((e) => e));
     expect(err.code).toBe('SERVICE_UNAVAILABLE');
     expect(err.isTransient).toBe(true);
   });

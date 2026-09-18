@@ -1,4 +1,11 @@
 /**
+ * Anything that can be serialised into a cache key. Query objects declared as
+ * interfaces (the API's query DTOs) have no index signature, so the factories
+ * take this rather than `QueryKeyParams`.
+ */
+export type QueryKeyParams = object;
+
+/**
  * Query-key factory. Every cached resource is keyed `[resource, scopeId, …params]`
  * where the scope is the signed-in parent or the child the data belongs to, so
  * switching child (or signing out) invalidates exactly what changed via
@@ -25,32 +32,32 @@ export const queryKeys = {
   },
   timetable: {
     all: ['timetable'] as const,
-    byChild: (childId: string, params?: Record<string, unknown>) =>
+    byChild: (childId: string, params?: QueryKeyParams) =>
       ['timetable', childId, params ?? {}] as const,
   },
   results: {
     all: ['results'] as const,
-    summary: (childId: string, params?: Record<string, unknown>) =>
+    summary: (childId: string, params?: QueryKeyParams) =>
       ['results', childId, 'summary', params ?? {}] as const,
-    subjects: (childId: string, params?: Record<string, unknown>) =>
+    subjects: (childId: string, params?: QueryKeyParams) =>
       ['results', childId, 'subjects', params ?? {}] as const,
-    gradeSummary: (childId: string, params?: Record<string, unknown>) =>
+    gradeSummary: (childId: string, params?: QueryKeyParams) =>
       ['results', childId, 'grade-summary', params ?? {}] as const,
-    termProgress: (childId: string, params?: Record<string, unknown>) =>
+    termProgress: (childId: string, params?: QueryKeyParams) =>
       ['results', childId, 'term-progress', params ?? {}] as const,
-    assessmentBreakdown: (childId: string, params?: Record<string, unknown>) =>
+    assessmentBreakdown: (childId: string, params?: QueryKeyParams) =>
       ['results', childId, 'assessment-breakdown', params ?? {}] as const,
   },
   payments: {
     all: ['payments'] as const,
     /** Outstanding fee assignments for one child. */
-    dueFees: (childId: string, params?: Record<string, unknown>) =>
+    dueFees: (childId: string, params?: QueryKeyParams) =>
       ['payments', childId, 'due-fees', params ?? {}] as const,
     /** Paid / outstanding totals across every child. */
     summary: (parentId: string) => ['payments', parentId, 'summary'] as const,
-    history: (parentId: string, params?: Record<string, unknown>) =>
+    history: (parentId: string, params?: QueryKeyParams) =>
       ['payments', parentId, 'history', params ?? {}] as const,
-    receipts: (parentId: string, params?: Record<string, unknown>) =>
+    receipts: (parentId: string, params?: QueryKeyParams) =>
       ['payments', parentId, 'receipts', params ?? {}] as const,
     receipt: (receiptId: string) => ['payments', 'receipt', receiptId] as const,
     /** Enabled providers — the same for every parent in a school. */
@@ -63,9 +70,9 @@ export const queryKeys = {
   },
   notifications: {
     all: ['notifications'] as const,
-    list: (userId: string, params?: Record<string, unknown>) =>
+    list: (userId: string, params?: QueryKeyParams) =>
       ['notifications', userId, 'list', params ?? {}] as const,
-    announcements: (userId: string, params?: Record<string, unknown>) =>
+    announcements: (userId: string, params?: QueryKeyParams) =>
       ['notifications', userId, 'announcements', params ?? {}] as const,
   },
   settings: {
