@@ -131,6 +131,17 @@ class ApiClient {
   }
 
   /**
+   * Refreshes the access token, sharing the single in-flight refresh with any
+   * 401 the client is already recovering from. The socket handshake uses this
+   * so a rejected handshake and a rejected request never refresh twice.
+   *
+   * @returns The new access token, or `null` when the session is gone.
+   */
+  refreshSession(): Promise<string | null> {
+    return this.refreshOnce();
+  }
+
+  /**
    * Resolves a path against the API origin, leaving absolute URLs alone.
    *
    * @param endpoint - Absolute URL or a path relative to `API_BASE_URL`.

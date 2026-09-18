@@ -6,10 +6,10 @@ import { useWebSocket } from "../hooks/useWebSocket";
 const WebSocketContext = createContext(null);
 
 export const WebSocketProvider = ({ children }) => {
-  const { isAuthenticated, user, parentId, refreshTokenHandler } = useAuth();
+  const { isAuthenticated, user, parentId, refreshSession } = useAuth();
   const userId = isAuthenticated ? user?.userId || user?._id || user?.id || parentId : undefined;
   // The hook owns the single socket: created when a user signs in, closed when they sign out.
-  const webSocket = useWebSocket(userId, refreshTokenHandler);
+  const webSocket = useWebSocket(userId, refreshSession);
 
   return <WebSocketContext.Provider value={webSocket}>{children}</WebSocketContext.Provider>;
 };
