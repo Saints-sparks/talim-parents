@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function MessagesIcon({ width = 24, height = 24, color = "#9CA3AF" }) {
   return (

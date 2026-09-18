@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function LeaveRequestIcon({ size = 24, color = "#6B7280" }) {
   return (
