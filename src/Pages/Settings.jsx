@@ -30,7 +30,6 @@ import {
   changeParentPassword,
   sendPhoneChangeOtp,
   verifyPhoneChangeOtp,
-  updateNotificationPreferences,
   updateThemePreference,
 } from "../services/settings.services";
 import { PushNotificationToggle } from "../Components/notifications/PushNotificationToggle";
@@ -909,14 +908,6 @@ export default function Settings() {
       s ? { ...s, profile: { ...s.profile, phoneNumber: newPhone } } : s,
     );
     updateUser({ phoneNumber: newPhone });
-  };
-
-  const handleSaveNotifications = async (prefs) => {
-    await updateNotificationPreferences(prefs);
-    setSettings((s) =>
-      s ? { ...s, preferences: { ...s.preferences, notifications: prefs } } : s,
-    );
-    toast.success("Notification preferences saved");
   };
 
   const handleSaveTheme = async (newTheme) => {

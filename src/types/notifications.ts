@@ -65,7 +65,7 @@ export interface AppNotification {
   rawId: string;
   kind: NotificationSourceKind;
   sourceLabel: string;
-  category: string;
+  category: NotificationCategoryKey;
   title: string;
   message: string;
   createdAt: string;
@@ -73,6 +73,7 @@ export interface AppNotification {
   senderName: string;
   senderEmail: string;
   attachments: NotificationAttachment[];
+  related: RelatedItem[];
   metadata: Record<string, unknown>;
 }
 
@@ -80,4 +81,52 @@ export interface AppNotification {
 export interface PaginatedNotifications {
   data: RawNotification[];
   meta: { total: number; page: number; lastPage: number; limit: number };
+}
+
+/**
+ * The switches on `GET /notifications/preferences`, mirroring
+ * `UpdateNotificationPreferenceDto`. Delivery (in-app, push, email) consults
+ * exactly these, so this is the preference set that actually changes what a
+ * parent receives.
+ */
+export interface NotificationPreferences {
+  pushEnabled: boolean;
+  webPushEnabled: boolean;
+  emailEnabled: boolean;
+  messagesEnabled: boolean;
+  announcementsEnabled: boolean;
+  attendanceEnabled: boolean;
+  feesEnabled: boolean;
+  resultsEnabled: boolean;
+  timetableEnabled: boolean;
+  resourcesEnabled: boolean;
+  securityEnabled: boolean;
+  systemEnabled: boolean;
+  quietHoursEnabled: boolean;
+  /** `HH:mm` */
+  quietHoursStart: string;
+  /** `HH:mm` */
+  quietHoursEnd: string;
+  timezone?: string;
+}
+
+/** The body of `PATCH /notifications/preferences`: only switches that changed. */
+export type NotificationPreferencesPayload = Partial<NotificationPreferences>;
+
+/** The notification categories the UI groups by. */
+export type NotificationCategoryKey =
+  | 'announcement'
+  | 'attendance'
+  | 'academics'
+  | 'grading'
+  | 'payments'
+  | 'messages'
+  | 'resources'
+  | 'account'
+  | 'other';
+
+/** A related item shown under a notification (a child, a class, a link). */
+export interface RelatedItem {
+  label: string;
+  href?: string;
 }

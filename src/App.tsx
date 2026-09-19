@@ -28,6 +28,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { QueryProvider } from './providers/QueryProvider';
 import ParentGuideTour from './Components/onboarding/ParentGuideTour';
 import { ToastViewport } from './Components/CustomToast';
+import { useNotificationRealtime } from './hooks/useNotificationRealtime';
 
 /** Visiting one of these routes counts as completing that onboarding step. */
 const ONBOARDING_ROUTE_STEPS: Record<string, string> = {
@@ -54,6 +55,12 @@ function OnboardingRouteTracker() {
   return null;
 }
 
+/** Keeps the notification lists live from socket events, once, for the whole signed-in shell. */
+function LiveNotifications() {
+  useNotificationRealtime();
+  return null;
+}
+
 /** The signed-in shell: sidebar, top bar and the routed page. */
 function AppLayout() {
   return (
@@ -66,6 +73,7 @@ function AppLayout() {
         </div>
       </div>
       <ParentGuideTour />
+      <LiveNotifications />
     </div>
   );
 }

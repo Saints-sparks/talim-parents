@@ -1,5 +1,7 @@
 import { api, buildQuery } from '../lib/apiClient';
 import type {
+  NotificationPreferences,
+  NotificationPreferencesPayload,
   NotificationSourceKind,
   PaginatedNotifications,
   RawNotification,
@@ -169,50 +171,37 @@ export function markAsRead(id: string): Promise<RawNotification> {
 }
 
 /**
- * The older object-shaped facade, kept while `useNotifications` is migrated.
+ * Marks every notification read for the signed-in user in one request.
  *
- * @deprecated Import the named functions instead.
+ * Announcements are a separate collection this route does not touch; the
+ * caller marks unread announcements individually.
+ *
+ * @returns The server's acknowledgement.
+ * @throws {ApiError} On any non-2xx.
  */
-export const notificationService = {
-  /**
-   * The signed-in user's notifications.
-   *
-   * @param _accessToken - Ignored; the API client attaches the token.
-   * @param query - Page and page size.
-   * @returns One page of notifications.
-   */
-  getNotifications: (_accessToken: unknown, query: NotificationListQuery = {}) =>
-    getNotifications(query),
+export function markAllNotificationsAsRead(): Promise<{ message: string }> {
+  return api.patch<{ message: string }>('/notifications/read-all', {});
+}
 
-  /**
-   * The signed-in user's announcements.
-   *
-   * @param _accessToken - Ignored; the API client attaches the token.
-   * @param userId - The signed-in user's id.
-   * @param page - Page number.
-   * @param limit - Page size.
-   * @returns One page of announcements.
-   */
-  getAnnouncements: (_accessToken: unknown, userId: string, page = 1, limit = 50) =>
-    getAnnouncements(userId, { page, limit }),
+/**
+ * The signed-in user's notification switches and quiet hours.
+ *
+ * @returns The preferences, defaults filled in by the server.
+ * @throws {ApiError} On any non-2xx.
+ */
+export function getNotificationPreferences(): Promise<NotificationPreferences> {
+  return api.get<NotificationPreferences>('/notifications/preferences');
+}
 
-  /**
-   * Marks a notification read.
-   *
-   * @param _accessToken - Ignored; the API client attaches the token.
-   * @param notificationId - The notification's id.
-   * @returns The notification, now read.
-   */
-  markNotificationAsRead: (_accessToken: unknown, notificationId: string) =>
-    markNotificationAsRead(notificationId),
-
-  /**
-   * Marks an announcement read.
-   *
-   * @param _accessToken - Ignored; the API client attaches the token.
-   * @param announcementId - The announcement's id.
-   * @returns The announcement, now read.
-   */
-  markAnnouncementAsRead: (_accessToken: unknown, announcementId: string) =>
-    markAnnouncementAsRead(announcementId),
-};
+/**
+ * Updates which notifications the signed-in user receives.
+ *
+ * @param payload - Only the `UpdateNotificationPreferenceDto` fields that changed.
+ * @returns The stored preferences.
+ * @throws {ApiError} `VALIDATION_FAILED` on a malformed time or unknown field.
+ */
+export function updateNotificationPreferences(
+  payload: NotificationPreferencesPayload,
+): Promise<NotificationPreferences> {
+  return api.patch<NotificationPreferences>('/notifications/preferences', payload);
+}

@@ -1,5 +1,4 @@
 import { api } from '../lib/apiClient';
-import type { ParentChild } from '../types/parent';
 
 /**
  * `/parent/settings/*` — the signed-in parent's own account.
@@ -23,9 +22,10 @@ export interface ParentSettings {
     isEmailVerified: boolean;
     isPhoneVerified: boolean;
   };
-  children: ParentChild[];
+  children: LinkedChild[];
   preferences: {
-    notifications: NotificationPreferences;
+    /** The parent-settings switches. Delivery follows `/notifications/preferences`, not these. */
+    notifications: Record<string, boolean>;
     theme: ThemePreference;
     language?: string;
   };
@@ -34,18 +34,6 @@ export interface ParentSettings {
     emailOtpEnabled: boolean;
     lastPasswordChangedAt: string | null;
   };
-}
-
-/** The per-parent notification switches (`UpdateNotificationPreferencesDto`). */
-export interface NotificationPreferences {
-  attendanceAlerts?: boolean;
-  academicUpdates?: boolean;
-  schoolAnnouncements?: boolean;
-  messages?: boolean;
-  paymentReminders?: boolean;
-  feeDueDateReminders?: boolean;
-  resultsPublishedAlerts?: boolean;
-  leaveRequestUpdates?: boolean;
 }
 
 /** The themes the API accepts. */
@@ -108,6 +96,24 @@ export function updateParentSettingsProfile(payload: UpdateProfilePayload): Prom
   return api.patch<SettingsAck>('/parent/settings/profile', payload);
 }
 
+/** What `PUT /auth/profile/avatar` answers with. */
+export interface AvatarResult {
+  message: string;
+  /** The stored URL; an empty string after a removal. */
+  userAvatar: string;
+}
+
+/**
+ * Sets the parent's profile photo to an already-hosted image, or removes it.
+ *
+ * @param avatarUrl - An `http(s)` image URL, or an empty string to remove the photo.
+ * @returns The stored URL.
+ * @throws {ApiError} `VALIDATION_FAILED` when the URL is not a valid image URL.
+ */
+export function setProfileAvatar(avatarUrl: string): Promise<AvatarResult> {
+  return api.put<AvatarResult>('/auth/profile/avatar', { avatarUrl });
+}
+
 /**
  * Changes the parent's password, and rotates their session.
  *
@@ -146,22 +152,6 @@ export function verifyPhoneChangeOtp(payload: VerifyPhoneOtpPayload): Promise<Se
 }
 
 /**
- * Updates which notifications the parent receives.
- *
- * @param payload - Only the switches that changed.
- * @returns The acknowledgement and the new preferences.
- * @throws {ApiError} `VALIDATION_FAILED` on an unknown switch.
- */
-export function updateNotificationPreferences(
-  payload: NotificationPreferences,
-): Promise<SettingsAck & { notifications?: NotificationPreferences }> {
-  return api.patch<SettingsAck & { notifications?: NotificationPreferences }>(
-    '/parent/settings/notifications',
-    payload,
-  );
-}
-
-/**
  * Stores the parent's theme choice against their account.
  *
  * @param payload - One of `light`, `dark` or `system`.
@@ -178,7 +168,7 @@ export function updateThemePreference(payload: {
 export interface LinkedChild {
   id: string;
   fullName: string;
-  avatar?: string;
+  avatar?: string | null;
   className?: string;
   grade?: string;
   schoolName?: string;
