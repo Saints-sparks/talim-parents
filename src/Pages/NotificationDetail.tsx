@@ -12,7 +12,8 @@ import { queryKeys, staleTimes } from '../lib/queryKeys';
 import { sessionStore } from '../lib/session';
 import { logger } from '../lib/logger';
 import { EmptyState, ErrorState, LoadingState } from '../Components/StateComponents';
-import type { NotificationAttachment, RawNotification } from '../types/notifications';
+import { attachmentsOf } from '../lib/notificationModel';
+import type { RawNotification } from '../types/notifications';
 
 /**
  * Formats a notification timestamp for the detail header.
@@ -50,22 +51,6 @@ function senderNameOf(item: RawNotification): string {
     if (person.email) return person.email;
   }
   return item.schoolName || item.sourceLabel || 'Talim';
-}
-
-/**
- * The attachments on a notification, in one shape.
- *
- * @param item - The raw notification.
- * @returns The attachments, possibly empty.
- */
-function attachmentsOf(item: RawNotification): NotificationAttachment[] {
-  const raw = [
-    ...(Array.isArray(item.attachments) ? item.attachments : []),
-    ...(item.attachment ? [item.attachment] : []),
-  ];
-  return raw
-    .map((entry) => (typeof entry === 'string' ? { url: entry, name: entry } : (entry as NotificationAttachment)))
-    .filter((entry): entry is NotificationAttachment => Boolean(entry?.url));
 }
 
 /**
