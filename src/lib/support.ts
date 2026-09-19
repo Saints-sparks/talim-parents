@@ -1,5 +1,5 @@
 /** Where a parent writes when they cannot sign in or their child is not linked. */
-export const SUPPORT_EMAIL = 'help@talim.com';
+export const SUPPORT_EMAIL = 'support@mytalim.com';
 
 /**
  * A `mailto:` link for the address a parent should contact.
