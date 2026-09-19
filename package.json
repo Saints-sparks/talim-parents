@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "types:api": "node scripts/sync-api-types.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

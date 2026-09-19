@@ -9,7 +9,7 @@ import unusedImports from 'eslint-plugin-unused-imports';
 import jsdoc from 'eslint-plugin-jsdoc';
 
 export default [
-  { ignores: ['dist', 'node_modules', 'public', '*.config.js', '*.config.ts'] },
+  { ignores: ['dist', 'node_modules', 'public', '*.config.js', '*.config.ts', 'src/types/api.d.ts'] },
 
   // ─── JavaScript / JSX: what has not been migrated to TypeScript yet ────────
   {
