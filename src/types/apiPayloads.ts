@@ -9,7 +9,7 @@
  * Endpoints whose generated body is too loose to help are left hand-typed in
  * their service and are listed in `types.contract.test.ts`.
  */
-import type { FormBody, RequestBody } from './apiContract';
+import type { RequestBody } from './apiContract';
 
 /** `POST /payments/parent/initialize` (`InitializePaymentDto`). */
 export type InitializePaymentPayload = RequestBody<'/payments/parent/initialize', 'post'>;
@@ -32,12 +32,8 @@ export type VerifyPhoneOtpPayload = RequestBody<'/parent/settings/phone/verify-o
 /** `PATCH /parent/settings/theme` (`UpdateThemePreferenceDto`). */
 export type ThemePayload = RequestBody<'/parent/settings/theme', 'patch'>;
 
-/**
- * `PUT /auth/profile/avatar`. The contract declares the multipart form; the
- * route also accepts the text field as JSON, which is how the app sends it
- * after hosting the image itself.
- */
-export type AvatarPayload = Required<Pick<FormBody<'/auth/profile/avatar', 'put'>, 'avatarUrl'>>;
+/** `PUT /auth/profile/avatar` (`UpdateAvatarDto`); an empty `avatarUrl` removes the photo. */
+export type AvatarPayload = RequestBody<'/auth/profile/avatar', 'put'>;
 
 /** `PATCH /notifications/preferences` (`UpdateNotificationPreferenceDto`). */
 export type NotificationPreferencesPayload = RequestBody<'/notifications/preferences', 'patch'>;

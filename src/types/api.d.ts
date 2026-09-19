@@ -1794,7 +1794,7 @@ export interface paths {
         get?: never;
         /**
          * Update user avatar
-         * @description Upload an image file (jpg, jpeg, png, gif) or pass a direct Cloudinary URL.
+         * @description Send JSON `{ "avatarUrl": "<hosted image URL>" }` (what every Talim client does: the image is uploaded to Cloudinary first), or upload an image file (jpg, jpeg, png, gif) as multipart under the `avatar` field. An empty `avatarUrl` removes the photo.
          */
         put: operations["AuthenticationController_updateAvatar"];
         post?: never;
@@ -6988,6 +6988,10 @@ export interface components {
             newPassword: string;
             /** @description Must match newPassword */
             confirmPassword: string;
+        };
+        UpdateAvatarDto: {
+            /** @description Hosted image URL, or an empty string to remove the avatar */
+            avatarUrl?: string;
         };
         UpdateTeacherStatusDto: {
             /** @example false */
@@ -12699,11 +12703,8 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    avatar?: string;
-                    avatarUrl?: string;
-                };
+                "application/json": components["schemas"]["UpdateAvatarDto"];
+                "multipart/form-data": components["schemas"]["UpdateAvatarDto"];
             };
         };
         responses: {
