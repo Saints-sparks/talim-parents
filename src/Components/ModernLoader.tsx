@@ -2,7 +2,20 @@ import logo from "../assets/logo.svg";
 
 const talimLetters = ["T", "a", "l", "i", "m"];
 
-export default function ModernLoader({ visible }) {
+/** Props of {@link ModernLoader}. */
+export interface ModernLoaderProps {
+  /** Whether the full-screen loader is showing. */
+  visible: boolean;
+}
+
+/**
+ * Full-screen branded loader shown while a sign-in is in flight.
+ *
+ * @param props - Component props.
+ * @param props.visible - Whether to render it.
+ * @returns The overlay, or nothing when hidden.
+ */
+export default function ModernLoader({ visible }: ModernLoaderProps) {
   if (!visible) return null;
 
   return (

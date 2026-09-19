@@ -82,6 +82,20 @@
   animation: talim-dot 1s ease-in-out infinite;
 }
 
+/* Loading-skeleton shimmer (Components/SkeletonLoader): a highlight sweeping left to right. */
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}
+
 @keyframes toast-shrink {
   from {
     transform: scaleX(1);
