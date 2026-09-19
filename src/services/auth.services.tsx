@@ -14,6 +14,7 @@ import { ApiError } from '../lib/apiError';
 import { logger } from '../lib/logger';
 import { sessionStore, STORAGE_KEYS, type SessionUser } from '../lib/session';
 import { unsubscribeWebPushOnLogout } from '../hooks/usePushNotifications';
+import { changeParentPassword, type ChangePasswordPayload } from './settings.services';
 import type {
   AuthContextValue,
   AuthUser,
@@ -223,6 +224,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const changePassword = useCallback(async (payload: ChangePasswordPayload): Promise<void> => {
+    const result = await changeParentPassword(payload);
+    // The password change rotates the session: adopt the new token the same way
+    // a refresh does, so the next request and the socket use it.
+    if (result.access_token) {
+      window.localStorage.setItem(STORAGE_KEYS.accessToken, result.access_token);
+      sessionStore.setToken(result.access_token);
+      setAuthToken(result.access_token);
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -234,10 +246,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       updateUser,
+      changePassword,
       refreshSession: () => apiClient.refreshSession(),
       isAuthenticated: Boolean(authToken),
     }),
-    [user, parentId, schoolId, authToken, loading, error, login, logout, updateUser],
+    [user, parentId, schoolId, authToken, loading, error, login, logout, updateUser, changePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
