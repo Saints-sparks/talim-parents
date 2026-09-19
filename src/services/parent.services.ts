@@ -1,6 +1,7 @@
 import { api, apiClient, buildQuery } from '../lib/apiClient';
 import { logger } from '../lib/logger';
 import { STORAGE_KEYS } from '../lib/session';
+import type { UpdateAccountProfilePayload } from '../types/apiPayloads';
 import type { ParentChild } from '../types/parent';
 
 /**
@@ -198,16 +199,18 @@ export function downloadChildTimetable(childId: string): Promise<Blob> {
 }
 
 /**
- * Updates the signed-in parent's own profile.
+ * Updates the signed-in parent's own personal details.
  *
- * @param data - The fields to change; `FormData` when an avatar is included.
+ * The route is `PUT /auth/profile/update` and identifies the caller from the
+ * token; the earlier `PATCH /auth/profile/update/:id` this function called does
+ * not exist on the API (nothing in the app used it).
+ *
+ * @param data - Only the `UpdateProfileDto` fields that changed.
  * @returns The updated profile.
  * @throws {ApiError} `VALIDATION_FAILED` with per-field details.
  */
-export function updateParentProfile<T = unknown>(data: unknown): Promise<T> {
-  const parentId = window.localStorage.getItem(STORAGE_KEYS.parentId);
-  if (!parentId) throw new Error('No signed-in parent.');
-  return api.patch<T>(`/auth/profile/update/${encodeURIComponent(parentId)}`, data);
+export function updateParentProfile<T = unknown>(data: UpdateAccountProfilePayload): Promise<T> {
+  return api.put<T>('/auth/profile/update', data);
 }
 
 /**

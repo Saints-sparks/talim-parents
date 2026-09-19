@@ -18,6 +18,11 @@
  */
 import { API_BASE_URL } from './config';
 import { api } from './apiClient';
+import type {
+  NotificationPreferencesPayload,
+  WebPushSubscribePayload,
+  WebPushUnsubscribePayload,
+} from '../types/apiPayloads';
 
 /** Path of the service worker that receives pushes. */
 export const SW_PATH = '/sw.js';
@@ -214,8 +219,9 @@ async function subscribeBrowser(): Promise<{ subscription: PushSubscription; vap
  * @returns The endpoint that was registered.
  */
 export async function registerSubscription(subscription: PushSubscription): Promise<string> {
-  const { endpoint, keys } = subscription.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
-  await api.post(SUBSCRIBE_PATH, { endpoint, keys, userAgent: navigator.userAgent });
+  const { endpoint, keys } = subscription.toJSON() as WebPushSubscribePayload;
+  const body: WebPushSubscribePayload = { endpoint, keys, userAgent: navigator.userAgent };
+  await api.post(SUBSCRIBE_PATH, body);
   return endpoint;
 }
 
@@ -226,6 +232,7 @@ export async function registerSubscription(subscription: PushSubscription): Prom
  * @param accessToken - A token captured earlier, for when the session is gone. Omit to use the live session.
  */
 export async function forgetServerSubscription(endpoint: string, accessToken?: string | null): Promise<void> {
+  const body: WebPushUnsubscribePayload = { endpoint };
   await api.delete(SUBSCRIBE_PATH, {
     headers: {
       'Content-Type': 'application/json',
@@ -233,7 +240,7 @@ export async function forgetServerSubscription(endpoint: string, accessToken?: s
     },
     // With an explicit token the refresh path must stay out of it: the session is ending.
     skipAuth: Boolean(accessToken),
-    body: JSON.stringify({ endpoint }),
+    body: JSON.stringify(body),
     keepalive: true,
   });
 }
@@ -279,7 +286,8 @@ export function forgetLocalFlags(userId: string | null): void {
  */
 export async function syncWebPushPreference(enabled: boolean): Promise<void> {
   try {
-    await api.patch(PREFERENCES_PATH, { webPushEnabled: enabled });
+    const body: NotificationPreferencesPayload = { webPushEnabled: enabled };
+    await api.patch(PREFERENCES_PATH, body);
   } catch {
     // Non-fatal: the browser subscription is the source of truth for delivery.
   }

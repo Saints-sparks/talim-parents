@@ -58,15 +58,13 @@ export interface DueFeesQuery {
   termId?: string;
 }
 
-/** Body of `POST /payments/parent/initialize` (`InitializePaymentDto`). */
-export interface InitializePaymentPayload {
-  /** 24-hex Student record id. Must be a child of the signed-in parent. */
-  studentId: string;
-  /** At least one active fee-assignment id. */
-  feeAssignmentIds: string[];
-  providerName: PaymentProviderName;
-  paymentChannel?: PaymentChannel;
-}
+/**
+ * Body of `POST /payments/parent/initialize` (`InitializePaymentDto`), taken
+ * from the generated contract: `studentId` is the 24-hex Student record id of
+ * one of the signed-in parent's children, `feeAssignmentIds` holds at least
+ * one active fee-assignment id.
+ */
+export type { InitializePaymentPayload } from './apiPayloads';
 
 /**
  * What `POST /payments/parent/initialize` returns. The amount is computed

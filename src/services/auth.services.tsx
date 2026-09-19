@@ -15,6 +15,7 @@ import { logger } from '../lib/logger';
 import { sessionStore, STORAGE_KEYS, type SessionUser } from '../lib/session';
 import { startWebPushSync, unsubscribeWebPushOnLogout } from '../lib/webPushSync';
 import { changeParentPassword, type ChangePasswordPayload } from './settings.services';
+import type { IntrospectPayload, LoginPayload } from '../types/apiPayloads';
 import type {
   AuthContextValue,
   AuthUser,
@@ -171,9 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // skipAuth: a 401 here is "wrong password", not "session expired", and
       // must never trigger a token refresh.
+      const credentials: LoginPayload = { email, password };
       const tokens = await api.post<LoginResponse>(
         '/auth/login',
-        { email, password },
+        credentials,
         { skipAuth: true, timeoutMs: 15_000 },
       );
       if (!tokens?.access_token) throw new Error('The server did not return a session.');
@@ -186,9 +188,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       sessionStore.setToken(tokens.access_token);
 
+      const introspectBody: IntrospectPayload = { token: tokens.access_token };
       const introspect = await api.post<IntrospectResponse>(
         '/auth/introspect',
-        { token: tokens.access_token },
+        introspectBody,
         { skipAuth: true, timeoutMs: 15_000 },
       );
       const userData = introspect?.user;

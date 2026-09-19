@@ -1,4 +1,5 @@
 import { api } from '../lib/apiClient';
+import type { CreateLeaveRequestPayload } from '../types/apiPayloads';
 
 /**
  * Leave-request endpoints.
@@ -18,33 +19,20 @@ export const LEAVE_TYPES = [
   'Travel',
   'Emergency',
   'Other',
-] as const;
+] as const satisfies readonly LeaveType[];
 
-/** One reason a parent can give for a leave request. */
-export type LeaveType = (typeof LEAVE_TYPES)[number];
+/** One reason a parent can give for a leave request (the DTO's enum). */
+export type LeaveType = CreateLeaveRequestPayload['leaveType'];
 
 /** Where a leave request has got to. Capitalised, as the API spells it. */
 export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
 
 /**
- * Body of `POST /leave-requests` (`CreateLeaveRequestDto`).
- *
- * `child`, `startDate`, `endDate`, `leaveType` and `term` are all required,
- * and the API runs `forbidNonWhitelisted` — one extra field is a 400.
+ * Body of `POST /leave-requests` (`CreateLeaveRequestDto`), from the generated
+ * contract. `child`, `startDate`, `endDate`, `leaveType` and `term` are
+ * required and the API runs `forbidNonWhitelisted` — one extra field is a 400.
  */
-export interface CreateLeaveRequestPayload {
-  /** 24-hex id of one of the caller's own children (record id or user id). */
-  child: string;
-  /** ISO date. */
-  startDate: string;
-  /** ISO date. */
-  endDate: string;
-  leaveType: LeaveType;
-  /** 24-hex term id — required. */
-  term: string;
-  reason?: string;
-  attachments?: string[];
-}
+export type { CreateLeaveRequestPayload } from '../types/apiPayloads';
 
 /** A leave request as the API returns it. */
 export interface LeaveRequest {

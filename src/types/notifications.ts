@@ -100,6 +100,8 @@ export interface NotificationPreferences {
   resultsEnabled: boolean;
   timetableEnabled: boolean;
   resourcesEnabled: boolean;
+  /** Leave-request status updates. */
+  leaveRequestsEnabled?: boolean;
   securityEnabled: boolean;
   systemEnabled: boolean;
   quietHoursEnabled: boolean;
@@ -110,8 +112,11 @@ export interface NotificationPreferences {
   timezone?: string;
 }
 
-/** The body of `PATCH /notifications/preferences`: only switches that changed. */
-export type NotificationPreferencesPayload = Partial<NotificationPreferences>;
+/**
+ * The body of `PATCH /notifications/preferences` (`UpdateNotificationPreferenceDto`),
+ * from the generated contract: only the switches that changed.
+ */
+export type { NotificationPreferencesPayload } from './apiPayloads';
 
 /** The notification categories the UI groups by. */
 export type NotificationCategoryKey =

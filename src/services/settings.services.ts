@@ -1,4 +1,19 @@
 import { api } from '../lib/apiClient';
+import type {
+  AvatarPayload,
+  ChangePasswordPayload,
+  SendPhoneOtpPayload,
+  ThemePayload,
+  UpdateProfilePayload,
+  VerifyPhoneOtpPayload,
+} from '../types/apiPayloads';
+
+export type {
+  ChangePasswordPayload,
+  SendPhoneOtpPayload,
+  UpdateProfilePayload,
+  VerifyPhoneOtpPayload,
+} from '../types/apiPayloads';
 
 /**
  * `/parent/settings/*` — the signed-in parent's own account.
@@ -37,36 +52,18 @@ export interface ParentSettings {
 }
 
 /** The themes the API accepts. */
-export type ThemePreference = 'light' | 'dark' | 'system';
+export type ThemePreference = ThemePayload['theme'];
 
-/** Body of `PATCH /parent/settings/profile` (`UpdateParentProfileDto`). */
-export interface UpdateProfilePayload {
-  fullName?: string;
-  avatar?: string;
-}
-
-/** Body of `PATCH /parent/settings/password` (`ChangePasswordDto`). */
-export interface ChangePasswordPayload {
-  currentPassword: string;
-  newPassword: string;
-  /** Must equal `newPassword`; the server checks it too. */
-  confirmPassword: string;
-}
+/*
+ * Request bodies (`UpdateParentProfileDto`, `ChangePasswordDto`,
+ * `SendPhoneOtpDto`, `VerifyPhoneOtpDto`) come from the generated contract in
+ * `types/apiPayloads.ts`, so `tsc` compares every builder below with its DTO.
+ * `ChangePasswordPayload.confirmPassword` must equal `newPassword`; the server
+ * checks it too.
+ */
 
 /** Nigerian mobile numbers, as `SendPhoneOtpDto` and `VerifyPhoneOtpDto` require. */
 export const PHONE_PATTERN = /^(\+234|0)[789][01]\d{8}$/;
-
-/** Body of `POST /parent/settings/phone/send-otp`. */
-export interface SendPhoneOtpPayload {
-  newPhoneNumber: string;
-}
-
-/** Body of `POST /parent/settings/phone/verify-otp`. */
-export interface VerifyPhoneOtpPayload {
-  newPhoneNumber: string;
-  /** Exactly six digits. */
-  otp: string;
-}
 
 /** The `{ success, message }` acknowledgement these routes answer with. */
 export interface SettingsAck {
@@ -111,7 +108,8 @@ export interface AvatarResult {
  * @throws {ApiError} `VALIDATION_FAILED` when the URL is not a valid image URL.
  */
 export function setProfileAvatar(avatarUrl: string): Promise<AvatarResult> {
-  return api.put<AvatarResult>('/auth/profile/avatar', { avatarUrl });
+  const body: AvatarPayload = { avatarUrl };
+  return api.put<AvatarResult>('/auth/profile/avatar', body);
 }
 
 /**
@@ -158,9 +156,7 @@ export function verifyPhoneChangeOtp(payload: VerifyPhoneOtpPayload): Promise<Se
  * @returns The acknowledgement.
  * @throws {ApiError} `VALIDATION_FAILED` on any other value.
  */
-export function updateThemePreference(payload: {
-  theme: ThemePreference;
-}): Promise<SettingsAck & { theme?: ThemePreference }> {
+export function updateThemePreference(payload: ThemePayload): Promise<SettingsAck & { theme?: ThemePreference }> {
   return api.patch<SettingsAck & { theme?: ThemePreference }>('/parent/settings/theme', payload);
 }
 
