@@ -12,9 +12,32 @@ import {
   UserRound,
   UsersRound,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 
-export const guideConfigs = [
+/** One highlighted element of a page tour. */
+export interface GuideStep {
+  /** Matches the `data-guide="…"` attribute on the page element to highlight. */
+  target: string;
+  /** Small label above the step counter; defaults to "Talim guide". */
+  eyebrow?: string;
+  title: string;
+  description: string;
+  icon?: LucideIcon;
+}
+
+/** The tour for one page. */
+export interface GuideConfig {
+  id: string;
+  /** Pathnames this tour applies to. */
+  pathMatchers: string[];
+  /** When true the pathname must equal a matcher; otherwise a prefix match is enough. */
+  exactOnly?: boolean;
+  steps: GuideStep[];
+}
+
+/** Every page tour, keyed by the `data-guide` targets the pages carry. */
+export const guideConfigs: GuideConfig[] = [
   {
     id: "my-children",
     pathMatchers: ["/my-children"],
@@ -276,7 +299,7 @@ export const guideConfigs = [
         target: "settings-security",
         title: "Security Settings",
         description:
-          "Update your password, phone number, and future two-factor settings from this section.",
+          "Update your password and phone number from this section.",
         icon: Shield,
       },
       {
@@ -290,7 +313,13 @@ export const guideConfigs = [
   },
 ];
 
-export function findGuideConfig(pathname) {
+/**
+ * The tour that applies to a page.
+ *
+ * @param pathname - The current location's pathname.
+ * @returns The matching tour, or `undefined` when the page has none.
+ */
+export function findGuideConfig(pathname: string): GuideConfig | undefined {
   return guideConfigs.find((config) =>
     config.pathMatchers.some((matcher) =>
       config.exactOnly ? pathname === matcher : pathname.startsWith(matcher)

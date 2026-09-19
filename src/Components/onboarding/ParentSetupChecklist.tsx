@@ -7,39 +7,42 @@ import {
   FileBadge,
   MessageSquareText,
   UserCheck,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+} from 'lucide-react';
+import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   PARENT_ONBOARDING_STEPS,
   useParentOnboarding,
-} from "../../contexts/ParentOnboardingContext";
-import ParentOnboardingLayout from "./ParentOnboardingLayout";
-import SetupChecklistItem from "./SetupChecklistItem";
+  type OnboardingStep,
+} from '../../contexts/ParentOnboardingContext';
+import ParentOnboardingLayout from './ParentOnboardingLayout';
+import SetupChecklistItem from './SetupChecklistItem';
+import SetupProgressBar from './SetupProgressBar';
 
-const ICONS = {
-  "select-ward": <UserCheck className="h-4 w-4" />,
-  "view-notifications": <Bell className="h-4 w-4" />,
-  "view-attendance": <CalendarCheck className="h-4 w-4" />,
-  "view-timetable": <CalendarDays className="h-4 w-4" />,
-  "view-results": <FileBadge className="h-4 w-4" />,
-  "request-leave": <ClipboardList className="h-4 w-4" />,
-  "open-messages": <MessageSquareText className="h-4 w-4" />,
+const ICONS: Record<string, ReactNode> = {
+  'select-ward': <UserCheck className="h-4 w-4" />,
+  'view-notifications': <Bell className="h-4 w-4" />,
+  'view-attendance': <CalendarCheck className="h-4 w-4" />,
+  'view-timetable': <CalendarDays className="h-4 w-4" />,
+  'view-results': <FileBadge className="h-4 w-4" />,
+  'request-leave': <ClipboardList className="h-4 w-4" />,
+  'open-messages': <MessageSquareText className="h-4 w-4" />,
 };
 
+/**
+ * The last onboarding screen: the parent's setup checklist, each row taking
+ * them to the page it is about.
+ *
+ * @returns The checklist screen.
+ */
 export default function ParentSetupChecklist() {
   const navigate = useNavigate();
-  const {
-    completedCount,
-    totalCount,
-    progressPercent,
-    isStepComplete,
-    markStepComplete,
-    isFullyComplete,
-  } = useParentOnboarding();
+  const { completedCount, totalCount, progressPercent, isStepComplete, markStepComplete, isFullyComplete } =
+    useParentOnboarding();
 
-  const visibleSteps = PARENT_ONBOARDING_STEPS.filter((step) => step.id !== "parent-profile");
+  const visibleSteps = PARENT_ONBOARDING_STEPS.filter((step) => step.id !== 'parent-profile');
 
-  const openStep = (step) => {
+  const openStep = (step: OnboardingStep): void => {
     markStepComplete(step.id);
     navigate(step.href);
   };
@@ -59,12 +62,7 @@ export default function ParentSetupChecklist() {
             </span>
             <span className="text-[#003366] dark:text-[#93c5fd]">{progressPercent}%</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#E9EEF4]">
-            <div
-              className="h-full rounded-full bg-green-500 transition-all"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
+          <SetupProgressBar percent={progressPercent} animated />
         </div>
 
         <div className="mt-6 space-y-2">
@@ -82,15 +80,16 @@ export default function ParentSetupChecklist() {
           <SetupChecklistItem
             icon={<CheckCircle2 className="h-4 w-4" />}
             title="Setup Complete"
-            description={isFullyComplete ? "You’re all set to use Talim!" : "Finish the remaining setup steps."}
+            description={isFullyComplete ? 'You’re all set to use Talim!' : 'Finish the remaining setup steps.'}
             completed={isFullyComplete}
             disabled
           />
         </div>
 
         <button
-          onClick={() => navigate("/dashboard")}
-          className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-[#003366] text-sm font-semibold text-white hover:bg-[#002244]"
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-[#003366] text-sm font-semibold text-white hover:bg-[#002244] dark:bg-blue-600 dark:hover:bg-blue-500"
         >
           Go to Dashboard
         </button>
