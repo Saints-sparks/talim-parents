@@ -23,29 +23,31 @@ export function useAttendanceDashboard(studentId: string | undefined): UseQueryR
 }
 
 /**
- * One child's attendance for a calendar month, with one day expanded.
+ * One child's attendance for a calendar month.
  *
- * Refetches whenever the child, month, year or selected day changes — the
- * old imperative version fetched with `dashboard`-endpoint data regardless of
- * which month the parent had navigated to, so the calendar never actually
- * moved when Previous/Next was pressed.
+ * Fetched once per child and month: the day the parent has open in the detail
+ * panel is picked out of `calendarDays` on the client (the API's `selectedDay`
+ * is exactly that lookup), so clicking through days costs no request and never
+ * flashes the page into a skeleton. Moving to another month keeps the previous
+ * month on screen — dimmed by `isPlaceholderData` — until the new one lands,
+ * but never carries another child's data across a child switch.
  *
  * @param studentId - Student record id of a child linked to this parent.
  * @param month - 1–12.
  * @param year - Four-digit year.
- * @param selectedDate - `YYYY-MM-DD` day to expand.
  * @returns The query result; disabled until a child is chosen.
  */
 export function useMonthlyAttendance(
   studentId: string | undefined,
   month: number,
   year: number,
-  selectedDate?: string,
 ): UseQueryResult<MonthlyAttendance> {
   return useQuery({
-    queryKey: [...queryKeys.attendance.monthly(studentId ?? 'none', month, year), selectedDate] as const,
-    queryFn: () => getParentMonthlyAttendance({ studentId: studentId as string, month, year, selectedDate }),
+    queryKey: queryKeys.attendance.monthly(studentId ?? 'none', month, year),
+    queryFn: () => getParentMonthlyAttendance({ studentId: studentId as string, month, year }),
     enabled: Boolean(studentId),
     staleTime: staleTimes.fresh,
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === (studentId ?? 'none') ? previous : undefined,
   });
 }

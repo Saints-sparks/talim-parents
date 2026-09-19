@@ -1,30 +1,20 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMonthlyAttendance } from '../hooks/useAttendance';
-import { useSelectedStudent } from '../contexts/SelectedStudentContext';
-import { childFullName, childRecordId } from '../types/parent';
+import { useActiveChild } from '../hooks/useActiveChild';
+import { childFullName } from '../types/parent';
+import { MONTHS, shiftMonth, toDateKey, type MonthYear } from './attendance/attendanceDates';
 import { ErrorState, LoadingState } from './StateComponents';
 import type { AttendanceCalendarDay } from '../services/attendance.services';
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-/**
- * Zero-pads a number to two digits.
- *
- * @param value - The number.
- * @returns The padded string.
- */
-const pad = (value: number): string => String(value).padStart(2, '0');
-
-/** A month/year pair. */
-interface MonthYear {
-  month: number;
-  year: number;
+/** One school day in the compact calendar. */
+interface WeekdayCell {
+  day: number;
+  dateKey: string;
+  status?: string;
+  isToday: boolean;
 }
 
 /**
@@ -40,13 +30,13 @@ function buildWeeks(
   year: number,
   month: number,
   records: AttendanceCalendarDay[],
-): Array<Array<{ day: number; dateKey: string; status?: string; isToday: boolean } | null>> {
+): Array<Array<WeekdayCell | null>> {
   const recordMap = new Map(records.map((record) => [record.date, record]));
   const daysInMonth = new Date(year, month, 0).getDate();
   const todayKey = toDateKey(new Date());
 
-  const weeks: Array<Array<{ day: number; dateKey: string; status?: string; isToday: boolean } | null>> = [];
-  let week: Array<{ day: number; dateKey: string; status?: string; isToday: boolean } | null> = [];
+  const weeks: Array<Array<WeekdayCell | null>> = [];
+  let week: Array<WeekdayCell | null> = [];
 
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = new Date(year, month - 1, day);
@@ -67,16 +57,6 @@ function buildWeeks(
 }
 
 /**
- * Formats a date as `YYYY-MM-DD`, in local time.
- *
- * @param date - The date.
- * @returns The date key.
- */
-function toDateKey(date: Date): string {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-/**
  * A compact attendance calendar for the Dashboard — the current selected
  * child's school days for one month, with real per-day status.
  *
@@ -88,14 +68,13 @@ function toDateKey(date: Date): string {
  * @returns The calendar card.
  */
 export default function AttendanceCalendar() {
-  const { selectedStudent } = useSelectedStudent();
+  const { status, child, childId, error: childrenError, retry } = useActiveChild();
   const [cursor, setCursor] = useState<MonthYear>(() => {
     const now = new Date();
     return { month: now.getMonth() + 1, year: now.getFullYear() };
   });
 
-  const studentId = childRecordId(selectedStudent);
-  const { data, isPending, isError, error, refetch } = useMonthlyAttendance(studentId, cursor.month, cursor.year);
+  const { data, isPending, isError, error, refetch } = useMonthlyAttendance(childId, cursor.month, cursor.year);
 
   const weeks = useMemo(
     () => buildWeeks(cursor.year, cursor.month, data?.calendarDays ?? []),
@@ -108,13 +87,14 @@ export default function AttendanceCalendar() {
    * @param direction - `-1` for the previous month, `1` for the next.
    */
   const moveMonth = (direction: 1 | -1): void => {
-    setCursor((current) => {
-      const next = new Date(current.year, current.month - 1 + direction, 1);
-      return { month: next.getMonth() + 1, year: next.getFullYear() };
-    });
+    setCursor((current) => shiftMonth(current, direction));
   };
 
-  if (!selectedStudent) {
+  if (status === 'loading') return <LoadingState count={1} className="h-80" label="Loading attendance" />;
+  if (status === 'error') {
+    return <ErrorState error={null} onRetry={retry} title="Couldn't load your children" fallback={childrenError ?? undefined} />;
+  }
+  if (!child) {
     return <div className="p-4 text-sm text-gray-500 dark:text-slate-400">Select a child to see their attendance.</div>;
   }
 
@@ -125,7 +105,7 @@ export default function AttendanceCalendar() {
     <div className="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-slate-900">
       <div className="border-b p-4 dark:border-slate-800">
         <div className="mb-1 text-sm font-medium text-gray-700 dark:text-slate-300">
-          Viewing attendance for: <span className="font-bold">{childFullName(selectedStudent)}</span>
+          Viewing attendance for: <span className="font-bold">{childFullName(child)}</span>
         </div>
       </div>
 
@@ -140,7 +120,7 @@ export default function AttendanceCalendar() {
             <ChevronLeft className="h-5 w-5 dark:text-slate-300" aria-hidden="true" />
           </button>
           <h3 className="font-medium text-gray-700 dark:text-slate-200">
-            {MONTH_NAMES[cursor.month - 1]} {cursor.year}
+            {MONTHS[cursor.month - 1]} {cursor.year}
           </h3>
           <button
             type="button"
