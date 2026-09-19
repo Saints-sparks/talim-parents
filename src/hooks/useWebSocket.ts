@@ -86,8 +86,6 @@ export const useWebSocket = (
     const nextSocket = io(API_BASE_URL, {
       // A function, so every reconnect sends the current token.
       auth: (cb) => cb({ token: localStorage.getItem('access_token') }),
-      // Legacy fallback the server still accepts while WS_LEGACY_QUERY_AUTH is on.
-      query: { userId },
       transports: ['websocket', 'polling'],
       timeout: 20000,
       reconnection: true,
