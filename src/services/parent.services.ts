@@ -31,16 +31,20 @@ export interface ChildUpdate {
   metadata?: Record<string, unknown>;
 }
 
-/** One slot in a child's timetable. */
+/**
+ * One slot in a child's timetable. A `break` slot is the school-wide break the
+ * API appends (`day: 'all'`); it carries a `title` and no subject or teacher.
+ */
 export interface TimetableSlot {
   day: string;
   date?: string;
   startTime: string;
   endTime: string;
-  subjectName: string;
+  subjectName?: string;
   teacherName?: string;
   room?: string;
-  type?: string;
+  type?: 'class' | 'break';
+  title?: string;
 }
 
 /** One day of the list view. */

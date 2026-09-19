@@ -21,6 +21,16 @@ export interface ChildUser {
   userAvatar?: string;
 }
 
+/**
+ * The class document `toChildDto` attaches as `classIdLegacy`. Only the part
+ * the timetable's class-teacher fallback reads is typed; `classTeacherId` is a
+ * populated teacher record on some routes and a bare id on others.
+ */
+export interface LegacyClass {
+  name?: string;
+  classTeacherId?: string | { userId?: ChildUser; firstName?: string; lastName?: string } | null;
+}
+
 /** One child linked to the signed-in parent. */
 export interface ParentChild {
   /** Student record id — what every child-scoped endpoint expects. */
@@ -44,6 +54,7 @@ export interface ParentChild {
   subjectsCount?: number;
   teachersCount?: number;
   userId?: ChildUser;
+  classIdLegacy?: LegacyClass;
 }
 
 /**
