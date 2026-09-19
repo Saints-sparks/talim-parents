@@ -21,22 +21,28 @@ export interface AssessmentBreakdownQuery extends ResultsQuery {
   courseId?: string;
 }
 
-/** What `GET /parent/results/:studentId/summary` returns. */
+/**
+ * What `GET /parent/results/:studentId/summary` returns.
+ *
+ * Every figure comes from the child's stored cumulative record, so each one is
+ * `null` until the school has computed (and, for the position, published) it.
+ */
 export interface ResultSummary {
   student: { id: string; fullName: string; avatar?: string; className?: string; gradeLevel?: string };
-  term?: { _id?: string; name?: string; [key: string]: unknown };
-  overallAverage: number;
-  overallGrade: string;
-  gradeRemark: string;
+  /** The term's name, or `null` when no cumulative record matched. */
+  term: string | null;
+  overallAverage: number | null;
+  overallGrade: string | null;
+  gradeRemark: string | null;
   /** `null` until the class cumulative is published. */
   classPosition: number | null;
-  totalStudents: number;
+  totalStudents: number | null;
   totalSubjects: number;
   highestSubject: { name: string; percentage: number } | null;
   assessmentsCompleted: number;
   totalAssessments: number;
-  classAverage: number;
-  remarks?: string;
+  classAverage: number | null;
+  remarks: string | null;
   isPublished: boolean;
 }
 
@@ -48,12 +54,12 @@ export interface SubjectResult {
   testScoreWeighted: number | null;
   examScoreRaw: number | null;
   examScoreWeighted: number | null;
-  totalScore: number | null;
+  totalScore: number;
   grade: string;
   remark: string;
   assessmentsCount: number;
-  cumulativeScore: number | null;
-  maxScore: number | null;
+  cumulativeScore: number;
+  maxScore: number;
 }
 
 /** What `GET /parent/results/:studentId/grade-summary` returns. */
@@ -65,12 +71,13 @@ export interface GradeSummary {
 
 /** What `GET /parent/results/:studentId/term-progress` returns. */
 export interface TermProgress {
-  trend: Array<{ label: string; date: string; percentage: number; classAverage: number }>;
+  trend: Array<{ label: string; date: string; percentage: number; classAverage: number | null }>;
   courseProgress: Array<{
     courseId: string;
     subjectName: string;
     percentage: number;
-    classAverage: number;
+    /** `null` until the class average for the course is computed. */
+    classAverage: number | null;
     grade: string;
     remark: string;
   }>;

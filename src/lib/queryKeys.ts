@@ -83,6 +83,8 @@ export const queryKeys = {
   academic: {
     all: ['academic'] as const,
     currentTerm: () => ['academic', 'current-term'] as const,
+    /** Every term of the parent's school. */
+    terms: () => ['academic', 'terms'] as const,
   },
   school: {
     all: ['school'] as const,
