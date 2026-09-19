@@ -33,7 +33,7 @@ import {
 } from './chat/threadStore';
 import { useChatOutbox } from './chat/useChatOutbox';
 import { useChatSocketEvents } from './chat/useChatSocketEvents';
-import { useReadTracking } from './chat/useReadTracking';
+import { isAttentiveNow, useReadTracking } from './chat/useReadTracking';
 import { ackErrorCode, type WebSocketApi } from './useWebSocket';
 
 const PAGE_SIZE = 20;
@@ -319,7 +319,8 @@ export const useRealtimeChat = ({ onRoomRemoved }: UseRealtimeChatOptions = {}):
 
       loadingOlderRef.current.delete(nextRoomId);
       updateThread(nextRoomId, (thread) => ({ ...thread, loadingOlder: false }));
-      setRawRooms((rooms) => clearRoomUnread(rooms, nextRoomId));
+      // Opening a chat in a tab that isn't in front doesn't read it: the badge clears when the reader comes back.
+      if (isAttentiveNow()) setRawRooms((rooms) => clearRoomUnread(rooms, nextRoomId));
       joinRoom(nextRoomId);
     },
     [leaveRoom, joinRoom, updateThread],

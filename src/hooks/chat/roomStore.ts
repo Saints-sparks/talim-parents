@@ -103,14 +103,20 @@ export const toChatRoom = (
  * @param data - The `chat-room-joined` payload.
  * @returns The updated list.
  */
-export const applyRoomJoined = (rooms: RawChatRoom[], roomId: string, data: ChatRoomJoined): RawChatRoom[] => {
+export const applyRoomJoined = (
+  rooms: RawChatRoom[],
+  roomId: string,
+  data: ChatRoomJoined,
+  markRead = true,
+): RawChatRoom[] => {
   const index = rooms.findIndex((room) => roomIdOf(room) === roomId);
   const base: RawChatRoom = index >= 0 ? rooms[index] : {};
   const updated: RawChatRoom = {
     ...base,
     ...(data.room || {}),
     participants: data.participants?.length ? data.participants : data.room?.participants || base.participants,
-    unreadCount: 0,
+    // A chat joined in a tab that isn't in front isn't read yet; the badge clears once it is.
+    unreadCount: markRead ? 0 : (data.room?.unreadCount ?? base.unreadCount ?? 0),
   };
   if (index < 0) return data.room ? sortRooms([...rooms, updated]) : rooms;
   const next = [...rooms];
@@ -209,3 +215,25 @@ export const applyParticipants = (
  */
 export const removeRoom = (rooms: RawChatRoom[], roomId: string): RawChatRoom[] =>
   rooms.filter((item) => roomIdOf(item) !== roomId);
+
+/**
+ * A person came online or went offline: updates them in every room they are in.
+ *
+ * @param rooms - The current room list.
+ * @param userId - Who changed.
+ * @param isOnline - Their new state.
+ * @returns The updated list; the same array when nobody matches or nothing changes.
+ */
+export const applyPresenceChanged = (rooms: RawChatRoom[], userId: string, isOnline: boolean): RawChatRoom[] => {
+  let changed = false;
+  const next = rooms.map((room) => {
+    const participants = room.participants;
+    const at = participants?.findIndex((p) => p.userId === userId || p._id === userId) ?? -1;
+    if (!participants || at === -1 || Boolean(participants[at].isOnline) === isOnline) return room;
+    changed = true;
+    const updated = participants.slice();
+    updated[at] = { ...updated[at], isOnline };
+    return { ...room, participants: updated };
+  });
+  return changed ? next : rooms;
+};

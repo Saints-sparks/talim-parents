@@ -9,9 +9,11 @@ import type {
 } from '../../types/chat';
 import type { WebSocketApi } from '../useWebSocket';
 import type { OutboxEntry } from './outbox';
+import { isAttentiveNow } from './useReadTracking';
 import {
   applyParticipants,
   applyRoomActivity,
+  applyPresenceChanged,
   applyRoomJoined,
   applyRoomRead,
   applyRoomUpdated,
@@ -97,7 +99,7 @@ export const useChatSocketEvents = ({
         updateThread(roomId, (thread) => withJoinedHistory(thread, incoming, data));
 
         if (data.room || data.participants) {
-          setRawRooms((rooms) => applyRoomJoined(rooms, roomId, data));
+          setRawRooms((rooms) => applyRoomJoined(rooms, roomId, data, isAttentiveNow()));
         }
 
         const cursor = backfillCursorRef.current[roomId];
@@ -149,6 +151,14 @@ export const useChatSocketEvents = ({
         if (!roomId || !messageId) return;
         updateThread(roomId, (thread) => withMessageDeleted(thread, messageId));
         setRawRooms((rooms) => applyMessageDeletedToRooms(rooms, roomId, messageId));
+      }),
+
+      // Someone I share a room with came online or went offline (first / last device).
+      webSocket.on('presence-changed', (data) => {
+        const userId = toId(data?.userId);
+        if (!userId || typeof data.isOnline !== 'boolean') return;
+        const isOnline = data.isOnline;
+        setRawRooms((rooms) => applyPresenceChanged(rooms, userId, isOnline));
       }),
 
       // This user read the room, here or on another device.

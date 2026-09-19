@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyParticipants,
   applyRoomActivity,
+  applyPresenceChanged,
   applyRoomJoined,
   applyRoomRead,
   applyRoomUpdated,
@@ -97,6 +98,25 @@ describe('roomStore', () => {
     const next = applyRoomJoined(ROOMS, 'r3', joined);
     expect(next.map(roomIdOf)).toEqual(['r3', 'r2', 'r1']);
     expect(next[0].unreadCount).toBe(0);
+  });
+
+  it('keeps the unread count for a chat joined in a tab that is not in front', () => {
+    const joined = { room: { _id: 'r1', unreadCount: 3 }, participants: [] } as unknown as ChatRoomJoined;
+    expect(applyRoomJoined(ROOMS, 'r1', joined, false)[0].unreadCount).toBe(3);
+    expect(applyRoomJoined(ROOMS, 'r1', joined, true)[0].unreadCount).toBe(0);
+  });
+
+  it('updates a person everywhere they are, and returns the same list when nothing changes', () => {
+    const rooms = [
+      { _id: 'a', participants: [{ userId: 'u1', isOnline: false }, { userId: 'u2' }] },
+      { _id: 'b', participants: [{ _id: 'u1', isOnline: false }] },
+    ] as unknown as RawChatRoom[];
+
+    const next = applyPresenceChanged(rooms, 'u1', true);
+    expect(next[0].participants?.[0].isOnline).toBe(true);
+    expect(next[1].participants?.[0].isOnline).toBe(true);
+    expect(applyPresenceChanged(next, 'u1', true)).toBe(next);
+    expect(applyPresenceChanged(rooms, 'nobody', true)).toBe(rooms);
   });
 });
 

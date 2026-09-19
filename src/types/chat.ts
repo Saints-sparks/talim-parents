@@ -345,6 +345,13 @@ export interface RoomRead {
   readAt?: string;
 }
 
+/** `presence-changed` */
+export interface PresenceChanged {
+  userId?: unknown;
+  isOnline?: boolean;
+  lastSeenAt?: string;
+}
+
 /** `message-deleted` */
 export interface MessageDeleted {
   roomId?: unknown;
@@ -385,6 +392,7 @@ export interface ChatServerEvents {
   'messages-read': MessagesRead;
   'room-read': RoomRead;
   'message-deleted': MessageDeleted;
+  'presence-changed': PresenceChanged;
   'room-updated': RoomUpdated;
   'participants-changed': ParticipantsChanged;
   error: ChatSocketError;

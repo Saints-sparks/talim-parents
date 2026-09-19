@@ -4,7 +4,8 @@ import type { ChatMessage, RawChatRoom, ReadPosition } from '../../types/chat';
 import type { WebSocketApi } from '../useWebSocket';
 import { applyRoomRead, roomIdOf } from './roomStore';
 
-const isAttentiveNow = (): boolean => document.visibilityState === 'visible' && document.hasFocus();
+/** True while the page is visible and focused: the only time anything counts as read. */
+export const isAttentiveNow = (): boolean => document.visibilityState === 'visible' && document.hasFocus();
 
 /** What read tracking needs from the chat store. */
 export interface ReadTrackingParams {
@@ -62,7 +63,8 @@ export const useReadTracking = ({
     const previous = readPositionRef.current[roomId];
     if (isAtOrBefore(target, previous)) return;
     const lastReadAt = new Date(roomsRef.current.find((room) => roomIdOf(room) === roomId)?.lastReadAt || '').getTime();
-    if (new Date(target.createdAt || 0).getTime() < lastReadAt) return;
+    // At or before what the server already has as read: nothing new to acknowledge.
+    if (new Date(target.createdAt || 0).getTime() <= lastReadAt) return;
 
     const position = { id: targetId, time: new Date(target.createdAt || 0).getTime() };
     readPositionRef.current[roomId] = position;
