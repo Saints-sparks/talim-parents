@@ -1,4 +1,3 @@
- 
 /**
  * Chat media kit — the strip of picked files above the message box:
  * thumbnails for images, chips for everything else, × to remove, and the
@@ -9,32 +8,29 @@ import { useEffect, useRef, useState } from "react";
 import { File as FileIcon, FileText, Film, Music, X } from "lucide-react";
 import { fileKind, formatBytes } from "./mediaTypes";
 
-/**
- * @typedef {object} ComposerAttachmentsProps
- * @property {File[]} files
- * @property {(index: number) => void} onRemove
- * @property {string[]} [errors] Validation messages to show under the strip.
- * @property {() => void} [onDismissErrors]
- * @property {boolean} [disabled]
- * @property {string} [className]
- */
+/** Props of the {@link ComposerAttachments}. */
+export interface ComposerAttachmentsProps {
+  files: File[];
+  onRemove: (index: number) => void;
+  /** Validation messages to show under the strip. */
+  errors?: string[];
+  onDismissErrors?: () => void;
+  disabled?: boolean;
+  className?: string;
+}
 
 /**
  * Object URLs for the image files in `files`. URLs are created once per
  * File and revoked when the file leaves the list (removed or sent) or the
  * component unmounts.
- *
- * @param {File[]} files
- * @returns {Map<File, string>}
  */
-function useImagePreviews(files) {
-  /** @type {import("react").MutableRefObject<Map<File, string>>} */
-  const cacheRef = useRef(new Map());
-  const [previews, setPreviews] = useState(() => new Map());
+function useImagePreviews(files: File[]): Map<File, string> {
+  const cacheRef = useRef<Map<File, string>>(new Map());
+  const [previews, setPreviews] = useState<Map<File, string>>(() => new Map());
 
   useEffect(() => {
     const cache = cacheRef.current;
-    const next = new Map();
+    const next = new Map<File, string>();
     for (const file of files) {
       if (fileKind(file) !== "image") continue;
       next.set(file, cache.get(file) ?? URL.createObjectURL(file));
@@ -58,7 +54,13 @@ function useImagePreviews(files) {
   return previews;
 }
 
-/** @param {ComposerAttachmentsProps} props */
+/**
+ * The strip of picked files above the composer, with per-file remove buttons
+ * and the validation messages under it.
+ *
+ * @param props - Component props (see {@link ComposerAttachmentsProps}).
+ * @returns The strip, or `null` when there is nothing to show.
+ */
 export function ComposerAttachments({
   files,
   onRemove,
@@ -66,7 +68,7 @@ export function ComposerAttachments({
   onDismissErrors,
   disabled = false,
   className = "",
-}) {
+}: ComposerAttachmentsProps) {
   const previews = useImagePreviews(files);
   if (files.length === 0 && errors.length === 0) return null;
 
@@ -83,7 +85,7 @@ export function ComposerAttachments({
                 type="button"
                 onClick={() => onRemove(index)}
                 disabled={disabled}
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white shadow hover:bg-gray-900 disabled:opacity-50"
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white shadow hover:bg-gray-900 disabled:opacity-50 dark:bg-slate-600 dark:hover:bg-slate-500"
                 aria-label={`Remove ${file.name}`}
                 title="Remove"
               >
@@ -132,7 +134,7 @@ export function ComposerAttachments({
             <button
               type="button"
               onClick={onDismissErrors}
-              className="flex-shrink-0 rounded p-0.5 hover:bg-red-100"
+              className="flex-shrink-0 rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900/40"
               aria-label="Dismiss"
             >
               <X size={12} aria-hidden />

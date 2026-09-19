@@ -1,4 +1,3 @@
- 
 /**
  * Chat media kit — full-screen image viewer: prev/next (buttons and ←/→),
  * Esc / backdrop / × to close, Download, "2 / 4" counter. Focus stays in the
@@ -6,33 +5,44 @@
  * doesn't scroll.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 
-/**
- * @typedef {object} LightboxImage
- * @property {string} url
- * @property {string} [name]
- */
+/** One image in the lightbox. */
+export interface LightboxImage {
+  url: string;
+  name?: string;
+}
 
-/**
- * @typedef {object} LightboxProps
- * @property {LightboxImage[]} images
- * @property {number | null} index Index of the image to show; `null` (or `open={false}`) hides the lightbox.
- * @property {boolean} [open]
- * @property {() => void} onClose
- * @property {(index: number) => void} [onIndexChange]
- */
+/** Props of the {@link Lightbox}. */
+export interface LightboxProps {
+  images: LightboxImage[];
+  /** Index of the image to show; `null` (or `open={false}`) hides the lightbox. */
+  index: number | null;
+  open?: boolean;
+  onClose: () => void;
+  onIndexChange?: (index: number) => void;
+}
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-/** @param {LightboxProps} props */
-export function Lightbox({ images, index, open = true, onClose, onIndexChange }) {
+/**
+ * A full-screen image viewer, rendered in a portal on `document.body`, with
+ * keyboard navigation, focus trapping and body-scroll locking while open.
+ *
+ * @param props - Component props.
+ * @param props.images - The images to page through.
+ * @param props.index - The image to show; `null` hides the lightbox.
+ * @param props.open - Set to `false` to hide it without clearing `index`.
+ * @param props.onClose - Called when the viewer should close.
+ * @param props.onIndexChange - Called with the new index when the reader pages.
+ * @returns The viewer, or `null` while closed.
+ */
+export function Lightbox({ images, index, open = true, onClose, onIndexChange }: LightboxProps) {
   const [mounted, setMounted] = useState(false);
-  /** @type {import("react").MutableRefObject<HTMLDivElement | null>} */
-  const dialogRef = useRef(null);
-  /** @type {import("react").MutableRefObject<HTMLButtonElement | null>} */
-  const closeRef = useRef(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -46,7 +56,7 @@ export function Lightbox({ images, index, open = true, onClose, onIndexChange })
   useEffect(() => setMounted(true), []);
 
   const go = useCallback(
-    (delta) => {
+    (delta: number) => {
       if (count < 2 || index === null) return;
       onIndexChange?.((safeIndex + delta + count) % count);
     },
@@ -56,7 +66,7 @@ export function Lightbox({ images, index, open = true, onClose, onIndexChange })
   // Body scroll lock + focus in / focus back.
   useEffect(() => {
     if (!isOpen || typeof document === "undefined") return;
-    const previousFocus = /** @type {HTMLElement | null} */ (document.activeElement);
+    const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const focusTimer = setTimeout(() => (closeRef.current ?? dialogRef.current)?.focus(), 0);
@@ -70,8 +80,7 @@ export function Lightbox({ images, index, open = true, onClose, onIndexChange })
   // Keys work wherever focus is while the dialog is open.
   useEffect(() => {
     if (!isOpen) return;
-    /** @param {KeyboardEvent} e */
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         onCloseRef.current();
@@ -87,10 +96,9 @@ export function Lightbox({ images, index, open = true, onClose, onIndexChange })
     return () => document.removeEventListener("keydown", onKey);
   }, [isOpen, go]);
 
-  /** @param {import("react").KeyboardEvent<HTMLDivElement>} e */
-  const trapFocus = (e) => {
+  const trapFocus = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab" || !dialogRef.current) return;
-    const focusable = Array.from(dialogRef.current.querySelectorAll(FOCUSABLE));
+    const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
     if (focusable.length === 0) {
       e.preventDefault();
       return;
@@ -107,8 +115,7 @@ export function Lightbox({ images, index, open = true, onClose, onIndexChange })
     }
   };
 
-  /** @param {import("react").MouseEvent<HTMLDivElement>} e */
-  const onBackdrop = (e) => {
+  const onBackdrop = (e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   };
 

@@ -1,38 +1,47 @@
- 
 /**
  * Chat media kit — voice note player: play/pause, a seek bar you can click
  * or drag, and elapsed / total. Only one voice note plays at a time.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, PointerEvent } from "react";
 import { AlertCircle, Loader2, Pause, Play } from "lucide-react";
 import { formatDuration } from "./mediaTypes";
-import { activePlayerController } from "./activePlayer";
+import { activePlayerController, type PausablePlayer } from "./activePlayer";
 
 export const VOICE_PLAY_ERROR = "Can't play this voice note";
 
-/**
- * @typedef {object} VoicePlayerProps
- * @property {string} [url] The uploaded file.
- * @property {string} [playbackUrl] MP3 rendition from the server; preferred over `url` when present.
- * @property {number} [duration] Length in seconds from the message, used when the file doesn't report one (WebM).
- * @property {"default" | "inverted"} [tone] `inverted` for light-on-dark bubbles (your own messages).
- * @property {boolean} [pending] Shows a spinner instead of the play button (still uploading).
- * @property {boolean} [failed] The message failed to send: a static warning instead of the spinner.
- * @property {string} [className]
- * @property {(message: string) => void} [onError] Called with a user-facing message when playback fails.
- */
+/** Props of the {@link VoicePlayer}. */
+export interface VoicePlayerProps {
+  /** The uploaded file. */
+  url?: string;
+  /** MP3 rendition from the server; preferred over `url` when present. */
+  playbackUrl?: string;
+  /** Length in seconds from the message, used when the file doesn't report one (WebM). */
+  duration?: number;
+  /** `inverted` for light-on-dark bubbles (your own messages). */
+  tone?: "default" | "inverted";
+  /** Shows a spinner instead of the play button (still uploading). */
+  pending?: boolean;
+  /** The message failed to send: a static warning instead of the spinner. */
+  failed?: boolean;
+  className?: string;
+  /** Called with a user-facing message when playback fails. */
+  onError?: (message: string) => void;
+}
 
 const SEEK_STEP_SECONDS = 5;
 
-/**
- * @param {number} value
- * @returns {number}
- */
-function clamp01(value) {
+function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
-/** @param {VoicePlayerProps} props */
+/**
+ * A voice-note player: play / pause, a seekable bar, elapsed time. Only one
+ * player plays at a time (see `activePlayerController`).
+ *
+ * @param props - Component props (see {@link VoicePlayerProps}).
+ * @returns The player.
+ */
 export function VoicePlayer({
   url,
   playbackUrl,
@@ -42,12 +51,10 @@ export function VoicePlayer({
   failed = false,
   className = "",
   onError,
-}) {
+}: VoicePlayerProps) {
   const src = playbackUrl || url || "";
-  /** @type {import("react").MutableRefObject<HTMLAudioElement | null>} */
-  const audioRef = useRef(null);
-  /** @type {import("react").MutableRefObject<HTMLDivElement | null>} */
-  const barRef = useRef(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
   const playRequestedRef = useRef(false);
   const draggingRef = useRef(false);
   const onErrorRef = useRef(onError);
@@ -58,13 +65,12 @@ export function VoicePlayer({
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [mediaDuration, setMediaDuration] = useState(0);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState<string | null>(null);
 
   const total = mediaDuration > 0 ? mediaDuration : typeof duration === "number" && duration > 0 ? duration : 0;
 
   // A stable handle the controller can pause.
-  /** @type {import("./activePlayer").PausablePlayer} */
-  const handle = useMemo(() => ({ pause: () => audioRef.current?.pause() }), []);
+  const handle = useMemo<PausablePlayer>(() => ({ pause: () => audioRef.current?.pause() }), []);
 
   // New source: start over.
   useEffect(() => {
@@ -76,7 +82,7 @@ export function VoicePlayer({
   }, [src]);
 
   // A detached <audio> keeps playing, so pause it as it leaves the page.
-  const setAudioElement = useCallback((el) => {
+  const setAudioElement = useCallback((el: HTMLAudioElement | null) => {
     if (!el) audioRef.current?.pause();
     audioRef.current = el;
   }, []);
@@ -116,7 +122,7 @@ export function VoicePlayer({
       await audio.play();
     } catch (err) {
       // play() interrupted by pause() (another player started) isn't a failure.
-      if (err && typeof err === "object" && err.name === "AbortError") return;
+      if (err && typeof err === "object" && (err as { name?: string }).name === "AbortError") return;
       fail();
     }
   }, [src, pending, handle, fail]);
@@ -126,18 +132,13 @@ export function VoicePlayer({
     if (typeof d === "number" && Number.isFinite(d) && d > 0) setMediaDuration(d);
   };
 
-  /**
-   * @param {number} clientX
-   * @returns {number}
-   */
-  const ratioAt = (clientX) => {
+  const ratioAt = (clientX: number): number => {
     const rect = barRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0) return 0;
     return clamp01((clientX - rect.left) / rect.width);
   };
 
-  /** @param {number} seconds */
-  const seekTo = (seconds) => {
+  const seekTo = (seconds: number) => {
     const audio = audioRef.current;
     if (!audio || total <= 0) return;
     const next = Math.min(total, Math.max(0, seconds));
@@ -149,30 +150,26 @@ export function VoicePlayer({
     }
   };
 
-  /** @param {import("react").PointerEvent<HTMLDivElement>} e */
-  const onPointerDown = (e) => {
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (!src || total <= 0) return;
     draggingRef.current = true;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     setCurrent(ratioAt(e.clientX) * total);
   };
 
-  /** @param {import("react").PointerEvent<HTMLDivElement>} e */
-  const onPointerMove = (e) => {
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (!draggingRef.current) return;
     setCurrent(ratioAt(e.clientX) * total);
   };
 
-  /** @param {import("react").PointerEvent<HTMLDivElement>} e */
-  const onPointerUp = (e) => {
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
     e.currentTarget.releasePointerCapture?.(e.pointerId);
     seekTo(ratioAt(e.clientX) * total);
   };
 
-  /** @param {import("react").KeyboardEvent<HTMLDivElement>} e */
-  const onKeyDown = (e) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (total <= 0) return;
     if (e.key === "ArrowRight" || e.key === "ArrowUp") seekTo(current + SEEK_STEP_SECONDS);
     else if (e.key === "ArrowLeft" || e.key === "ArrowDown") seekTo(current - SEEK_STEP_SECONDS);
@@ -195,7 +192,7 @@ export function VoicePlayer({
           disabled={disabled}
           aria-label={playing ? "Pause voice note" : "Play voice note"}
           className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-            inverted ? "bg-white/20 text-white hover:bg-white/30" : "bg-gray-900/10 text-gray-900 hover:bg-gray-900/15"
+            inverted ? "bg-white/20 text-white hover:bg-white/30" : "bg-gray-900/10 text-gray-900 hover:bg-gray-900/15 dark:bg-white/15 dark:hover:bg-white/25"
           }`}
         >
           {failed ? (
@@ -225,14 +222,14 @@ export function VoicePlayer({
           onKeyDown={onKeyDown}
           className={`relative flex h-6 flex-1 touch-none items-center ${disabled || total <= 0 ? "" : "cursor-pointer"}`}
         >
-          <div className={`h-1 w-full overflow-hidden rounded-full ${inverted ? "bg-white/30" : "bg-gray-900/15"}`}>
+          <div className={`h-1 w-full overflow-hidden rounded-full ${inverted ? "bg-white/30" : "bg-gray-900/15 dark:bg-white/20"}`}>
             <div
-              className={`h-full rounded-full ${inverted ? "bg-white" : "bg-gray-900/70"}`}
+              className={`h-full rounded-full ${inverted ? "bg-white" : "bg-gray-900/70 dark:bg-slate-200"}`}
               style={{ width: `${progress * 100}%` }}
             />
           </div>
           <div
-            className={`absolute h-3 w-3 -translate-x-1/2 rounded-full shadow ${inverted ? "bg-white" : "bg-gray-900/80"}`}
+            className={`absolute h-3 w-3 -translate-x-1/2 rounded-full shadow ${inverted ? "bg-white" : "bg-gray-900/80 dark:bg-slate-200"}`}
             style={{ left: `${progress * 100}%` }}
             aria-hidden
           />

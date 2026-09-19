@@ -3,18 +3,18 @@
 How every Talim web app shows, sends and plays chat media.
 
 **Reference copy: Talim-Sch-Admin `src/components/chat-kit/`.** It is copied
-file-for-file into Talim-Teachers, Talim-students-web and talim-parents (as
-`.jsx` under `src/Components/chat-kit/`). **Change it here first, then copy.**
+file-for-file into Talim-Teachers, Talim-students-web and talim-parents (under
+`src/Components/chat-kit/`). **Change it here first, then copy.**
 Don't edit a copy on its own.
 
-> **This copy:** talim-parents `src/Components/chat-kit/`, a JavaScript port of
-> Talim-Sch-Admin commit `a0a8e2a`. Only the TypeScript was removed: types
-> became JSDoc (`@typedef` / `@param` / `@returns`), `"use client"` was dropped,
-> and the `export type` lines in `index.js` are gone (JSDoc typedefs are
-> referenced with `import("./mediaTypes").ChatKitAttachment`). Component files
-> start with `/* eslint-disable react/prop-types */` like the rest of this app.
-> Same file names (`.js` / `.jsx`), exports, props and behaviour. The jest
-> tests aren't copied (this app has no test runner).
+> **This copy:** talim-parents `src/Components/chat-kit/`. The `.ts` / `.tsx`
+> files are the reference files (Talim-Sch-Admin commit `a0a8e2a` plus the
+> `ea7dca6` failed-message fix), with three differences: `"use client"` is
+> dropped, exports carry JSDoc, and the components that draw on the app's
+> surface carry a few extra `dark:` classes (voice player progress, image
+> tiles, the composer chips) so they stay legible in dark mode. Same file
+> names, exports, props and behaviour. The reference's jest tests run here under
+> Vitest (`jest.` became `vi.`) in `__tests__/`.
 
 Rules for the kit:
 
@@ -28,16 +28,16 @@ Rules for the kit:
 
 | File | Exports |
 |---|---|
-| `mediaTypes.js` | `pickRecorderMime(isTypeSupported?)`, `extensionForMime(mime)`, `formatDuration(s)`, `formatBytes(n)`, `fileExtension(name)`, `fileKind(file)`, `attachmentKind(att)`, `maxBytesFor(kind)`, `validateFile(file)`, `addToSelection(current, incoming)`, `messageTypeFor(kinds, isVoice)`, `fitWithin(w, h, maxW, maxH)`, `extractLinks(text)`; limits `MAX_FILES_PER_MESSAGE` (10), `MAX_IMAGE_BYTES` (15 MB), `MAX_VIDEO_BYTES` (100 MB), `MAX_OTHER_BYTES` (25 MB), `MAX_VOICE_SECONDS` (300), `ALLOWED_EXTENSIONS`, `ATTACHMENT_ACCEPT`, `IMAGE_ACCEPT`; JSDoc typedefs `AttachmentKind`, `ChatKitAttachment`, `SendableAttachment` |
-| `activePlayer.js` | `activePlayerController`, `createActivePlayerController()` — one voice note plays at a time |
-| `AttachmentGrid.jsx` | `AttachmentGrid`, `MEDIA_MAX_WIDTH`, `MEDIA_MAX_HEIGHT` |
-| `Lightbox.jsx` | `Lightbox` |
-| `VoicePlayer.jsx` | `VoicePlayer`, `VOICE_PLAY_ERROR` |
-| `useVoiceRecorder.js` | `useVoiceRecorder`, `VOICE_*_ERROR` messages |
-| `ComposerAttachments.jsx` | `ComposerAttachments` |
-| `useAttachmentUpload.js` | `useAttachmentUpload(uploadFn)`, `uploadAttachments(items, uploadFn, options)`, `toSendableAttachment` |
-| `index.js` | everything above |
-| `__tests__/` | jest tests (copy only into apps that run jest; not in this app) |
+| `mediaTypes.ts` | `pickRecorderMime(isTypeSupported?)`, `extensionForMime(mime)`, `formatDuration(s)`, `formatBytes(n)`, `fileExtension(name)`, `fileKind(file)`, `attachmentKind(att)`, `maxBytesFor(kind)`, `validateFile(file)`, `addToSelection(current, incoming)`, `messageTypeFor(kinds, isVoice)`, `fitWithin(w, h, maxW, maxH)`, `extractLinks(text)`; limits `MAX_FILES_PER_MESSAGE` (10), `MAX_IMAGE_BYTES` (15 MB), `MAX_VIDEO_BYTES` (100 MB), `MAX_OTHER_BYTES` (25 MB), `MAX_VOICE_SECONDS` (300), `ALLOWED_EXTENSIONS`, `ATTACHMENT_ACCEPT`, `IMAGE_ACCEPT`; types `AttachmentKind`, `ChatKitAttachment`, `SendableAttachment` |
+| `activePlayer.ts` | `activePlayerController`, `createActivePlayerController()` — one voice note plays at a time |
+| `AttachmentGrid.tsx` | `AttachmentGrid`, `MEDIA_MAX_WIDTH`, `MEDIA_MAX_HEIGHT` |
+| `Lightbox.tsx` | `Lightbox` |
+| `VoicePlayer.tsx` | `VoicePlayer`, `VOICE_PLAY_ERROR` |
+| `useVoiceRecorder.ts` | `useVoiceRecorder`, `VOICE_*_ERROR` messages |
+| `ComposerAttachments.tsx` | `ComposerAttachments` |
+| `useAttachmentUpload.ts` | `useAttachmentUpload(uploadFn)`, `uploadAttachments(items, uploadFn, options)`, `toSendableAttachment` |
+| `index.ts` | everything above |
+| `__tests__/` | the reference's tests, ported to Vitest here (`jest.` becomes `vi.`) |
 
 ## Props
 

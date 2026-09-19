@@ -12,43 +12,48 @@ export const VOICE_TOO_SHORT_ERROR = "Hold longer to record";
 export const VOICE_FAILED_ERROR = "Couldn't record a voice note. Try again.";
 export const VOICE_NO_MIC_ERROR = "No microphone found";
 
-/**
- * @typedef {object} VoiceRecording
- * @property {File} file
- * @property {number} duration Whole seconds, at least 1.
- */
+/** A finished voice note. */
+export interface VoiceRecording {
+  file: File;
+  /** Whole seconds, at least 1. */
+  duration: number;
+}
 
-/**
- * @typedef {object} UseVoiceRecorderOptions
- * @property {number} [maxDurationSeconds] Auto-stop after this many seconds (default 5 minutes).
- * @property {(recording: VoiceRecording | null) => void} [onAutoStop] Called with the recording when the time limit stops it.
- */
+/** Options of `useVoiceRecorder`. */
+export interface UseVoiceRecorderOptions {
+  /** Auto-stop after this many seconds (default 5 minutes). */
+  maxDurationSeconds?: number;
+  /** Called with the recording when the time limit stops it. */
+  onAutoStop?: (recording: VoiceRecording | null) => void;
+}
 
-/**
- * @typedef {object} UseVoiceRecorderReturn
- * @property {() => Promise<boolean>} start Asks for the microphone and starts. Resolves false when it couldn't start (see `error`).
- * @property {() => Promise<VoiceRecording | null>} stop Stops and returns the note, or null when it was shorter than a second.
- * @property {() => void} cancel Stops and throws the recording away.
- * @property {boolean} isRecording
- * @property {number} elapsed Whole seconds recorded so far.
- * @property {string | null} error
- * @property {() => void} clearError
- */
+/** What `useVoiceRecorder` returns. */
+export interface UseVoiceRecorderReturn {
+  /** Asks for the microphone and starts. Resolves false when it couldn't start (see `error`). */
+  start: () => Promise<boolean>;
+  /** Stops and returns the note, or null when it was shorter than a second. */
+  stop: () => Promise<VoiceRecording | null>;
+  /** Stops and throws the recording away. */
+  cancel: () => void;
+  isRecording: boolean;
+  /** Whole seconds recorded so far. */
+  elapsed: number;
+  error: string | null;
+  clearError: () => void;
+}
 
-/**
- * @typedef {object} Session
- * @property {MediaStream} stream
- * @property {MediaRecorder} recorder
- * @property {Blob[]} chunks
- * @property {string} mime
- * @property {number} startedAt
- * @property {boolean} discard
- * @property {(recording: VoiceRecording | null) => void} [resolveStop]
- * @property {Promise<VoiceRecording | null>} [stopped]
- */
+interface Session {
+  stream: MediaStream;
+  recorder: MediaRecorder;
+  chunks: Blob[];
+  mime: string;
+  startedAt: number;
+  discard: boolean;
+  resolveStop?: (recording: VoiceRecording | null) => void;
+  stopped?: Promise<VoiceRecording | null>;
+}
 
-/** @param {MediaStream | null | undefined} stream */
-function stopTracks(stream) {
+function stopTracks(stream: MediaStream | null | undefined) {
   stream?.getTracks().forEach((track) => {
     try {
       track.stop();
@@ -58,8 +63,7 @@ function stopTracks(stream) {
   });
 }
 
-/** @returns {boolean} */
-function isSupported() {
+function isSupported(): boolean {
   return (
     typeof navigator !== "undefined" &&
     Boolean(navigator.mediaDevices?.getUserMedia) &&
@@ -69,21 +73,22 @@ function isSupported() {
 }
 
 /**
- * @param {UseVoiceRecorderOptions} [options]
- * @returns {UseVoiceRecorderReturn}
+ * Records a voice note with MediaRecorder and releases the microphone on
+ * stop, cancel, error and unmount.
+ *
+ * @param options - Recording limit and the auto-stop callback.
+ * @returns Controls and state of the recorder.
  */
-export function useVoiceRecorder(options = {}) {
+export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoiceRecorderReturn {
   const maxSeconds = options.maxDurationSeconds ?? MAX_VOICE_SECONDS;
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState<string | null>(null);
 
-  /** @type {import("react").MutableRefObject<Session | null>} */
-  const sessionRef = useRef(null);
+  const sessionRef = useRef<Session | null>(null);
   /** Bumped by cancel/unmount so a start still waiting for the mic gives up. */
   const generationRef = useRef(0);
-  /** @type {import("react").MutableRefObject<ReturnType<typeof setInterval> | null>} */
-  const tickRef = useRef(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
   const onAutoStopRef = useRef(options.onAutoStop);
   useEffect(() => {
@@ -95,7 +100,7 @@ export function useVoiceRecorder(options = {}) {
     tickRef.current = null;
   };
 
-  const finish = useCallback((/** @type {Session} */ session) => {
+  const finish = useCallback((session: Session) => {
     clearTick();
     stopTracks(session.stream);
     if (sessionRef.current === session) sessionRef.current = null;
@@ -105,12 +110,11 @@ export function useVoiceRecorder(options = {}) {
     }
   }, []);
 
-  /** @type {() => Promise<VoiceRecording | null>} */
-  const stop = useCallback(() => {
+  const stop = useCallback((): Promise<VoiceRecording | null> => {
     const session = sessionRef.current;
     if (!session) return Promise.resolve(null);
     if (session.stopped) return session.stopped;
-    session.stopped = new Promise((resolve) => {
+    session.stopped = new Promise<VoiceRecording | null>((resolve) => {
       session.resolveStop = resolve;
     });
     if (session.recorder.state === "inactive") {
@@ -144,8 +148,7 @@ export function useVoiceRecorder(options = {}) {
     session.resolveStop?.(null);
   }, [finish]);
 
-  /** @type {() => Promise<boolean>} */
-  const start = useCallback(async () => {
+  const start = useCallback(async (): Promise<boolean> => {
     if (sessionRef.current) return true;
     setError(null);
     if (!isSupported()) {
@@ -154,12 +157,11 @@ export function useVoiceRecorder(options = {}) {
     }
 
     const generation = ++generationRef.current;
-    /** @type {MediaStream} */
-    let stream;
+    let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
-      const name = err && typeof err === "object" ? err.name : "";
+      const name = err && typeof err === "object" ? (err as { name?: string }).name : "";
       if (mountedRef.current) {
         setError(
           name === "NotAllowedError" || name === "SecurityError" || name === "PermissionDeniedError"
@@ -178,8 +180,7 @@ export function useVoiceRecorder(options = {}) {
     }
 
     const preferred = pickRecorderMime();
-    /** @type {MediaRecorder} */
-    let recorder;
+    let recorder: MediaRecorder;
     try {
       recorder = preferred ? new MediaRecorder(stream, { mimeType: preferred }) : new MediaRecorder(stream);
     } catch {
@@ -192,8 +193,7 @@ export function useVoiceRecorder(options = {}) {
       }
     }
 
-    /** @type {Session} */
-    const session = {
+    const session: Session = {
       stream,
       recorder,
       chunks: [],
@@ -202,7 +202,7 @@ export function useVoiceRecorder(options = {}) {
       discard: false,
     };
 
-    recorder.ondataavailable = (/** @type {BlobEvent} */ e) => {
+    recorder.ondataavailable = (e: BlobEvent) => {
       if (e.data && e.data.size > 0) session.chunks.push(e.data);
     };
 

@@ -5,22 +5,28 @@
  * playing before is paused.
  */
 
-/**
- * @typedef {object} PausablePlayer
- * @property {() => void} pause
- */
+/** Anything the controller can pause. */
+export interface PausablePlayer {
+  pause(): void;
+}
+
+/** Keeps track of which player is playing. */
+export interface ActivePlayerController {
+  /** `player` starts playing: pauses whichever other player was active. */
+  activate(player: PausablePlayer): void;
+  /** `player` stopped (paused, ended, unmounted). */
+  release(player: PausablePlayer): void;
+  /** The player playing now, if any. */
+  current(): PausablePlayer | null;
+}
 
 /**
- * @typedef {object} ActivePlayerController
- * @property {(player: PausablePlayer) => void} activate `player` starts playing: pauses whichever other player was active.
- * @property {(player: PausablePlayer) => void} release `player` stopped (paused, ended, unmounted).
- * @property {() => PausablePlayer | null} current The player playing now, if any.
+ * Creates a controller that lets one player play at a time.
+ *
+ * @returns A fresh controller (the app uses the shared `activePlayerController`).
  */
-
-/** @returns {ActivePlayerController} */
-export function createActivePlayerController() {
-  /** @type {PausablePlayer | null} */
-  let active = null;
+export function createActivePlayerController(): ActivePlayerController {
+  let active: PausablePlayer | null = null;
   return {
     activate(player) {
       if (active && active !== player) {

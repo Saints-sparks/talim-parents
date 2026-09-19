@@ -5,46 +5,47 @@
  * what failed.
  */
 import { useCallback, useState } from "react";
-import { fileKind } from "./mediaTypes";
+import { fileKind, type AttachmentKind, type ChatKitAttachment, type SendableAttachment } from "./mediaTypes";
 
 /**
  * The app's upload helper (`POST /upload/chat-attachment`). Call `onProgress`
  * with 0–1 if the helper can report progress; otherwise it is reported as
  * done when the promise resolves.
- *
- * @typedef {(
- *   file: File,
- *   onProgress?: (fraction: number) => void
- * ) => Promise<Partial<import("./mediaTypes").ChatKitAttachment> & { url: string }>} ChatUploadFn
  */
+export type ChatUploadFn = (
+  file: File,
+  onProgress?: (fraction: number) => void
+) => Promise<Partial<ChatKitAttachment> & { url: string }>;
 
-/**
- * @typedef {object} UploadItem
- * @property {File} file
- * @property {import("./mediaTypes").AttachmentKind} [kind] Force the attachment type (a voice recording is `audio`).
- * @property {number} [duration] Seconds, for audio / video when known locally.
- * @property {import("./mediaTypes").SendableAttachment} [uploaded] Set once uploaded; items with it are not uploaded again.
- */
+/** One file waiting to be uploaded, or already uploaded. */
+export interface UploadItem {
+  file: File;
+  /** Force the attachment type (a voice recording is `audio`). */
+  kind?: AttachmentKind;
+  /** Seconds, for audio / video when known locally. */
+  duration?: number;
+  /** Set once uploaded; items with it are not uploaded again. */
+  uploaded?: SendableAttachment;
+}
 
-/**
- * @typedef {object} UploadOptions
- * @property {(index: number, fraction: number) => void} [onProgress] Progress of item `index`, 0–1.
- * @property {(index: number, attachment: import("./mediaTypes").SendableAttachment) => void} [onItemUploaded]
- *   Item `index` finished uploading (store it so a retry skips it).
- * @property {number} [concurrency] Uploads at once (default 2).
- */
+/** Options of an upload run. */
+export interface UploadOptions {
+  /** Progress of item `index`, 0–1. */
+  onProgress?: (index: number, fraction: number) => void;
+  /** Item `index` finished uploading (store it so a retry skips it). */
+  onItemUploaded?: (index: number, attachment: SendableAttachment) => void;
+  /** Uploads at once (default 2). */
+  concurrency?: number;
+}
 
-/**
- * Builds the send payload's attachment from an upload response.
- *
- * @param {Pick<UploadItem, "file" | "kind" | "duration">} item
- * @param {Partial<import("./mediaTypes").ChatKitAttachment> & { url: string }} response
- * @returns {import("./mediaTypes").SendableAttachment}
- */
-export function toSendableAttachment(item, response) {
-  const kind = item.kind ?? response.type ?? fileKind(item.file);
-  /** @type {import("./mediaTypes").SendableAttachment} */
-  const attachment = {
+/** Builds the send payload's attachment from an upload response. */
+export function toSendableAttachment(
+  item: Pick<UploadItem, "file" | "kind" | "duration">,
+  response: Partial<ChatKitAttachment> & { url: string }
+): SendableAttachment {
+  const kind: AttachmentKind =
+    item.kind ?? (response.type as AttachmentKind | undefined) ?? fileKind(item.file);
+  const attachment: SendableAttachment = {
     url: response.url,
     name: response.name || item.file.name,
     mimeType: response.mimeType || item.file.type || "application/octet-stream",
@@ -63,16 +64,15 @@ export function toSendableAttachment(item, response) {
  * resolves with all attachments in the items' order. Rejects with the first
  * failure (after the uploads already running settle); items that succeeded
  * are reported through `onItemUploaded` and marked `uploaded`.
- *
- * @param {UploadItem[]} items
- * @param {ChatUploadFn} uploadFn
- * @param {UploadOptions} [options]
- * @returns {Promise<import("./mediaTypes").SendableAttachment[]>}
  */
-export async function uploadAttachments(items, uploadFn, options = {}) {
+export async function uploadAttachments(
+  items: UploadItem[],
+  uploadFn: ChatUploadFn,
+  options: UploadOptions = {}
+): Promise<SendableAttachment[]> {
   const concurrency = Math.max(1, options.concurrency ?? 2);
   const queue = items.map((_, index) => index).filter((index) => !items[index].uploaded);
-  let failure = null;
+  let failure: unknown = null;
 
   items.forEach((item, index) => {
     if (item.uploaded) options.onProgress?.(index, 1);
@@ -80,7 +80,7 @@ export async function uploadAttachments(items, uploadFn, options = {}) {
 
   const worker = async () => {
     while (queue.length > 0 && failure === null) {
-      const index = queue.shift();
+      const index = queue.shift() as number;
       const item = items[index];
       options.onProgress?.(index, 0);
       try {
@@ -102,26 +102,29 @@ export async function uploadAttachments(items, uploadFn, options = {}) {
 
   await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
   if (failure !== null) throw failure;
-  return items.map((item) => item.uploaded);
+  return items.map((item) => item.uploaded as SendableAttachment);
+}
+
+/** What `useAttachmentUpload` returns. */
+export interface UseAttachmentUploadReturn {
+  upload: (items: UploadItem[], options?: UploadOptions) => Promise<SendableAttachment[]>;
+  isUploading: boolean;
+  /** Progress per item of the latest upload, 0–1. */
+  progress: number[];
 }
 
 /**
- * @typedef {object} UseAttachmentUploadReturn
- * @property {(items: UploadItem[], options?: UploadOptions) => Promise<import("./mediaTypes").SendableAttachment[]>} upload
- * @property {boolean} isUploading
- * @property {number[]} progress Progress per item of the latest upload, 0–1.
+ * Uploads a message's files with the app's own upload helper, tracking progress.
+ *
+ * @param uploadFn - The app's upload helper (`POST /upload/chat-attachment`).
+ * @returns `upload`, whether one is running, and the latest per-item progress.
  */
-
-/**
- * @param {ChatUploadFn} uploadFn
- * @returns {UseAttachmentUploadReturn}
- */
-export function useAttachmentUpload(uploadFn) {
+export function useAttachmentUpload(uploadFn: ChatUploadFn): UseAttachmentUploadReturn {
   const [active, setActive] = useState(0);
-  const [progress, setProgress] = useState(/** @type {number[]} */ ([]));
+  const [progress, setProgress] = useState<number[]>([]);
 
   const upload = useCallback(
-    async (/** @type {UploadItem[]} */ items, /** @type {UploadOptions} */ options = {}) => {
+    async (items: UploadItem[], options: UploadOptions = {}) => {
       setActive((n) => n + 1);
       setProgress(items.map((item) => (item.uploaded ? 1 : 0)));
       try {
