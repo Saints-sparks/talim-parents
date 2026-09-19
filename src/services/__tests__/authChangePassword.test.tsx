@@ -9,7 +9,10 @@ vi.mock('../settings.services', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../settings.services')>()),
   changeParentPassword: (...args: unknown[]) => changeParentPassword(...args),
 }));
-vi.mock('../../hooks/usePushNotifications', () => ({ unsubscribeWebPushOnLogout: vi.fn() }));
+vi.mock('../../lib/webPushSync', () => ({
+  unsubscribeWebPushOnLogout: vi.fn(),
+  startWebPushSync: vi.fn(() => () => undefined),
+}));
 
 /** A button that changes the password and shows the token the context now holds. */
 function Probe() {

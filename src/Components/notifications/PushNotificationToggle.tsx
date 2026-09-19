@@ -16,8 +16,8 @@ function Copy({ hint, hintClassName, children }: { hint: string; hintClassName?:
 /**
  * The browser push switch on the Settings page.
  *
- * Shows why it cannot be used (unsupported browser, permission blocked)
- * instead of a switch that does nothing, and surfaces a failed subscribe or
+ * Shows why it cannot be used (unsupported browser, permission blocked in the
+ * browser's site settings) instead of a switch that does nothing, and surfaces a failed subscribe or
  * unsubscribe from the hook's own error state.
  *
  * @returns The row.
@@ -38,24 +38,21 @@ export function PushNotificationToggle() {
 
   if (permission === 'denied') {
     return (
-      <div className="flex items-center justify-between py-3">
-        <div className="min-w-0 flex-1 pr-4">
+      <div className="py-3" role="status">
+        <div className="flex items-center justify-between gap-4">
           <p className="text-sm font-medium text-[#101828] dark:text-slate-100">Browser Notifications</p>
-          <p className="mt-0.5 text-xs text-[#667085] dark:text-slate-400">
-            Blocked by browser —{' '}
-            <a
-              href="https://support.google.com/chrome/answer/3220216"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline dark:text-blue-400"
-            >
-              how to enable
-            </a>
-          </p>
+          <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            Off in this browser
+          </span>
         </div>
-        <span className="rounded bg-red-50 px-2 py-0.5 text-xs text-red-500 dark:bg-red-950/50 dark:text-red-300">
-          Blocked
-        </span>
+        <p className="mt-1 text-xs text-[#667085] dark:text-slate-400">
+          Your browser is set not to show Talim alerts, so you will not see pop-up notifications while Talim is closed
+          or in the background. Notifications inside Talim keep working as usual.
+        </p>
+        <p className="mt-1 text-xs text-[#667085] dark:text-slate-400">
+          To turn them back on, open this site&apos;s settings from your browser&apos;s address bar (usually the icon
+          beside the web address), set Notifications to Allow, and reload the page.
+        </p>
       </div>
     );
   }

@@ -13,7 +13,7 @@ import { API_BASE_URL } from '../lib/config';
 import { ApiError } from '../lib/apiError';
 import { logger } from '../lib/logger';
 import { sessionStore, STORAGE_KEYS, type SessionUser } from '../lib/session';
-import { unsubscribeWebPushOnLogout } from '../hooks/usePushNotifications';
+import { startWebPushSync, unsubscribeWebPushOnLogout } from '../lib/webPushSync';
 import { changeParentPassword, type ChangePasswordPayload } from './settings.services';
 import type {
   AuthContextValue,
@@ -98,6 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStore.set(user as SessionUser | null, { access: authToken });
   }, [user, authToken]);
 
+  // Keep the backend's push subscription in step with the browser (heals a
+  // lost row, follows a rotated endpoint, clears a revoked permission).
+  const syncParentId = user ? parentId : '';
+  useEffect(() => {
+    if (!syncParentId) return undefined;
+    return startWebPushSync(syncParentId);
+  }, [syncParentId]);
+
   const logout = useCallback(async (): Promise<void> => {
     setLoading(true);
     const currentParentId = parentId;
@@ -106,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // While the token is still valid: this browser stops receiving pushes.
       await Promise.race([
-        unsubscribeWebPushOnLogout(currentParentId),
+        unsubscribeWebPushOnLogout(currentParentId, token),
         new Promise((resolve) => setTimeout(resolve, PUSH_UNSUBSCRIBE_TIMEOUT_MS)),
       ]);
       if (token) await api.post('/auth/logout', {});
