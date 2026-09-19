@@ -102,7 +102,9 @@ export default function LeaveForm() {
     return list.filter((child) => childRecordId(child));
   }, [wards, selectedStudent]);
 
-  const effectiveChildId = childId || childRecordId(children[0]) || '';
+  // A remembered child that is no longer in the linked list is never submitted.
+  const chosenChildId = children.some((child) => childRecordId(child) === childId) ? childId : '';
+  const effectiveChildId = chosenChildId || childRecordId(children[0]) || '';
   const create = useCreateLeaveRequest(effectiveChildId);
   const busy = create.isPending || uploadPercent !== null;
 

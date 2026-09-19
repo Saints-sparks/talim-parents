@@ -1,13 +1,11 @@
-import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarPlus, ClipboardList, FileText } from 'lucide-react';
 import { useLeaveRequests } from '../hooks/useLeaveRequests';
-import { useParentOnboarding } from '../contexts/ParentOnboardingContext';
-import { useSelectedStudent } from '../contexts/SelectedStudentContext';
+import { useActiveChild } from '../hooks/useActiveChild';
 import LeaveRequestTable from '../Components/LeaveRequestTable';
 import LeaveRequestTableSkeleton from '../Components/LeaveRequestTableSkeleton';
 import { ErrorState } from '../Components/StateComponents';
-import { childFullName, childRecordId } from '../types/parent';
+import { childFullName } from '../types/parent';
 
 /**
  * What the parent sees before they have raised anything.
@@ -84,14 +82,11 @@ function LeaveRequestEmptyState({
  */
 export default function RequestLeave() {
   const navigate = useNavigate();
-  const { wards, wardsLoading } = useParentOnboarding();
-  const { selectedStudent } = useSelectedStudent();
-
-  const activeChild = useMemo(() => selectedStudent ?? wards[0] ?? null, [selectedStudent, wards]);
-  const activeChildId = childRecordId(activeChild);
+  // Verified against the parent's linked children before any request is made.
+  const { child: activeChild, childId: activeChildId, status: childStatus } = useActiveChild();
 
   const { data: leaveRequests, isPending, isError, error, refetch } = useLeaveRequests(activeChildId);
-  const loading = wardsLoading || (Boolean(activeChildId) && isPending);
+  const loading = childStatus === 'loading' || (Boolean(activeChildId) && isPending);
   const openForm = (): void => {
     navigate('/leaveform');
   };
