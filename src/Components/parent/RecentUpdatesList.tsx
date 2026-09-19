@@ -1,8 +1,9 @@
-import React from "react";
 import { Bell, CalendarCheck, ClipboardCheck, FileText, Megaphone } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { ChildUpdate } from "../../services/parent.services";
 import { formatDateTime } from "./parentUtils";
 
-const iconMap = {
+const iconMap: Record<string, LucideIcon> = {
   attendance: CalendarCheck,
   assignment: FileText,
   notice: Megaphone,
@@ -10,7 +11,19 @@ const iconMap = {
   leave: Bell,
 };
 
-export default function RecentUpdatesList({ updates = [] }) {
+interface RecentUpdatesListProps {
+  /** Latest first; only the first five are shown. */
+  updates?: ChildUpdate[];
+}
+
+/**
+ * The parent dashboard's "Recent Updates" card: the latest attendance and
+ * result changes across every linked child.
+ *
+ * @param props - The updates to show.
+ * @returns The card element.
+ */
+export default function RecentUpdatesList({ updates = [] }: RecentUpdatesListProps) {
   return (
     <section className="rounded-2xl border border-[#E5EAF2] bg-white p-5 shadow-sm">
       <h2 className="text-lg font-extrabold text-[#101828]">Recent Updates</h2>
