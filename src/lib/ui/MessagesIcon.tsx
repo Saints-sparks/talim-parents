@@ -1,11 +1,27 @@
-
-export default function MessagesIcon({ width = 24, height = 24, color = "#9CA3AF" }) {
+/**
+ * The sidebar's two-bubble messages icon.
+ *
+ * @param props - Component props.
+ * @param props.width - Width in px.
+ * @param props.height - Height in px.
+ * @param props.color - Stroke and fill colour.
+ * @returns The icon.
+ */
+export default function MessagesIcon({
+  width = 24,
+  height = 24,
+  color = '#9CA3AF',
+}: {
+  width?: number;
+  height?: number;
+  color?: string;
+}) {
   return (
-    <svg 
-      width={width} 
-      height={height} 
-      viewBox="0 0 24 24" 
-      fill="none" 
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="messages icon"
       role="img"

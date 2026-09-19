@@ -1,18 +1,47 @@
- 
-import { Fragment, useLayoutEffect, useRef } from "react";
-import MessageItem from "./MessageItem";
-import { formatDaySeparator, receiptOf } from "../lib/chatMessages";
+import { Fragment, useLayoutEffect, useRef } from 'react';
+import MessageItem from './MessageItem';
+import { formatDaySeparator, receiptOf } from '../lib/chatMessages';
+import type { ChatMessage } from '../types/chat';
 
 const NEAR_BOTTOM_PX = 120;
 const LOAD_OLDER_THRESHOLD_PX = 80;
 
-const keyOf = (message) => message?._id || message?.clientMessageId || null;
-const dayOf = (message) => (message?.createdAt ? new Date(message.createdAt).toDateString() : "");
+const keyOf = (message: ChatMessage | undefined): string | null => message?._id || message?.clientMessageId || null;
+const dayOf = (message: ChatMessage | undefined): string =>
+  message?.createdAt ? new Date(message.createdAt).toDateString() : '';
+
+/** Where the list was after the last render, to keep the reader's place. */
+interface ScrollSnapshot {
+  count: number;
+  firstKey: string | null;
+  lastKey: string | null;
+  scrollHeight: number;
+}
+
+/** Props for {@link MessageList}. */
+interface MessageListProps {
+  messages?: ChatMessage[];
+  isLoading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  hasMore: boolean;
+  loadingOlder: boolean;
+  olderError: string | null;
+  onLoadOlder: () => void;
+  onRetryMessage: (message: ChatMessage) => void;
+  onDiscardMessage: (message: ChatMessage) => void;
+  isGroup?: boolean;
+  otherUserId?: string;
+  currentUserId?: string;
+}
 
 /**
  * Opens at the newest message, holds its place while older pages are added
  * above, and only follows new messages when the reader is near the bottom
  * (or just sent one).
+ *
+ * @param props - Component props.
+ * @returns The scrolling message list.
  */
 function MessageList({
   messages = [],
@@ -26,12 +55,12 @@ function MessageList({
   onRetryMessage,
   onDiscardMessage,
   isGroup = false,
-  otherUserId = "",
-  currentUserId = "",
-}) {
-  const containerRef = useRef(null);
+  otherUserId = '',
+  currentUserId = '',
+}: MessageListProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
-  const snapshotRef = useRef({ count: 0, firstKey: null, lastKey: null, scrollHeight: 0 });
+  const snapshotRef = useRef<ScrollSnapshot>({ count: 0, firstKey: null, lastKey: null, scrollHeight: 0 });
 
   const rememberHeight = () => {
     if (containerRef.current) snapshotRef.current.scrollHeight = containerRef.current.scrollHeight;
@@ -68,8 +97,8 @@ function MessageList({
         element.scrollTop += element.scrollHeight - previous.scrollHeight;
       } else if (lastKey !== previous.lastKey) {
         const last = messages[messages.length - 1];
-        if (nearBottomRef.current || (last?.isOwn && last.status === "pending")) {
-          element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+        if (nearBottomRef.current || (last?.isOwn && last.status === 'pending')) {
+          element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
           nearBottomRef.current = true;
         }
       }
@@ -83,7 +112,7 @@ function MessageList({
       return (
         <div className="space-y-4">
           {[1, 2, 3].map((item) => (
-            <div key={item} className="h-20 w-2/3 animate-pulse rounded-2xl bg-[#E5EAF2]" />
+            <div key={item} className="h-20 w-2/3 animate-pulse rounded-2xl bg-[#E5EAF2] dark:bg-slate-800" />
           ))}
         </div>
       );
@@ -91,7 +120,7 @@ function MessageList({
 
     if (error && !messages.length) {
       return (
-        <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-[#667085]">
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-[#667085] dark:text-slate-400">
           <p>{error}</p>
           <button
             type="button"
@@ -106,7 +135,7 @@ function MessageList({
 
     if (!messages.length) {
       return (
-        <div className="flex h-full items-center justify-center text-center text-sm text-[#667085]">
+        <div className="flex h-full items-center justify-center text-center text-sm text-[#667085] dark:text-slate-400">
           No messages in this conversation yet.
         </div>
       );
@@ -119,18 +148,22 @@ function MessageList({
     return (
       <div className="space-y-4">
         {(hasMore || loadingOlder || olderError) && (
-          <div className="flex justify-center text-xs text-[#667085]">
+          <div className="flex justify-center text-xs text-[#667085] dark:text-slate-400">
             {loadingOlder ? (
               <span>Loading earlier messages…</span>
             ) : olderError ? (
               <span>
-                {olderError} ·{" "}
-                <button type="button" onClick={onLoadOlder} className="font-semibold text-[#0A4EA3] underline">
+                {olderError} ·{' '}
+                <button type="button" onClick={onLoadOlder} className="font-semibold text-[#0A4EA3] underline dark:text-blue-300">
                   Try again
                 </button>
               </span>
             ) : (
-              <button type="button" onClick={onLoadOlder} className="font-semibold text-[#0A4EA3] hover:underline">
+              <button
+                type="button"
+                onClick={onLoadOlder}
+                className="font-semibold text-[#0A4EA3] hover:underline dark:text-blue-300"
+              >
                 Load earlier messages
               </button>
             )}
@@ -143,9 +176,9 @@ function MessageList({
             <Fragment key={keyOf(msg) || index}>
               {showDay && (
                 <div className="flex items-center gap-3 text-xs font-semibold text-[#98A2B3]">
-                  <span className="h-px flex-1 bg-[#E5EAF2]" />
+                  <span className="h-px flex-1 bg-[#E5EAF2] dark:bg-slate-700" />
                   {formatDaySeparator(msg.createdAt)}
-                  <span className="h-px flex-1 bg-[#E5EAF2]" />
+                  <span className="h-px flex-1 bg-[#E5EAF2] dark:bg-slate-700" />
                 </div>
               )}
               <MessageItem
@@ -168,8 +201,8 @@ function MessageList({
       onScroll={handleScroll}
       onLoadCapture={handleMediaLoad}
       onLoadedMetadataCapture={handleMediaLoad}
-      style={{ overflowAnchor: "none" }}
-      className="flex-1 overflow-y-auto overscroll-y-contain bg-[#F8FAFD] p-4 md:p-6"
+      style={{ overflowAnchor: 'none' }}
+      className="flex-1 overflow-y-auto overscroll-y-contain bg-[#F8FAFD] p-4 md:p-6 dark:bg-slate-950"
     >
       {renderBody()}
     </div>

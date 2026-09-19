@@ -1,36 +1,50 @@
-import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import ChatHeader from "../Components/ChatHeader";
-import ConversationDetails from "../Components/ConversationDetails";
-import MessageInput from "../Components/MessageInput";
-import MessageList from "../Components/MessageList";
-import MessagesSidebar from "../Components/MessagesSidebar";
-import { addToSelection } from "../Components/chat-kit";
-import { toast } from "../Components/CustomToast";
-import { useChatAlerts } from "../contexts/ChatAlertsContext";
-import { useRealtimeChat } from "../hooks/useRealtimeChat";
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import ChatHeader from '../Components/ChatHeader';
+import ConversationDetails from '../Components/ConversationDetails';
+import MessageInput from '../Components/MessageInput';
+import MessageList from '../Components/MessageList';
+import MessagesSidebar from '../Components/MessagesSidebar';
+import { addToSelection } from '../Components/chat-kit';
+import { toast } from '../Components/CustomToast';
+import { useChatAlerts } from '../contexts/ChatAlertsContext';
+import { useRealtimeChat } from '../hooks/useRealtimeChat';
+import { getErrorMessage } from '../lib/apiError';
+import type { ChatDraft, ChatRoom } from '../types/chat';
 
-const EMPTY_DRAFT = { text: "", files: [], errors: [] };
+const EMPTY_DRAFT: ChatDraft = { text: '', files: [], errors: [] };
 
-/** Takes ?room= off the URL if it still points at `roomId`, which closes the room. */
-const withoutRoom = (roomId) => (params) => {
-  if (roomId && params.get("room") !== roomId) return params;
+/**
+ * Takes ?room= off the URL if it still points at `roomId`, which closes the room.
+ *
+ * @param roomId - The room being closed, or nothing to close whichever is open.
+ * @returns A search-params updater.
+ */
+const withoutRoom = (roomId?: string) => (params: URLSearchParams) => {
+  if (roomId && params.get('room') !== roomId) return params;
   const next = new URLSearchParams(params);
-  next.delete("room");
+  next.delete('room');
   return next;
 };
 
+/**
+ * The parent's inbox: conversation list, the open thread and its composer,
+ * and the details panel. The URL (`?room=<id>`) decides which room is open, so
+ * links from toasts, pushes and reloads land in the right chat.
+ *
+ * @returns The page.
+ */
 function Messages() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const roomParam = searchParams.get("room");
+  const roomParam = searchParams.get('room');
 
   // Removed by someone else: the store already dropped the room, so go back to the list
   // (ChatAlertsContext shows the "You were removed" toast on every page).
   const handleRoomRemoved = useCallback(
-    ({ roomId }) => {
+    ({ roomId }: { roomId: string }) => {
       setSearchParams(withoutRoom(roomId), { replace: true });
     },
-    [setSearchParams]
+    [setSearchParams],
   );
 
   const {
@@ -57,7 +71,7 @@ function Messages() {
   const { setOpenRoomId } = useChatAlerts();
 
   // Composer state belongs to a room, so nothing typed or attached for one chat is sent to another.
-  const [drafts, setDrafts] = useState({});
+  const [drafts, setDrafts] = useState<Record<string, ChatDraft>>({});
   const [showDetails, setShowDetails] = useState(false);
 
   // The URL decides which room is open, so /messages?room=<id> works from toasts, pushes and reloads.
@@ -74,7 +88,7 @@ function Messages() {
     return () => setOpenRoomId(null);
   }, [selectedRoomId, setOpenRoomId]);
 
-  const openRoom = (roomId) => {
+  const openRoom = (roomId: string) => {
     if (roomId === roomParam) return;
     setSearchParams({ room: roomId }, { replace: Boolean(roomParam) });
   };
@@ -84,7 +98,7 @@ function Messages() {
 
   const draft = (selectedRoomId && drafts[selectedRoomId]) || EMPTY_DRAFT;
 
-  const updateDraft = (roomId, changes) =>
+  const updateDraft = (roomId: string, changes: Partial<ChatDraft>) =>
     setDrafts((current) => ({ ...current, [roomId]: { ...(current[roomId] || EMPTY_DRAFT), ...changes } }));
 
   const handleSend = () => {
@@ -97,38 +111,41 @@ function Messages() {
   };
 
   /** Adds picked files to a room's draft; unsupported, oversized and over-limit files come back as errors. */
-  const addFiles = (roomId, picked) =>
+  const addFiles = (roomId: string, picked: File[]) =>
     setDrafts((current) => {
       const previous = current[roomId] || EMPTY_DRAFT;
       const { files, errors } = addToSelection(previous.files, picked);
       return { ...current, [roomId]: { ...previous, files, errors } };
     });
 
-  const removeFile = (roomId, index) =>
+  const removeFile = (roomId: string, index: number) =>
     setDrafts((current) => {
       const previous = current[roomId] || EMPTY_DRAFT;
       return { ...current, [roomId]: { ...previous, files: previous.files.filter((_, i) => i !== index) } };
     });
 
-  const handleLeaveGroup = async (room) => {
+  const handleLeaveGroup = async (room: ChatRoom) => {
     try {
       await leaveGroup(room.roomId);
       setShowDetails(false);
       setSearchParams(withoutRoom(room.roomId), { replace: true });
-      toast.success(`You left ${room.displayName || "the group"}`);
+      toast.success(`You left ${room.displayName || 'the group'}`);
     } catch (leaveError) {
-      toast.error(leaveError?.response?.data?.message || "Couldn't leave the group");
+      toast.error(getErrorMessage(leaveError, "Couldn't leave the group"));
     }
   };
 
-  const showConnectionBanner = !isConnected && connectionStatus !== "connecting";
+  const showConnectionBanner = !isConnected && connectionStatus !== 'connecting';
 
   return (
-    <div data-guide="messages-shell" className="relative flex h-[calc(100dvh-128px)] min-h-0 overflow-hidden rounded-xl border border-[#E5EAF2] bg-white max-md:h-[calc(100dvh-96px)] max-md:rounded-none max-md:border-x-0">
+    <div
+      data-guide="messages-shell"
+      className="relative flex h-[calc(100dvh-128px)] min-h-0 overflow-hidden rounded-xl border border-[#E5EAF2] bg-white max-md:h-[calc(100dvh-96px)] max-md:rounded-none max-md:border-x-0 dark:border-slate-800 dark:bg-slate-900"
+    >
       <div
         data-guide="messages-conversations"
-        className={`fixed inset-y-0 left-0 z-50 w-screen bg-white transition-transform duration-300 md:static md:w-[360px] md:translate-x-0 ${
-          selectedRoomId ? "-translate-x-full" : "translate-x-0"
+        className={`fixed inset-y-0 left-0 z-50 w-screen bg-white transition-transform duration-300 md:static md:w-[360px] md:translate-x-0 dark:bg-slate-900 ${
+          selectedRoomId ? '-translate-x-full' : 'translate-x-0'
         }`}
       >
         <MessagesSidebar
@@ -146,14 +163,14 @@ function Messages() {
         {selectedRoomId ? (
           <>
             <ChatHeader
-              selectedChat={selectedRoom || { displayName: "Conversation", avatarInfo: null }}
+              selectedChat={selectedRoom || { displayName: 'Conversation', avatarInfo: null }}
               onBack={closeRoom}
               onToggleDetails={() => setShowDetails((value) => !value)}
             />
             {showConnectionBanner && (
-              <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-semibold text-amber-800">
-                {connectionStatus === "unauthenticated"
-                  ? "Your session has expired. Sign in again to keep chatting."
+              <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-semibold text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                {connectionStatus === 'unauthenticated'
+                  ? 'Your session has expired. Sign in again to keep chatting.'
                   : "You're offline. Messages you send will go out when you reconnect."}
               </div>
             )}
@@ -163,7 +180,7 @@ function Messages() {
                   key={selectedRoomId}
                   messages={messages}
                   isLoading={isLoadingMessages}
-                  error={thread.status === "error" ? thread.error : null}
+                  error={thread.status === 'error' ? thread.error : null}
                   onRetry={retryJoin}
                   hasMore={thread.hasMore}
                   loadingOlder={thread.loadingOlder}
@@ -172,8 +189,8 @@ function Messages() {
                   onRetryMessage={retryMessage}
                   onDiscardMessage={discardMessage}
                   isGroup={Boolean(selectedRoom?.isGroup)}
-                  otherUserId={selectedRoom?.otherParticipantId || ""}
-                  currentUserId={currentUserId || ""}
+                  otherUserId={selectedRoom?.otherParticipantId || ''}
+                  currentUserId={currentUserId || ''}
                 />
                 {/* Keyed by room: switching chats unmounts the composer, which throws away a recording in progress. */}
                 <MessageInput
@@ -199,7 +216,10 @@ function Messages() {
                     onClick={() => setShowDetails(false)}
                     aria-label="Close conversation details overlay"
                   />
-                  <div data-guide="messages-details" className="fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none">
+                  <div
+                    data-guide="messages-details"
+                    className="fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none"
+                  >
                     <ConversationDetails
                       room={selectedRoom}
                       messages={messages}
@@ -213,11 +233,11 @@ function Messages() {
             </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center bg-[#F8FAFD] p-6 text-center">
+          <div className="flex flex-1 items-center justify-center bg-[#F8FAFD] p-6 text-center dark:bg-slate-950">
             <div>
-              <h2 className="text-lg font-bold text-[#101828]">Select a conversation</h2>
-              <p className="mt-2 text-sm text-[#667085]">
-                {error || "Messages from teachers and school staff will appear here."}
+              <h2 className="text-lg font-bold text-[#101828] dark:text-slate-100">Select a conversation</h2>
+              <p className="mt-2 text-sm text-[#667085] dark:text-slate-400">
+                {error || 'Messages from teachers and school staff will appear here.'}
               </p>
             </div>
           </div>
