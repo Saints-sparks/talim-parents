@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types, react-refresh/only-export-components */
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "../Components/CustomToast";

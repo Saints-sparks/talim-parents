@@ -1,4 +1,3 @@
-import React from "react";
 import { BarChart3, CalendarCheck, ChevronRight, MessageSquare, Table2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 

@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 /**
  * Chat media kit — a message's attachments: images (one at natural aspect,
  * 2–4 as a square grid, more as 4 tiles with "+N"), videos, voice notes and

@@ -1,4 +1,3 @@
-import React from "react";
 import { Baby, CalendarX } from "lucide-react";
 
 export function EmptyChildrenState() {

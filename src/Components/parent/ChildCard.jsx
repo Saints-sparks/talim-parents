@@ -1,4 +1,3 @@
-import React from "react";
 import { ChevronRight, MoreVertical, School, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../../lib/ui/avatar";
 import { getChildId, getChildMeta, getChildName, getInitials } from "./parentUtils";

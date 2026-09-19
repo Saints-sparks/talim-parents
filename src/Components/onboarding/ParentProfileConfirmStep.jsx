@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { ArrowRight, Camera, Info, UserRound } from "lucide-react";
 import { useRef, useState } from "react";
 import { useAuth } from "../../services/auth.services";

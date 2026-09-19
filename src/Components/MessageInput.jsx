@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { useRef } from "react";
 import { Image, Mic, Paperclip, Send, X } from "lucide-react";
 import {

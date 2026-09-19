@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { useMemo } from "react";
 import { AttachmentGrid } from "./chat-kit";
 

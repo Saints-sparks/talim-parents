@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { useMemo, useState } from "react";
 import { LogOut, X } from "lucide-react";
 import { Lightbox, VoicePlayer, attachmentKind } from "./chat-kit";

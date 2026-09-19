@@ -1,4 +1,3 @@
-import React from "react";
 import { Building2, DoorOpen, UserRound } from "lucide-react";
 
 export default function ClassInformationCard({ info = {} }) {

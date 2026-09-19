@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { CheckCircle2, ChevronRight, Circle } from "lucide-react";
 
 export default function SetupChecklistItem({ icon, title, description, completed, onClick, disabled }) {

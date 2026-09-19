@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import logo from "../../assets/logo.svg";
 
 export default function ParentOnboardingLayout({ children, stepLabel, onContactSchool }) {

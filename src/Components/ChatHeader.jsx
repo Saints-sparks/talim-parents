@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { ArrowLeft, MoreVertical } from "lucide-react";
 import { formatRoleLabel } from "../lib/chatMessages";
 

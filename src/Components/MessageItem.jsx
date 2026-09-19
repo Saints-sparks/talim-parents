@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { Check, CheckCheck, Clock } from "lucide-react";
 import MessageAttachment from "./MessageAttachment";
 import { generateColorFromString, getUserInitials } from "../lib/colorUtils";

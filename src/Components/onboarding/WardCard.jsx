@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { CheckCircle2 } from "lucide-react";
 import { getAvatarUrl, getInitials, getPersonName, getStudentClassLabel } from "./onboardingUtils";
 

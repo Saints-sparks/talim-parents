@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 import { Fragment, useLayoutEffect, useRef } from "react";
 import MessageItem from "./MessageItem";
 import { formatDaySeparator, receiptOf } from "../lib/chatMessages";

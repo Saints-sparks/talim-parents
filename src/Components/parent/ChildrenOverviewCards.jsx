@@ -1,4 +1,3 @@
-import React from "react";
 import { BookOpen, CalendarCheck, Medal, UsersRound } from "lucide-react";
 
 const cards = [

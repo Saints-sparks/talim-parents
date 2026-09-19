@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CalendarDays, Check, ChevronDown, LogOut, Plus, Settings, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useNotifications from "../hooks/useNotifications";

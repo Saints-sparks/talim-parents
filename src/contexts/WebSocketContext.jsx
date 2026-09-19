@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types, react-refresh/only-export-components */
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext } from "react";
 import { useAuth } from "../services/auth.services";
 import { useWebSocket } from "../hooks/useWebSocket";

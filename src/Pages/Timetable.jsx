@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, RefreshCw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../lib/ui/avatar";
 import TimetableGrid from "../Components/parent/TimetableGrid";

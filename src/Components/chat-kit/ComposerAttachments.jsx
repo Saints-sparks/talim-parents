@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 /**
  * Chat media kit — the strip of picked files above the message box:
  * thumbnails for images, chips for everything else, × to remove, and the

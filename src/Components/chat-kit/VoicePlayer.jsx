@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 /**
  * Chat media kit — voice note player: play/pause, a seek bar you can click
  * or drag, and elapsed / total. Only one voice note plays at a time.

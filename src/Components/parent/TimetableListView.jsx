@@ -1,4 +1,3 @@
-import React from "react";
 import { formatTimeRange } from "./parentUtils";
 
 export default function TimetableListView({ grouped = [] }) {

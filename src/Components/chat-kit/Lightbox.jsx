@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 /**
  * Chat media kit — full-screen image viewer: prev/next (buttons and ←/→),
  * Esc / backdrop / × to close, Download, "2 / 4" counter. Focus stays in the
