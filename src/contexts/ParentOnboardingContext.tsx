@@ -60,6 +60,9 @@ export interface ParentOnboardingValue {
 
 const DEFAULT_STATE: PersistedState = { completedSteps: [], setupDismissed: false };
 
+/** One shared empty list, so an unloaded query does not hand out a new array every render. */
+const NO_WARDS: ParentChild[] = [];
+
 const ParentOnboardingContext = createContext<ParentOnboardingValue | null>(null);
 
 /**
@@ -190,7 +193,7 @@ export function ParentOnboardingProvider({ children }: { children: ReactNode }) 
     updatePersistedState((current) => ({ ...current, setupDismissed: true }));
   }, [updatePersistedState]);
 
-  const wards = wardsQuery.data ?? [];
+  const wards = wardsQuery.data ?? NO_WARDS;
   const completedCount = state.completedSteps.length;
   const totalCount = PARENT_ONBOARDING_STEPS.length;
 
