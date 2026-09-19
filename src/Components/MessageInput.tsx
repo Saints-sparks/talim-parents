@@ -1,8 +1,9 @@
-import { useRef, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useRef, type ChangeEvent } from 'react';
 import { Image, Mic, Paperclip, Send, X } from 'lucide-react';
 import {
   ATTACHMENT_ACCEPT,
   ComposerAttachments,
+  ComposerTextarea,
   IMAGE_ACCEPT,
   formatDuration,
   useVoiceRecorder,
@@ -52,11 +53,9 @@ function MessageInput({
 
   const canSend = Boolean(text.trim() || files.length);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      if (canSend && !recorder.isRecording) onSend();
-    }
+  // Enter sends with a mouse; on a touch screen it is a new line and the Send button sends.
+  const handleSubmit = () => {
+    if (canSend && !recorder.isRecording) onSend();
   };
 
   const handlePicked = (event: ChangeEvent<HTMLInputElement>) => {
@@ -151,11 +150,11 @@ function MessageInput({
             <Image className="h-5 w-5" />
           </button>
 
-          <textarea
+          <ComposerTextarea
+            aria-label="Message"
             value={text}
-            onChange={(event) => onTextChange(event.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={1}
+            onValueChange={onTextChange}
+            onSubmit={handleSubmit}
             placeholder={files.length ? 'Add a caption...' : 'Type your message...'}
             className="max-h-32 min-h-11 flex-1 resize-none rounded-lg border border-[#DCE5F2] px-4 py-3 text-sm outline-none focus:border-[#0A4EA3] focus:ring-2 focus:ring-[#D9E8FF] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-500/30"
           />

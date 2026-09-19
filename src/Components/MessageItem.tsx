@@ -1,5 +1,7 @@
-import { Check, CheckCheck, Clock } from 'lucide-react';
+import { Ban, Check, CheckCheck, Clock } from 'lucide-react';
 import MessageAttachment from './MessageAttachment';
+import { Linkified, MessageMenu, QuotedMessage, type ReplyDraft } from './chat-kit';
+import { toast } from './CustomToast';
 import { generateColorFromString, getUserInitials } from '../lib/colorUtils';
 import { formatMessageTime, type Receipt } from '../lib/chatMessages';
 import type { ChatMessage } from '../types/chat';
@@ -24,6 +26,14 @@ interface MessageItemProps {
   receipt: Receipt | null;
   /** Group chats: "Read by N" under the latest own message. */
   showReadCount: boolean;
+  /** Groups label each sender; a direct chat only has one other person. */
+  showSenderName?: boolean;
+  /** Start a reply to this message. */
+  onReply?: (reply: ReplyDraft) => void;
+  /** Present when this user may delete this message. */
+  onDeleteMessage?: () => Promise<void>;
+  /** Scroll to a quoted message; omitted when it isn't loaded. */
+  onJump?: (messageId: string) => void;
   onRetry?: (message: ChatMessage) => void;
   onDiscard?: (message: ChatMessage) => void;
 }
@@ -35,12 +45,24 @@ interface MessageItemProps {
  * @param props - Component props.
  * @returns The bubble row.
  */
-function MessageItem({ msg, receipt, showReadCount, onRetry, onDiscard }: MessageItemProps) {
+function MessageItem({
+  msg,
+  receipt,
+  showReadCount,
+  showSenderName = true,
+  onReply,
+  onDeleteMessage,
+  onJump,
+  onRetry,
+  onDiscard,
+}: MessageItemProps) {
   const isUserMessage = Boolean(msg.isOwn);
   const senderName = msg.senderName || 'Unknown';
   const bgColor = generateColorFromString(senderName);
   const isPending = msg.status === 'pending';
   const isFailed = msg.status === 'failed';
+  const tone = isUserMessage ? 'inverted' : 'default';
+  const canShowMenu = Boolean(msg._id) && !isPending && !isFailed && !msg.isDeleted;
 
   return (
     <div className={`flex ${isUserMessage ? 'justify-end' : 'justify-start'} gap-2`}>
@@ -54,16 +76,52 @@ function MessageItem({ msg, receipt, showReadCount, onRetry, onDiscard }: Messag
       )}
 
       <div className={`max-w-[82%] sm:max-w-[560px] ${isUserMessage ? 'items-end' : 'items-start'}`}>
-        {!isUserMessage && <p className="mb-1 text-xs font-semibold text-[#667085] dark:text-slate-400">{senderName}</p>}
+        {!isUserMessage && showSenderName && (
+          <p className="mb-1 text-xs font-semibold text-[#667085] dark:text-slate-400">{senderName}</p>
+        )}
         <div
-          className={`space-y-2 rounded-2xl px-4 py-3 shadow-sm ${
+          className={`group relative space-y-2 rounded-2xl px-4 py-3 shadow-sm ${
             isUserMessage
               ? `rounded-br-md bg-[#0A4EA3] text-white ${isPending ? 'opacity-70' : ''} ${isFailed ? 'ring-2 ring-red-400' : ''}`
               : 'rounded-bl-md border border-[#E5EAF2] bg-white text-[#101828] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
           }`}
         >
-          <MessageAttachment message={msg} isUserMessage={isUserMessage} />
-          {msg.text ? <p className="whitespace-pre-wrap break-words text-sm leading-6">{msg.text}</p> : null}
+          {canShowMenu && (
+            <MessageMenu
+              messageId={msg._id as string}
+              text={msg.text}
+              attachments={msg.attachments}
+              onReply={
+                onReply
+                  ? () =>
+                      onReply({
+                        messageId: msg._id as string,
+                        senderName,
+                        preview: msg.text || (msg.attachments?.length ? 'Attachment' : ''),
+                      })
+                  : undefined
+              }
+              onDelete={onDeleteMessage}
+              onNotify={(text) => (/copied/i.test(text) ? toast.success(text) : toast.error(text))}
+              tone={tone}
+              className="absolute right-1 top-1 z-10"
+            />
+          )}
+          {msg.isDeleted ? (
+            <p className="flex items-center gap-1.5 text-sm italic opacity-80">
+              <Ban className="h-3.5 w-3.5" aria-hidden /> This message was deleted
+            </p>
+          ) : (
+            <>
+              {msg.replyTo ? <QuotedMessage replyTo={msg.replyTo} tone={tone} onJump={onJump} /> : null}
+              <MessageAttachment message={msg} isUserMessage={isUserMessage} />
+              {msg.text ? (
+                <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                  <Linkified text={msg.text} tone={tone} />
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
         <div className={`mt-1 text-xs ${isUserMessage ? 'text-right' : 'text-left'}`}>
           {isFailed ? (

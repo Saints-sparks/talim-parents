@@ -5,7 +5,7 @@ import ConversationDetails from '../Components/ConversationDetails';
 import MessageInput from '../Components/MessageInput';
 import MessageList from '../Components/MessageList';
 import MessagesSidebar from '../Components/MessagesSidebar';
-import { addToSelection } from '../Components/chat-kit';
+import { ReplyBar, addToSelection, type ReplyDraft } from '../Components/chat-kit';
 import { toast } from '../Components/CustomToast';
 import { useChatAlerts } from '../contexts/ChatAlertsContext';
 import { useRealtimeChat } from '../hooks/useRealtimeChat';
@@ -62,6 +62,7 @@ function Messages() {
     retryJoin,
     loadOlderMessages,
     sendMessage,
+    deleteStoredMessage,
     retryMessage,
     discardMessage,
     refreshChatRooms,
@@ -72,6 +73,8 @@ function Messages() {
 
   // Composer state belongs to a room, so nothing typed or attached for one chat is sent to another.
   const [drafts, setDrafts] = useState<Record<string, ChatDraft>>({});
+  // The message being replied to, per room, so a reply never follows you into another chat.
+  const [replies, setReplies] = useState<Record<string, ReplyDraft | null>>({});
   const [showDetails, setShowDetails] = useState(false);
 
   // The URL decides which room is open, so /messages?room=<id> works from toasts, pushes and reloads.
@@ -97,6 +100,8 @@ function Messages() {
   const closeRoom = () => setSearchParams({}, { replace: true });
 
   const draft = (selectedRoomId && drafts[selectedRoomId]) || EMPTY_DRAFT;
+  const reply = (selectedRoomId && replies[selectedRoomId]) || null;
+  const setReply = (roomId: string, next: ReplyDraft | null) => setReplies((current) => ({ ...current, [roomId]: next }));
 
   const updateDraft = (roomId: string, changes: Partial<ChatDraft>) =>
     setDrafts((current) => ({ ...current, [roomId]: { ...(current[roomId] || EMPTY_DRAFT), ...changes } }));
@@ -105,8 +110,9 @@ function Messages() {
     const roomId = selectedRoomId;
     if (!roomId || (!draft.text.trim() && !draft.files.length)) return;
     // The pending bubble now holds the text and files; a failed send is retried from the bubble.
-    if (sendMessage({ roomId, text: draft.text, files: draft.files })) {
+    if (sendMessage({ roomId, text: draft.text, files: draft.files, replyTo: reply || undefined })) {
       setDrafts((current) => ({ ...current, [roomId]: EMPTY_DRAFT }));
+      setReply(roomId, null);
     }
   };
 
@@ -188,10 +194,15 @@ function Messages() {
                   onLoadOlder={loadOlderMessages}
                   onRetryMessage={retryMessage}
                   onDiscardMessage={discardMessage}
+                  onReply={(next) => setReply(selectedRoomId, next)}
+                  onDeleteMessage={(messageId) => deleteStoredMessage(selectedRoomId, messageId)}
                   isGroup={Boolean(selectedRoom?.isGroup)}
                   otherUserId={selectedRoom?.otherParticipantId || ''}
                   currentUserId={currentUserId || ''}
                 />
+                {reply && (
+                  <ReplyBar reply={reply} onCancel={() => setReply(selectedRoomId, null)} className="mx-3 mb-1" />
+                )}
                 {/* Keyed by room: switching chats unmounts the composer, which throws away a recording in progress. */}
                 <MessageInput
                   key={selectedRoomId}
@@ -203,9 +214,11 @@ function Messages() {
                   onRemoveFile={(index) => removeFile(selectedRoomId, index)}
                   onDismissErrors={() => updateDraft(selectedRoomId, { errors: [] })}
                   onSend={handleSend}
-                  onSendVoice={({ file, duration }) =>
-                    sendMessage({ roomId: selectedRoomId, files: [file], voice: true, duration })
-                  }
+                  onSendVoice={({ file, duration }) => {
+                    if (sendMessage({ roomId: selectedRoomId, files: [file], voice: true, duration, replyTo: reply || undefined })) {
+                      setReply(selectedRoomId, null);
+                    }
+                  }}
                 />
               </div>
               {showDetails && selectedRoom && (

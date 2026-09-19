@@ -113,6 +113,24 @@ const senderNameOf = (message: RawMessage | null | undefined): string => {
 };
 
 /**
+ * Reads the server's `replyTo` snapshot.
+ *
+ * @param replyTo - The raw snapshot.
+ * @returns The quote, or undefined when absent or malformed.
+ */
+const replyToOf = (replyTo: RawMessage['replyTo']): ChatMessage['replyTo'] => {
+  const messageId = toId(replyTo?.messageId);
+  if (!replyTo || !messageId) return undefined;
+  return {
+    messageId,
+    senderId: toId(replyTo.senderId) || undefined,
+    senderName: replyTo.senderName || 'Unknown',
+    preview: replyTo.preview || '',
+    type: replyTo.type,
+  };
+};
+
+/**
  * One shape for a message from any channel. Reads the canonical fields
  * (`text`, `createdAt`, `senderId` / `sender._id`, attachment objects, `type`)
  * and falls back to the deprecated aliases.
@@ -161,6 +179,8 @@ export const normalizeMessage = (
     createdAt: message?.createdAt || message?.timestamp || null,
     readBy: (message?.readBy || []).map(toId),
     status: 'sent',
+    replyTo: replyToOf(message?.replyTo),
+    isDeleted: message?.isDeleted === true ? true : undefined,
   };
 };
 
@@ -363,4 +383,53 @@ export const formatDaySeparator = (value: string | number | Date | null | undefi
     day: 'numeric',
     ...(date.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
   }).format(date);
+};
+
+/**
+ * Marks a message deleted the way the server stores it: blank text and
+ * attachments.
+ *
+ * @param messages - A room's messages.
+ * @param messageId - The stored message's `_id`.
+ * @returns The updated list; the same array when the message isn't loaded or is already deleted.
+ */
+export const applyMessageDeleted = (messages: ChatMessage[], messageId: string): ChatMessage[] => {
+  const at = messages.findIndex((message) => message._id === messageId);
+  if (at === -1 || messages[at].isDeleted) return messages;
+  const next = messages.slice();
+  next[at] = { ...messages[at], text: '', attachments: [], isDeleted: true, uploadProgress: undefined };
+  return next;
+};
+
+/** Preview shown for a room whose last message was deleted. */
+export const DELETED_PREVIEW = 'This message was deleted';
+
+/** A room as the list holds it: only what the delete rule reads. */
+interface RoomWithLastMessage {
+  _id?: unknown;
+  roomId?: unknown;
+  id?: unknown;
+  lastMessage?: { _id?: string; preview?: string; content?: string } | null;
+}
+
+/**
+ * A message was deleted: when it is its room's last message, the list previews
+ * it as deleted.
+ *
+ * @param rooms - The room list.
+ * @param roomId - The room the message was in.
+ * @param messageId - The deleted message's `_id`.
+ * @returns The updated list; the same array when nothing changes.
+ */
+export const applyMessageDeletedToRooms = <T extends RoomWithLastMessage>(
+  rooms: T[],
+  roomId: string,
+  messageId: string,
+): T[] => {
+  const at = rooms.findIndex((room) => toId(room._id) === roomId || toId(room.roomId) === roomId || toId(room.id) === roomId);
+  const last = at === -1 ? null : rooms[at].lastMessage;
+  if (!last || last._id !== messageId || last.preview === DELETED_PREVIEW) return rooms;
+  const next = rooms.slice();
+  next[at] = { ...rooms[at], lastMessage: { ...last, preview: DELETED_PREVIEW, content: DELETED_PREVIEW } };
+  return next;
 };

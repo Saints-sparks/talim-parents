@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  DELETED_PREVIEW,
   LEAVABLE_ROOM_TYPES,
+  applyMessageDeleted,
+  applyMessageDeletedToRooms,
   applyMessagesRead,
   createClientMessageId,
   formatDaySeparator,
@@ -400,5 +403,61 @@ describe('formatMessageTime / formatDaySeparator', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('replies and deleted messages', () => {
+  const raw = (overrides = {}) => ({
+    _id: 'm1',
+    roomId: 'r1',
+    senderId: 'u1',
+    sender: { _id: 'u1', name: 'Ada Obi' },
+    text: 'Hello',
+    type: 'text',
+    createdAt: '2026-09-13T10:00:00.000Z',
+    ...overrides,
+  });
+
+  it("reads the server's replyTo snapshot", () => {
+    const message = normalizeMessage(
+      raw({ replyTo: { messageId: 'm0', senderId: 'u2', senderName: 'Bola Ade', preview: 'Photo', type: 'image' } }),
+      'u9',
+    );
+    expect(message.replyTo).toEqual({
+      messageId: 'm0',
+      senderId: 'u2',
+      senderName: 'Bola Ade',
+      preview: 'Photo',
+      type: 'image',
+    });
+    expect(normalizeMessage(raw(), 'u9').replyTo).toBeUndefined();
+    expect(normalizeMessage(raw({ replyTo: { preview: 'no id' } }), 'u9').replyTo).toBeUndefined();
+  });
+
+  it('flags a deleted message', () => {
+    expect(normalizeMessage(raw({ isDeleted: true, text: '' }), 'u9').isDeleted).toBe(true);
+    expect(normalizeMessage(raw(), 'u9').isDeleted).toBeUndefined();
+  });
+
+  it('applyMessageDeleted blanks the message in place and is a no-op the second time', () => {
+    const first = normalizeMessage(raw({ attachments: [{ url: 'https://res.cloudinary.com/x/a.png', type: 'image' }] }), 'u9');
+    const other = normalizeMessage(raw({ _id: 'm2', text: 'Second' }), 'u9');
+    const thread = [first, other];
+
+    const next = applyMessageDeleted(thread, 'm1');
+    expect(next[0]).toMatchObject({ _id: 'm1', text: '', attachments: [], isDeleted: true });
+    expect(next[1]).toBe(other);
+    expect(applyMessageDeleted(next, 'm1')).toBe(next);
+    expect(applyMessageDeleted(thread, 'missing')).toBe(thread);
+  });
+
+  it('previews a room as deleted only when its last message was deleted', () => {
+    const rooms = [{ _id: 'r1', lastMessage: { _id: 'm9', preview: 'See you', content: 'See you' } }];
+
+    const next = applyMessageDeletedToRooms(rooms, 'r1', 'm9');
+    expect(next[0].lastMessage?.preview).toBe(DELETED_PREVIEW);
+    expect(applyMessageDeletedToRooms(next, 'r1', 'm9')).toBe(next);
+    expect(applyMessageDeletedToRooms(rooms, 'r1', 'm1')).toBe(rooms);
+    expect(applyMessageDeletedToRooms(rooms, 'other', 'm9')).toBe(rooms);
   });
 });

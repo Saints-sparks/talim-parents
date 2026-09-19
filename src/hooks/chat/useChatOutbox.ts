@@ -110,6 +110,7 @@ export const useChatOutbox = ({
           type: entry.type,
           clientMessageId,
           ...(attachments.length ? { attachments } : {}),
+          ...(entry.replyTo ? { replyToId: entry.replyTo.messageId } : {}),
           ...(entry.voice && entry.duration ? { duration: entry.duration } : {}),
         };
 
@@ -130,7 +131,7 @@ export const useChatOutbox = ({
   );
 
   const sendMessage = useCallback(
-    ({ roomId, text = '', files = [], voice = false, duration }: SendMessageInput) => {
+    ({ roomId, text = '', files = [], voice = false, duration, replyTo }: SendMessageInput) => {
       const targetRoomId = roomId || selectedRoomIdRef.current;
       const trimmed = text.trim();
       if (!targetRoomId || (!trimmed && !files.length)) return false;
@@ -150,6 +151,7 @@ export const useChatOutbox = ({
         type,
         voice,
         duration,
+        replyTo,
         inFlight: false,
         failed: false,
       });
@@ -167,6 +169,7 @@ export const useChatOutbox = ({
           type,
           voice,
           duration,
+          replyTo,
         }),
       ]);
 

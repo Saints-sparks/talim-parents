@@ -1,4 +1,4 @@
-import { applyMessagesRead, mergeMessages } from '../../lib/chatMessages';
+import { applyMessageDeleted, applyMessagesRead, mergeMessages } from '../../lib/chatMessages';
 import type {
   ChatMessage,
   ChatRoomJoined,
@@ -154,6 +154,18 @@ export const withMessagesUpdate = (thread: Thread, incoming: ChatMessage[], data
  */
 export const withMessagesRead = (thread: Thread, data: MessagesRead): Thread => {
   const messages = applyMessagesRead(thread.messages, { userId: data.userId, readAt: data.readAt });
+  return messages === thread.messages ? thread : { ...thread, messages };
+};
+
+/**
+ * A message in the thread was deleted.
+ *
+ * @param thread - The thread.
+ * @param messageId - The deleted message's `_id`.
+ * @returns The updated thread; the same one when it isn't loaded or is already deleted.
+ */
+export const withMessageDeleted = (thread: Thread, messageId: string): Thread => {
+  const messages = applyMessageDeleted(thread.messages, messageId);
   return messages === thread.messages ? thread : { ...thread, messages };
 };
 

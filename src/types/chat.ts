@@ -9,6 +9,8 @@
 // ─── Wire shapes ────────────────────────────────────────────────────────────
 
 /** Room kinds the backend creates (`ChatRoomType`). */
+import type { ChatReplyTo, ReplyDraft } from "../Components/chat-kit";
+
 export type ChatRoomType =
   | 'class_group'
   | 'course_group'
@@ -82,6 +84,14 @@ export interface RawMessage {
   /** @deprecated alias of `createdAt`. */
   timestamp?: string | null;
   readBy?: unknown[] | null;
+  replyTo?: {
+    messageId?: unknown;
+    senderId?: unknown;
+    senderName?: string;
+    preview?: string;
+    type?: string;
+  } | null;
+  isDeleted?: boolean;
 }
 
 /** A room member (`ParticipantView`), tolerant of the older `name` / `avatar` fields. */
@@ -173,6 +183,10 @@ export interface ChatMessage {
   error?: string | null;
   /** Upload progress per attachment (0-1) while `pending`. */
   uploadProgress?: number[];
+  /** The message this one replies to (a server-side snapshot). */
+  replyTo?: ChatReplyTo;
+  /** Deleted: `text` and `attachments` are blank; shown as a placeholder. */
+  isDeleted?: boolean;
 }
 
 /** How a room's avatar is drawn. */
@@ -236,6 +250,8 @@ export interface SendMessageInput {
   /** Marks a single recorded file as a voice note of `duration` seconds. */
   voice?: boolean;
   duration?: number;
+  /** The message being replied to. */
+  replyTo?: ReplyDraft;
 }
 
 /** `{ position }` of the newest message a `mark-room-read` was sent for. */
@@ -329,6 +345,12 @@ export interface RoomRead {
   readAt?: string;
 }
 
+/** `message-deleted` */
+export interface MessageDeleted {
+  roomId?: unknown;
+  messageId?: unknown;
+}
+
 /** `room-updated` */
 export interface RoomUpdated {
   roomId?: unknown;
@@ -362,6 +384,7 @@ export interface ChatServerEvents {
   'chat-room-activity': ChatRoomActivity;
   'messages-read': MessagesRead;
   'room-read': RoomRead;
+  'message-deleted': MessageDeleted;
   'room-updated': RoomUpdated;
   'participants-changed': ParticipantsChanged;
   error: ChatSocketError;

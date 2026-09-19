@@ -1,4 +1,5 @@
 import { Fragment, useLayoutEffect, useRef } from 'react';
+import { type ReplyDraft } from './chat-kit';
 import MessageItem from './MessageItem';
 import { formatDaySeparator, receiptOf } from '../lib/chatMessages';
 import type { ChatMessage } from '../types/chat';
@@ -30,6 +31,10 @@ interface MessageListProps {
   onLoadOlder: () => void;
   onRetryMessage: (message: ChatMessage) => void;
   onDiscardMessage: (message: ChatMessage) => void;
+  /** Start a reply to a message. */
+  onReply?: (reply: ReplyDraft) => void;
+  /** Deletes a stored message; rejects with the server's message. */
+  onDeleteMessage?: (messageId: string) => Promise<void>;
   isGroup?: boolean;
   otherUserId?: string;
   currentUserId?: string;
@@ -54,6 +59,8 @@ function MessageList({
   onLoadOlder,
   onRetryMessage,
   onDiscardMessage,
+  onReply,
+  onDeleteMessage,
   isGroup = false,
   otherUserId = '',
   currentUserId = '',
@@ -142,6 +149,20 @@ function MessageList({
     }
 
     const receiptContext = { isGroup, otherUserId, currentUserId };
+    const loadedIds = new Set(messages.map((message) => message._id).filter(Boolean));
+    // Delete is offered for my own messages, and in a group for others' (the server decides who may).
+    const deleteHandlerFor = (message: ChatMessage): (() => Promise<void>) | undefined => {
+      const messageId = message._id;
+      if (!onDeleteMessage || !messageId || message.isDeleted || message.status !== 'sent') return undefined;
+      return message.isOwn || isGroup ? () => onDeleteMessage(messageId) : undefined;
+    };
+    const jumpTo = (messageId: string) => {
+      const element = document.getElementById(`msg-${messageId}`);
+      if (!element) return;
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('bg-blue-50');
+      window.setTimeout(() => element.classList.remove('bg-blue-50'), 1200);
+    };
     // Groups show "Read by N" once, under the newest stored own message.
     const latestOwnId = isGroup ? [...messages].reverse().find((message) => message.isOwn && message._id)?._id : null;
 
@@ -181,13 +202,19 @@ function MessageList({
                   <span className="h-px flex-1 bg-[#E5EAF2] dark:bg-slate-700" />
                 </div>
               )}
-              <MessageItem
-                msg={msg}
-                receipt={receiptOf(msg, receiptContext)}
-                showReadCount={Boolean(latestOwnId) && msg._id === latestOwnId}
-                onRetry={onRetryMessage}
-                onDiscard={onDiscardMessage}
-              />
+              <div id={msg._id ? `msg-${msg._id}` : undefined} className="rounded-2xl transition-colors duration-500">
+                <MessageItem
+                  msg={msg}
+                  receipt={receiptOf(msg, receiptContext)}
+                  showReadCount={Boolean(latestOwnId) && msg._id === latestOwnId}
+                  showSenderName={isGroup}
+                  onReply={onReply}
+                  onDeleteMessage={deleteHandlerFor(msg)}
+                  onJump={msg.replyTo && loadedIds.has(msg.replyTo.messageId) ? jumpTo : undefined}
+                  onRetry={onRetryMessage}
+                  onDiscard={onDiscardMessage}
+                />
+              </div>
             </Fragment>
           );
         })}

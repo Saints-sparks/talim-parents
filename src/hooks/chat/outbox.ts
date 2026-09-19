@@ -1,4 +1,4 @@
-import type { AttachmentKind, UploadItem } from '../../Components/chat-kit';
+import type { AttachmentKind, ReplyDraft, UploadItem } from '../../Components/chat-kit';
 import { ApiError, getErrorMessage } from '../../lib/apiError';
 import type { AckError, ChatMessage } from '../../types/chat';
 
@@ -15,6 +15,8 @@ export interface OutboxEntry {
   type: string;
   voice: boolean;
   duration?: number;
+  /** The message being replied to; kept so a retry sends the same reply. */
+  replyTo?: ReplyDraft;
   inFlight: boolean;
   failed: boolean;
 }
@@ -32,6 +34,7 @@ export interface PendingMessageInput {
   type: string;
   voice: boolean;
   duration?: number;
+  replyTo?: ReplyDraft;
 }
 
 /**
@@ -75,6 +78,7 @@ export const buildPendingMessage = ({
   type,
   voice,
   duration,
+  replyTo,
 }: PendingMessageInput): ChatMessage => ({
   id: clientMessageId,
   clientMessageId,
@@ -98,6 +102,9 @@ export const buildPendingMessage = ({
   createdAt: new Date().toISOString(),
   readBy: [],
   status: 'pending',
+  replyTo: replyTo
+    ? { messageId: replyTo.messageId, senderName: replyTo.senderName, preview: replyTo.preview }
+    : undefined,
 });
 
 /**

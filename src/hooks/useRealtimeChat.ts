@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocketContextSafe } from '../contexts/WebSocketContext';
 import { useAuth } from '../services/auth.services';
-import { removeChatParticipant } from '../services/chat.services';
-import { mergeMessages, newestSavedMessageId } from '../lib/chatMessages';
+import { deleteChatMessage, removeChatParticipant } from '../services/chat.services';
+import { applyMessageDeletedToRooms, mergeMessages, newestSavedMessageId } from '../lib/chatMessages';
 import type {
   ChatMessage,
   ChatRoom,
@@ -28,6 +28,7 @@ import {
   withMessageStatus,
   withOlderFailed,
   withOlderLoading,
+  withMessageDeleted,
   withOlderSettled,
 } from './chat/threadStore';
 import { useChatOutbox } from './chat/useChatOutbox';
@@ -73,6 +74,8 @@ export interface UseRealtimeChatResult {
   sendMessage: (message: SendMessageInput) => boolean;
   retryMessage: (message: ChatMessage | null | undefined) => void;
   discardMessage: (message: ChatMessage | null | undefined) => void;
+  /** Deletes a stored message (mine, or any if I can manage the room). Rejects with the server's error. */
+  deleteStoredMessage: (roomId: string, messageId: string) => Promise<void>;
   refreshChatRooms: () => void;
   /** Removes the user from a group. Rejects with the server's error (e.g. 403) so the caller can show it. */
   leaveGroup: (roomId: string) => Promise<RawChatRoom | null>;
@@ -343,6 +346,17 @@ export const useRealtimeChat = ({ onRoomRemoved }: UseRealtimeChatOptions = {}):
       .finally(() => loadingOlderRef.current.delete(roomId));
   }, [webSocket, updateThread]);
 
+  const deleteStoredMessage = useCallback(
+    async (roomId: string, messageId: string) => {
+      await deleteChatMessage(messageId);
+      // The server also sends `message-deleted`; applying it here updates the
+      // deleter's screen at once, and applying twice is a no-op.
+      updateThread(roomId, (thread) => withMessageDeleted(thread, messageId));
+      setRawRooms((rooms) => applyMessageDeletedToRooms(rooms, roomId, messageId));
+    },
+    [updateThread],
+  );
+
   const leaveGroup = useCallback(
     async (roomId: string) => {
       if (!roomId || !currentUserId) return null;
@@ -386,6 +400,7 @@ export const useRealtimeChat = ({ onRoomRemoved }: UseRealtimeChatOptions = {}):
     sendMessage,
     retryMessage,
     discardMessage,
+    deleteStoredMessage,
     refreshChatRooms,
     leaveGroup,
     currentUserId,

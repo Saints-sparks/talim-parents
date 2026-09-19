@@ -1,5 +1,5 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { isAtOrBefore, normalizeMessage, toId } from '../../lib/chatMessages';
+import { applyMessageDeletedToRooms, isAtOrBefore, normalizeMessage, toId } from '../../lib/chatMessages';
 import type {
   ChatMessage,
   LoadStatus,
@@ -20,6 +20,7 @@ import {
 } from './roomStore';
 import {
   withJoinedHistory,
+  withMessageDeleted,
   withMessagesRead,
   withMessagesUpdate,
 } from './threadStore';
@@ -139,6 +140,15 @@ export const useChatSocketEvents = ({
         const roomId = toId(data?.roomId);
         if (!roomId || !data?.userId || !data.readAt) return;
         updateThread(roomId, (thread) => withMessagesRead(thread, data));
+      }),
+
+      // A message in one of my rooms was deleted.
+      webSocket.on('message-deleted', (data) => {
+        const roomId = toId(data?.roomId);
+        const messageId = toId(data?.messageId);
+        if (!roomId || !messageId) return;
+        updateThread(roomId, (thread) => withMessageDeleted(thread, messageId));
+        setRawRooms((rooms) => applyMessageDeletedToRooms(rooms, roomId, messageId));
       }),
 
       // This user read the room, here or on another device.

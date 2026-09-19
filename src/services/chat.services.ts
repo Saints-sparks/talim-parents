@@ -128,3 +128,15 @@ export function removeChatParticipant<T = unknown>(roomId: string, userId: strin
     {},
   );
 }
+
+/**
+ * Deletes a message: its sender, or whoever can manage the room. The text and
+ * attachments are blanked and members get `message-deleted`.
+ *
+ * @param messageId - The stored message's `_id`.
+ * @returns Resolves when the server has deleted it.
+ * @throws {ApiError} `FORBIDDEN` when the caller may not delete it.
+ */
+export async function deleteChatMessage(messageId: string): Promise<void> {
+  await api.delete(`/chat/messages/${encodeURIComponent(messageId)}`);
+}
