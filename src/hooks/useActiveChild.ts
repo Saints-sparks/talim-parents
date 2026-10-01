@@ -1,26 +1,58 @@
-import { useEffect, useMemo } from 'react';
-import { useParentOnboarding } from '../contexts/ParentOnboardingContext';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useSelectedStudent } from '../contexts/SelectedStudentContext';
-import { childRecordId, type ParentChild } from '../types/parent';
+import { useAuth } from '../services/auth.services';
+import { getChildren } from '../services/portal/children';
+import { queryKeys, staleTimes } from '../lib/queryKeys';
+import { getErrorMessage } from '../lib/apiError';
+import type { SchoolRef } from '../types/portal/common';
+import type { ChildSummary } from '../types/portal/children';
 
 /** What a child-scoped page can be in before it has a child to ask about. */
 export type ActiveChildStatus = 'loading' | 'error' | 'empty' | 'ready';
+
+/** The linked children of one school, in the order the API listed them. */
+export interface SchoolGroup {
+  school: SchoolRef;
+  children: ChildSummary[];
+}
 
 /** The result of {@link useActiveChild}. */
 export interface ActiveChild {
   status: ActiveChildStatus;
   /** The child every child-scoped request should use; only set when `ready`. */
-  child: ParentChild | null;
-  /** The child's Student record id — what every child-scoped route expects. */
+  child: ChildSummary | null;
+  /** The child's Student record id: what every child-scoped route and `X-Talim-Child` take. */
   childId: string | undefined;
   /** Every child linked to the signed-in parent. */
-  wards: ParentChild[];
+  children: ChildSummary[];
+  /** The children grouped by school (multi-school families). */
+  groups: SchoolGroup[];
   /** Why the children could not be loaded, when `status` is `error`. */
   error: string | null;
   /** Fetches the linked children again. */
   retry: () => void;
   /** Switches the child the whole app is showing. */
-  select: (child: ParentChild) => void;
+  select: (childId: string) => void;
+}
+
+/** One shared empty list, so an unloaded query never hands out a new array. */
+const NO_CHILDREN: ChildSummary[] = [];
+
+/**
+ * The parent's linked children (B13), cached once for the whole app: the
+ * shell, the switcher, onboarding and Settings all read this one query.
+ *
+ * @returns The query result; disabled until a parent is signed in.
+ */
+export function useChildrenQuery(): UseQueryResult<ChildSummary[]> {
+  const { parentId, isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.children.list(parentId || 'anon'),
+    queryFn: getChildren,
+    enabled: Boolean(parentId && isAuthenticated),
+    staleTime: staleTimes.list,
+  });
 }
 
 /**
@@ -28,62 +60,79 @@ export interface ActiveChild {
  * parent.
  *
  * The remembered selection lives in `localStorage`, so it can outlive the
- * link (a school unlinks a child) or come from a stale build. Trusting it
- * would send that child's id to the API, which answers FORBIDDEN. Instead the
- * selection is only honoured when it is in the server's list; otherwise the
- * parent's default child, then the first one, is used.
+ * link (a school unlinks a child). Trusting it would send that child's id to
+ * the API, which refuses it. Instead the selection is honoured only when it
+ * is in the server's list; otherwise the parent's default child, then the
+ * first one, is used.
  *
- * @param wards - The children the API returned for this parent.
- * @param selected - The remembered selection, if any.
+ * @param children - The children the API returned for this parent.
+ * @param selectedId - The remembered selection, if any.
  * @returns The child to show, or `null` when the parent has none.
  */
-export function resolveActiveChild(
-  wards: ParentChild[],
-  selected: ParentChild | null | undefined,
-): ParentChild | null {
-  if (wards.length === 0) return null;
-  const selectedId = childRecordId(selected);
-  const match = selectedId ? wards.find((ward) => childRecordId(ward) === selectedId) : undefined;
-  return match ?? wards.find((ward) => ward.isDefault) ?? wards[0];
+export function resolveActiveChild(children: readonly ChildSummary[], selectedId: string | null | undefined): ChildSummary | null {
+  if (children.length === 0) return null;
+  const match = selectedId ? children.find((child) => child.id === selectedId) : undefined;
+  return match ?? children.find((child) => child.isDefault) ?? children[0];
 }
 
 /**
- * The child a child-scoped page (attendance, results, timetable, leave) is
- * about, verified against the parent's linked children.
+ * Groups children by school in one pass (a Map, not a nested scan), keeping
+ * the order in which schools and children first appear.
  *
- * Requests are held until the linked-children list has loaded, so a child id
- * that is not this parent's is never sent — the server would refuse it, and
- * the page would flash an error for what is really a stale selection. When
- * the remembered selection is stale it is replaced, so the header switcher
- * and every page agree.
+ * @param children - The linked children.
+ * @returns One group per school.
+ */
+export function groupBySchool(children: readonly ChildSummary[]): SchoolGroup[] {
+  const groups = new Map<string, SchoolGroup>();
+  for (const child of children) {
+    const key = child.school.id;
+    const group = groups.get(key);
+    if (group) group.children.push(child);
+    else groups.set(key, { school: child.school, children: [child] });
+  }
+  return [...groups.values()];
+}
+
+/**
+ * The child a child-scoped page (dashboard, attendance, results, payments…)
+ * is about, verified against the parent's linked children.
+ *
+ * Requests are held until the children list has loaded, so a child id that is
+ * not this parent's is never sent. When the remembered selection is stale it
+ * is replaced, so the switcher and every page agree.
  *
  * @returns The resolved child, or why there is not one yet.
  */
 export function useActiveChild(): ActiveChild {
-  const { wards, wardsLoading, wardsError, refreshWards } = useParentOnboarding();
-  const { selectedStudent, updateSelectedStudent } = useSelectedStudent();
+  const query = useChildrenQuery();
+  const { selectedChildId, selectChild } = useSelectedStudent();
+  const children = query.data ?? NO_CHILDREN;
 
-  const child = useMemo(() => resolveActiveChild(wards, selectedStudent), [wards, selectedStudent]);
-  const childId = childRecordId(child);
+  const child = useMemo(() => resolveActiveChild(children, selectedChildId), [children, selectedChildId]);
+  const groups = useMemo(() => groupBySchool(children), [children]);
 
   useEffect(() => {
-    if (child && childId !== childRecordId(selectedStudent)) updateSelectedStudent(child);
-  }, [child, childId, selectedStudent, updateSelectedStudent]);
+    if (child && child.id !== selectedChildId) selectChild(child.id);
+  }, [child, selectedChildId, selectChild]);
+
+  const { refetch } = query;
+  const retry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   let status: ActiveChildStatus = 'ready';
-  if (wardsLoading) status = 'loading';
-  else if (wardsError && !child) status = 'error';
+  if (query.isPending) status = 'loading';
+  else if (query.isError && !child) status = 'error';
   else if (!child) status = 'empty';
 
   return {
     status,
     child: status === 'ready' ? child : null,
-    childId: status === 'ready' ? childId : undefined,
-    wards,
-    error: wardsError,
-    retry: () => {
-      void refreshWards();
-    },
-    select: updateSelectedStudent,
+    childId: status === 'ready' ? child?.id : undefined,
+    children,
+    groups,
+    error: query.error ? getErrorMessage(query.error, 'Could not load your children.') : null,
+    retry,
+    select: selectChild,
   };
 }

@@ -1,30 +1,32 @@
 import { CheckCircle2 } from 'lucide-react';
-import type { ParentChild } from '../../types/parent';
-import { getAvatarUrl, getInitials, getPersonName, getStudentClassLabel } from './onboardingUtils';
+import type { ChildSummary } from '../../types/portal/children';
+import { initialsOf } from '../../lib/format';
+import { getStudentClassLabel } from './onboardingUtils';
 
 /** Props of {@link WardCard}. */
 interface WardCardProps {
-  ward: ParentChild;
+  ward: ChildSummary;
   selected: boolean;
-  onSelect: (ward: ParentChild) => void;
+  onSelect: (ward: ChildSummary) => void;
 }
 
 /**
- * One linked child, as a selectable card.
+ * One linked child, as a selectable card: photo or initials, name, class and
+ * school.
  *
  * @param props - The child, whether it is the current choice, and the select callback.
+ * @param props.ward - The child.
+ * @param props.selected - Whether this is the current choice.
+ * @param props.onSelect - Called with the child when the card is chosen.
  * @returns The card as a button.
  */
 export default function WardCard({ ward, selected, onSelect }: WardCardProps) {
-  const avatarUrl = getAvatarUrl(ward);
-  const name = getPersonName(ward);
-
   return (
     <button
       type="button"
       aria-pressed={selected}
       onClick={() => onSelect(ward)}
-      className={`flex w-full items-center gap-4 rounded-lg border p-4 text-left transition-colors ${
+      className={`flex min-h-[44px] w-full items-center gap-4 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1D66D1] ${
         selected
           ? 'border-[#1D66D1] bg-[#F7FAFF] dark:border-blue-400 dark:bg-blue-500/10'
           : 'border-[#E8EDF3] bg-white hover:border-[#B7C7DA] dark:border-[#2a3a5a] dark:bg-[#1a2540] dark:hover:border-[#3b4f75]'
@@ -39,32 +41,21 @@ export default function WardCard({ ward, selected, onSelect }: WardCardProps) {
       </span>
 
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#EAF2FB] dark:bg-[#1e2d47]">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
+        {ward.avatarUrl ? (
+          <img src={ward.avatarUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#003366] dark:text-[#93c5fd]">
-            {getInitials(ward)}
+            {initialsOf(ward.name)}
           </div>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold text-[#17212B] dark:text-slate-100">{name}</p>
-        <p className="mt-1 text-xs text-[#657386] dark:text-slate-300">{getStudentClassLabel(ward)}</p>
-        {ward.isActive !== undefined && (
-          <span
-            className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-              ward.isActive
-                ? 'bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-400'
-                : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-            }`}
-          >
-            {ward.isActive ? 'Active' : 'Inactive'}
-          </span>
-        )}
+        <p className="truncate text-sm font-bold text-[#17212B] dark:text-slate-100">{ward.name}</p>
+        <p className="mt-1 text-xs text-[#5B6B80] dark:text-slate-300">{getStudentClassLabel(ward)}</p>
       </div>
 
-      {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-[#1D66D1] dark:text-blue-400" />}
+      {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-[#1D66D1] dark:text-blue-400" aria-hidden="true" />}
     </button>
   );
 }

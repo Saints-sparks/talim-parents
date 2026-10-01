@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../services/auth.services';
-import { getParentChildren } from '../services/parent.services';
+import { getChildren } from '../services/portal/children';
 import { useSelectedStudent } from './SelectedStudentContext';
-import { queryKeys, staleTimes } from '../lib/queryKeys';
+import { useChildrenQuery } from '../hooks/useActiveChild';
+import { queryKeys } from '../lib/queryKeys';
 import { getErrorMessage } from '../lib/apiError';
 import { logger } from '../lib/logger';
-import type { ParentChild } from '../types/parent';
+import type { ChildSummary } from '../types/portal/children';
 
 /** One step of the parent's first-run checklist. */
 export interface OnboardingStep {
@@ -24,8 +25,8 @@ export const PARENT_ONBOARDING_STEPS: readonly OnboardingStep[] = [
   { id: 'view-notifications', label: 'View Notifications', title: 'View notifications', description: 'Open school announcements and alerts.', href: '/notifications', phase: 3 },
   { id: 'view-attendance', label: 'Check Attendance', title: 'Check attendance', description: "View your child's attendance records.", href: '/attendance', phase: 3 },
   { id: 'view-timetable', label: 'View Timetable', title: 'View timetable', description: "See your child's class schedule.", href: '/timetable', phase: 3 },
-  { id: 'view-results', label: 'View Results', title: 'View results', description: 'Check academic results and progress.', href: '/result', phase: 3 },
-  { id: 'request-leave', label: 'Request Leave', title: 'Request leave', description: 'Submit or track leave requests.', href: '/requestleave', phase: 3 },
+  { id: 'view-results', label: 'View Results', title: 'View results', description: 'Check academic results and progress.', href: '/results', phase: 3 },
+  { id: 'request-leave', label: 'Request Leave', title: 'Request leave', description: 'Submit or track leave requests.', href: '/leave', phase: 3 },
   { id: 'open-messages', label: 'Open Messages', title: 'Open messages', description: 'Communicate with teachers and school.', href: '/messages', phase: 3 },
 ] as const;
 
@@ -37,18 +38,18 @@ interface PersistedState {
 
 /** Everything `useParentOnboarding()` exposes. */
 export interface ParentOnboardingValue {
-  wards: ParentChild[];
+  wards: ChildSummary[];
   wardsLoading: boolean;
   wardsLoaded: boolean;
   wardsError: string | null;
-  refreshWards: () => Promise<ParentChild[]>;
+  refreshWards: () => Promise<ChildSummary[]>;
   completedSteps: string[];
   setupDismissed: boolean;
   isHydrated: boolean;
   isStepComplete: (stepId: string) => boolean;
   markStepComplete: (stepId: string) => void;
   unmarkStepComplete: (stepId: string) => void;
-  selectDefaultWard: (ward: ParentChild) => void;
+  selectDefaultWard: (ward: ChildSummary) => void;
   dismissSetup: () => void;
   completedCount: number;
   totalCount: number;
@@ -61,7 +62,7 @@ export interface ParentOnboardingValue {
 const DEFAULT_STATE: PersistedState = { completedSteps: [], setupDismissed: false };
 
 /** One shared empty list, so an unloaded query does not hand out a new array every render. */
-const NO_WARDS: ParentChild[] = [];
+const NO_WARDS: ChildSummary[] = [];
 
 const ParentOnboardingContext = createContext<ParentOnboardingValue | null>(null);
 
@@ -117,7 +118,7 @@ function saveState(parentId: string, state: PersistedState): void {
  */
 export function ParentOnboardingProvider({ children }: { children: ReactNode }) {
   const { parentId, isAuthenticated } = useAuth();
-  const { updateSelectedStudent } = useSelectedStudent();
+  const { selectChild } = useSelectedStudent();
   const queryClient = useQueryClient();
 
   const [state, setState] = useState<PersistedState>(DEFAULT_STATE);
@@ -128,20 +129,12 @@ export function ParentOnboardingProvider({ children }: { children: ReactNode }) 
     setIsHydrated(true);
   }, [parentId]);
 
-  const wardsQuery = useQuery({
-    queryKey: queryKeys.children.list(parentId || 'anon'),
-    queryFn: getParentChildren,
-    enabled: Boolean(parentId && isAuthenticated),
-    staleTime: staleTimes.list,
-  });
+  // The same cached query the switcher and every screen read (B13).
+  const wardsQuery = useChildrenQuery();
 
-  const refreshWards = useCallback(async (): Promise<ParentChild[]> => {
+  const refreshWards = useCallback(async (): Promise<ChildSummary[]> => {
     if (!parentId || !isAuthenticated) return [];
-    const result = await queryClient.fetchQuery({
-      queryKey: queryKeys.children.list(parentId),
-      queryFn: getParentChildren,
-    });
-    return result;
+    return queryClient.fetchQuery({ queryKey: queryKeys.children.list(parentId), queryFn: getChildren });
   }, [parentId, isAuthenticated, queryClient]);
 
   const updatePersistedState = useCallback(
@@ -182,11 +175,11 @@ export function ParentOnboardingProvider({ children }: { children: ReactNode }) 
   );
 
   const selectDefaultWard = useCallback(
-    (ward: ParentChild) => {
-      updateSelectedStudent(ward);
+    (ward: ChildSummary) => {
+      selectChild(ward.id);
       markStepComplete('select-ward');
     },
-    [markStepComplete, updateSelectedStudent],
+    [markStepComplete, selectChild],
   );
 
   const dismissSetup = useCallback(() => {

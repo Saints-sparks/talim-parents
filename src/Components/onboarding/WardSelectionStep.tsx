@@ -2,27 +2,10 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useParentOnboarding } from '../../contexts/ParentOnboardingContext';
 import { useSelectedStudent } from '../../contexts/SelectedStudentContext';
-import { childRecordId, type ParentChild } from '../../types/parent';
+import { resolveActiveChild } from '../../hooks/useActiveChild';
+import type { ChildSummary } from '../../types/portal/children';
 import ParentOnboardingLayout from './ParentOnboardingLayout';
 import WardCard from './WardCard';
-
-/**
- * Which child to start with: the one already chosen if they are still linked,
- * else the parent's saved default, else the first.
- *
- * @param wards - The linked children.
- * @param selected - The child remembered from a previous visit.
- * @returns The starting choice, or `null` when there are no children.
- */
-function initialWard(wards: ParentChild[], selected: ParentChild | null): ParentChild | null {
-  const selectedId = childRecordId(selected);
-  return (
-    wards.find((ward) => selectedId !== undefined && childRecordId(ward) === selectedId) ??
-    wards.find((ward) => ward.isDefault) ??
-    wards[0] ??
-    null
-  );
-}
 
 /**
  * Step 2 of onboarding: choose the child the portal opens on.
@@ -31,10 +14,10 @@ function initialWard(wards: ParentChild[], selected: ParentChild | null): Parent
  */
 export default function WardSelectionStep() {
   const { wards, wardsLoading, wardsError, refreshWards, selectDefaultWard, unmarkStepComplete } = useParentOnboarding();
-  const { selectedStudent } = useSelectedStudent();
-  const [selectedWard, setSelectedWard] = useState<ParentChild | null>(() => initialWard(wards, selectedStudent));
-
-  const selectedId = childRecordId(selectedWard);
+  const { selectedChildId } = useSelectedStudent();
+  // The one already chosen if still linked, else the default, else the first.
+  const [selectedWard, setSelectedWard] = useState<ChildSummary | null>(() => resolveActiveChild(wards, selectedChildId));
+  const selectedId = selectedWard?.id;
 
   const retry = (): void => {
     // A failure lands in `wardsError` through the shared query, so it is
@@ -63,17 +46,9 @@ export default function WardSelectionStep() {
               </button>
             </div>
           ) : (
-            wards.map((ward) => {
-              const wardId = childRecordId(ward);
-              return (
-                <WardCard
-                  key={wardId ?? ward.childUserId}
-                  ward={ward}
-                  selected={selectedId !== undefined && selectedId === wardId}
-                  onSelect={setSelectedWard}
-                />
-              );
-            })
+            wards.map((ward) => (
+              <WardCard key={ward.id} ward={ward} selected={selectedId === ward.id} onSelect={setSelectedWard} />
+            ))
           )}
         </div>
 

@@ -1,10 +1,15 @@
-import type { ChildUser, ParentChild } from '../../types/parent';
+import type { ChildSummary } from '../../types/portal/children';
+
+/** A populated user document, as some older records nest it under `userId`. */
+interface ChildUser {
+  firstName?: string;
+  lastName?: string;
+  userAvatar?: string;
+}
 
 /**
- * Anyone the onboarding screens name: a child, or the signed-in parent.
- *
- * A child carries its user document under `userId`; the auth user's `userId`
- * is a plain string, so the two are told apart by that type.
+ * Anyone the onboarding screens name: the signed-in parent (or an older
+ * record that nests its user document under `userId`).
  */
 export interface NamedPerson {
   firstName?: string;
@@ -50,15 +55,15 @@ export function getPersonName(person: NamedPerson | null | undefined): string {
 }
 
 /**
- * "Grade • Class" for a child, degrading to whatever the record has.
+ * "Class · School" for a child (B13), saying so when the school has not
+ * placed the child in a class yet.
  *
  * @param ward - The child.
  * @returns The label shown under the child's name.
  */
-export function getStudentClassLabel(ward: ParentChild | null | undefined): string {
-  const className = ward?.className || 'Class not assigned';
-  const grade = ward?.grade;
-  return grade ? `${grade} • ${className}` : className;
+export function getStudentClassLabel(ward: ChildSummary | null | undefined): string {
+  if (!ward) return 'Class not assigned';
+  return `${ward.class?.name ?? 'Class not assigned'} · ${ward.school.name}`;
 }
 
 /**
