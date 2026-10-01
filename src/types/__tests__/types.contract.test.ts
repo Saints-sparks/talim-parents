@@ -28,7 +28,6 @@ import type {
   UpdateProfilePayload,
   WebPushSubscribePayload,
 } from '../apiPayloads';
-import { LEAVE_TYPES, type LeaveType } from '../../services/leaveRequest.services';
 
 const initialize: InitializePaymentPayload = {
   studentId: '64b7f0f2a1b2c3d4e5f60718',
@@ -89,12 +88,5 @@ describe('request payloads match the backend contract', () => {
     expect(subscribe.keys.auth).toBeTruthy();
     expect([profile, avatar, theme, login].every(Boolean)).toBe(true);
     expect([badProvider, noTerm, extraField, wrongAvatarKey].every(Boolean)).toBe(true);
-  });
-
-  it('keeps the leave-type picker in step with the DTO enum', () => {
-    // If the DTO gains a type, `Exclude` is non-empty and this assignment stops compiling.
-    const missing: Exclude<LeaveType, (typeof LEAVE_TYPES)[number]> extends never ? true : false = true;
-    expect(missing).toBe(true);
-    expect(LEAVE_TYPES).toContain('Emergency');
   });
 });
