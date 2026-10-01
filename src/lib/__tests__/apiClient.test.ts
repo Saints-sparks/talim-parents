@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { api, apiClient, buildQuery, AUTH_LOGOUT_EVENT } from '../apiClient';
+import { api, apiClient, buildQuery, AUTH_LOGOUT_EVENT, CHILD_HEADER } from '../apiClient';
 import { ApiError } from '../apiError';
 import { sessionStore, STORAGE_KEYS } from '../session';
 
@@ -153,5 +153,74 @@ describe('buildQuery', () => {
 
   it('returns an empty string when nothing survives', () => {
     expect(buildQuery({ a: undefined })).toBe('');
+  });
+});
+
+describe('strict envelope unwrap', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    sessionStore.__resetForTests();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps pagination meta: { success, data, meta } becomes { data, meta }', async () => {
+    const meta = { total: 31, page: 1, lastPage: 2, limit: 30 };
+    fetchMock.mockResolvedValue(jsonResponse({ success: true, data: [{ _id: 'n1' }], meta }));
+    await expect(api.get('/notifications')).resolves.toEqual({ data: [{ _id: 'n1' }], meta });
+  });
+
+  it('leaves a payload with success, data and other fields alone', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true, data: [1], total: 1 }));
+    await expect(api.get('/x')).resolves.toEqual({ success: true, data: [1], total: 1 });
+  });
+
+  it('does not unwrap success: false or an array', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: false, data: 1 }));
+    await expect(api.get('/x')).resolves.toEqual({ success: false, data: 1 });
+    fetchMock.mockResolvedValue(jsonResponse([{ success: true, data: 1 }]));
+    await expect(api.get('/y')).resolves.toEqual([{ success: true, data: 1 }]);
+  });
+
+  it('unwraps a null data', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ success: true, data: null }));
+    await expect(api.get('/x')).resolves.toBeNull();
+  });
+});
+
+describe('the X-Talim-Child header', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    sessionStore.__resetForTests();
+    window.localStorage.setItem(STORAGE_KEYS.accessToken, 'tok-1');
+    fetchMock = vi.fn().mockImplementation(async () => jsonResponse({ success: true, data: {} }));
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('is sent on a child-scoped request, with the child it names', async () => {
+    await api.get('/parents/me/children/c1/dashboard', { childId: 'c1' });
+    await api.post('/payments/parent/initialize', { a: 1 }, { childId: 'c2' });
+    expect((fetchMock.mock.calls[0][1].headers as Record<string, string>)[CHILD_HEADER]).toBe('c1');
+    expect((fetchMock.mock.calls[1][1].headers as Record<string, string>)[CHILD_HEADER]).toBe('c2');
+    expect((fetchMock.mock.calls[1][1].headers as Record<string, string>)['Content-Type']).toBe('application/json');
+  });
+
+  it('is not sent on a request about the parent', async () => {
+    await api.get('/notifications/counts');
+    expect((fetchMock.mock.calls[0][1].headers as Record<string, string>)[CHILD_HEADER]).toBeUndefined();
+  });
+
+  it('is written in one place: only the API client spells the header out', () => {
+    const sources = import.meta.glob('/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+    const spelled = Object.entries(sources)
+      // A quoted literal is a place that could set the header; comments name it in backticks.
+      .filter(([file, text]) => !file.includes('__tests__') && /['"]X-Talim-Child['"]/i.test(text))
+      .map(([file]) => file.replace(/^\/src\//, ''));
+    expect(spelled).toEqual(['lib/apiClient.ts']);
+    // …and only `withAuth` writes it into the request headers.
+    const client = sources[Object.keys(sources).find((file) => file.endsWith('lib/apiClient.ts')) as string];
+    expect(client.match(/\[CHILD_HEADER\]\s*=/g)).toHaveLength(1);
   });
 });

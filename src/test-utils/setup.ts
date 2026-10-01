@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
+import { uninstallAllFixtures } from './fixtureRegistry';
 
 // jsdom has no ResizeObserver; several chart and calendar components need one.
 class ResizeObserverStub {
@@ -27,5 +28,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  uninstallAllFixtures();
   vi.restoreAllMocks();
 });
