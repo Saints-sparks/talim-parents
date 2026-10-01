@@ -13,7 +13,7 @@ import { decideProtectedRoute } from './protectedRouteRules';
  */
 export default function ProtectedRoute() {
   const location = useLocation();
-  const { authToken, loading } = useAuth();
+  const { authToken, loading, user } = useAuth();
   const { isHydrated, hasNoLinkedWards, isStepComplete } = useParentOnboarding();
 
   const decision = decideProtectedRoute({
@@ -24,17 +24,19 @@ export default function ProtectedRoute() {
     hasNoLinkedWards,
     profileConfirmed: isStepComplete('parent-profile'),
     wardSelected: isStepComplete('select-ward'),
+    mustChangePassword: user?.mustChangePassword === true,
   });
 
   if (decision === 'loading') {
     return (
-      <div className="min-h-screen space-y-4 bg-white p-8 dark:bg-[#0f1629]" role="status" aria-label="Loading">
+      <div className="min-h-[100dvh] space-y-4 bg-tl-bg p-8" role="status" aria-label="Loading">
         <SkeletonLoader type="custom" height="2.5rem" count={5} />
       </div>
     );
   }
 
   if (decision === 'login') return <Navigate to="/" replace />;
+  if (decision === 'set-password') return <Navigate to="/set-password" replace />;
   if (decision === 'onboarding') return <Navigate to="/onboarding" replace />;
   return <Outlet />;
 }

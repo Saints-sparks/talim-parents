@@ -2,7 +2,7 @@ import type { ChangePasswordPayload } from '../services/settings.services';
 
 /** How a sign-in attempt ended. Pages branch on `kind`, never on the message. */
 export type LoginOutcome =
-  | { kind: 'success' }
+  | { kind: 'success'; mustChangePassword?: boolean }
   | { kind: 'invalid_credentials'; message: string }
   | { kind: 'access_denied'; message: string }
   | { kind: 'unknown'; message: string };
@@ -21,6 +21,8 @@ export interface AuthUser {
   schoolId?: string;
   schoolName?: string;
   onboardingCompleted?: boolean;
+  /** Set on an account still using the temporary password the school issued. */
+  mustChangePassword?: boolean;
   [key: string]: unknown;
 }
 

@@ -53,14 +53,19 @@ describe('decideProtectedRoute', () => {
     expect(decideProtectedRoute({ ...incomplete, pathname: '/onboarding' })).toBe('allow');
   });
 
-  it('keeps /my-children reachable before onboarding is finished', () => {
+  it('keeps /settings reachable before onboarding is finished, so a child can be linked with a code', () => {
     const incomplete = { ...ready, profileConfirmed: false, wardSelected: false, hasNoLinkedWards: true };
-    expect(decideProtectedRoute({ ...incomplete, pathname: '/my-children' })).toBe('allow');
+    expect(decideProtectedRoute({ ...incomplete, pathname: '/settings' })).toBe('allow');
   });
 
   it('only exempts those two routes exactly, not their sub-paths', () => {
     const incomplete = { ...ready, profileConfirmed: false };
-    expect(decideProtectedRoute({ ...incomplete, pathname: '/my-children/123' })).toBe('onboarding');
+    expect(decideProtectedRoute({ ...incomplete, pathname: '/settings/123' })).toBe('onboarding');
     expect(decideProtectedRoute({ ...incomplete, pathname: '/onboarding/x' })).toBe('onboarding');
+  });
+
+  it('sends an account on its temporary password to /set-password before anything else', () => {
+    expect(decideProtectedRoute({ ...ready, mustChangePassword: true })).toBe('set-password');
+    expect(decideProtectedRoute({ ...ready, profileConfirmed: false, mustChangePassword: true })).toBe('set-password');
   });
 });

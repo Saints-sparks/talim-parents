@@ -215,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthToken(tokens.access_token);
       setUser(userData);
       setLoading(false);
-      return { kind: 'success' };
+      return { kind: 'success', mustChangePassword: userData.mustChangePassword === true };
     } catch (err) {
       const message = loginErrorMessage(err);
       setError(message);
@@ -244,6 +244,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStore.setToken(result.access_token);
       setAuthToken(result.access_token);
     }
+    // A temporary password has now been replaced.
+    setUser((current) => {
+      if (!current?.mustChangePassword) return current;
+      const next = { ...current, mustChangePassword: false };
+      window.localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const value = useMemo<AuthContextValue>(
