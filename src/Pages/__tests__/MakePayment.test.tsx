@@ -10,8 +10,8 @@ const CHILD = {
   lastName: 'Okafor',
 };
 
-vi.mock('../../contexts/SelectedStudentContext', () => ({
-  useSelectedStudent: () => ({ selectedStudent: CHILD, updateSelectedStudent: vi.fn() }),
+vi.mock('../../hooks/useActiveChild', () => ({
+  useActiveChild: () => ({ child: { id: CHILD.childId, name: `${CHILD.firstName} ${CHILD.lastName}` }, childId: CHILD.childId, status: 'ready' }),
 }));
 
 const getDueFees = vi.fn();
@@ -301,8 +301,8 @@ describe('MakePayment — verifying the provider callback', () => {
 
 describe('MakePayment — no child selected', () => {
   it('asks the parent to pick a child rather than requesting fees for nobody', async () => {
-    vi.doMock('../../contexts/SelectedStudentContext', () => ({
-      useSelectedStudent: () => ({ selectedStudent: null, updateSelectedStudent: vi.fn() }),
+    vi.doMock('../../hooks/useActiveChild', () => ({
+      useActiveChild: () => ({ child: null, childId: undefined, status: 'empty' }),
     }));
     vi.resetModules();
     const { default: Fresh } = await import('../MakePayment');
@@ -310,7 +310,7 @@ describe('MakePayment — no child selected', () => {
 
     expect(await screen.findByText(/choose a child first/i)).toBeInTheDocument();
     expect(getDueFees).not.toHaveBeenCalled();
-    vi.doUnmock('../../contexts/SelectedStudentContext');
+    vi.doUnmock('../../hooks/useActiveChild');
   });
 });
 

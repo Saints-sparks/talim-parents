@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
-import { useSelectedStudent } from '../contexts/SelectedStudentContext';
+import { useActiveChild } from '../hooks/useActiveChild';
 import { useInitializePayment, useVerifyPayment } from '../hooks/usePayments';
 import { SelectFeesStep } from '../Components/payments/SelectFeesStep';
 import { ChooseProviderStep } from '../Components/payments/ChooseProviderStep';
@@ -9,7 +9,6 @@ import { ReviewStep } from '../Components/payments/ReviewStep';
 import { PaymentResult, type VerifyOutcome } from '../Components/payments/PaymentResult';
 import { STEP_LABELS, StepIndicator, TOTAL_STEPS } from '../Components/payments/StepIndicator';
 import { logger } from '../lib/logger';
-import { childFullName, childRecordId } from '../types/parent';
 import type { DueFee, PaymentProviderName, Receipt } from '../types/payments';
 
 /** Router state the Payments page can hand this one. */
@@ -37,7 +36,7 @@ export default function MakePayment() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: MakePaymentRouteState | null };
   const [searchParams] = useSearchParams();
-  const { selectedStudent } = useSelectedStudent();
+  const { child: activeChild } = useActiveChild();
 
   const [step, setStep] = useState(1);
   const [selectedFees, setSelectedFees] = useState<DueFee[]>([]);
@@ -57,8 +56,8 @@ export default function MakePayment() {
   // paid both would be charged twice.
   const redirecting = useRef(false);
 
-  const studentId = state?.studentId ?? childRecordId(selectedStudent);
-  const studentName = childFullName(selectedStudent) || 'your child';
+  const studentId = state?.studentId ?? activeChild?.id;
+  const studentName = activeChild?.name || 'your child';
 
   const runVerification = useCallback(
     async (reference: string) => {

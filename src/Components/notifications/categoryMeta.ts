@@ -74,6 +74,13 @@ export const CATEGORY_META: Readonly<Record<NotificationCategoryKey, CategoryMet
     iconWrap: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
     Icon: CreditCard,
   },
+  leave: {
+    label: 'Leave',
+    dot: 'bg-violet-600',
+    badge: 'bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
+    iconWrap: 'bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
+    Icon: CalendarCheck,
+  },
   messages: {
     label: 'Messages',
     dot: 'bg-sky-500',

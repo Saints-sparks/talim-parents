@@ -441,3 +441,121 @@ html.dark [class*="text-[#7A4B33]"] { color: #fdba74; }
 html.dark [class*="text-[#B42318]"] { color: #f87171; }
 html.dark [class*="text-[#FDB022]"] { color: #fbbf24; }
 html.dark [class*="text-[#0F1E2F]"] { color: #f1f5f9; }
+
+/* ============================================================
+   Parent portal redesign tokens (TALIM Redesign/Talim Parent Portal.dc.html).
+   Channels ("r g b") so Tailwind's `tl-*` colours keep opacity modifiers;
+   see tailwind.config.js. The design's light greys (#96A2B4, #A6B1C2) and
+   its orange badge (#C77A22) miss WCAG AA as text, so they are darkened
+   here; every text/surface pair below clears 4.5:1 in both themes.
+   ============================================================ */
+:root {
+  --tl-bg: 244 246 250;            /* #F4F6FA page */
+  --tl-surface: 255 255 255;
+  --tl-subtle: 248 250 253;        /* #F8FAFD stat tiles, notes */
+  --tl-ink: 15 27 46;              /* #0F1B2E */
+  --tl-body: 36 56 79;             /* #24384F long copy */
+  --tl-muted: 91 107 128;          /* #5B6B80 */
+  --tl-faint: 98 112 133;          /* #627085: the design's #96A2B4 darkened to AA */
+  --tl-line: 230 234 242;          /* #E6EAF2 */
+  --tl-line-soft: 238 241 247;     /* #EEF1F7 */
+  --tl-control: 215 225 242;       /* #D7E1F2 inputs, ghost buttons */
+  --tl-brand: 11 46 94;            /* #0B2E5E navy as text */
+  --tl-brand-fill: 11 46 94;
+  --tl-brand-fill-hover: 18 60 119;
+  --tl-on-brand: 255 255 255;
+  --tl-link: 44 95 224;            /* #2C5FE0 */
+  --tl-select: 234 241 255;        /* #EAF1FF active nav, selected rows */
+  --tl-track: 241 244 248;         /* #F1F4F8 progress tracks, muted pills */
+  --tl-badge: 154 90 18;           /* #9A5A12: the design's #C77A22 darkened for white text */
+  --tl-success: 27 122 85;         /* #1B7A55 */
+  --tl-success-bg: 228 243 236;
+  --tl-warning: 138 84 22;         /* #8A5416 */
+  --tl-warning-bg: 248 238 225;
+  --tl-danger: 166 63 51;          /* #A63F33: the design's #B4483A darkened to AA on its tint */
+  --tl-danger-bg: 249 228 224;
+  --tl-info: 36 83 158;            /* #24539E */
+  --tl-info-bg: 232 239 251;
+  --tl-accent: 91 69 168;          /* #5B45A8 approved leave */
+  --tl-accent-bg: 238 234 248;
+}
+
+html.dark {
+  --tl-bg: 11 17 32;
+  --tl-surface: 15 23 42;
+  --tl-subtle: 20 30 50;
+  --tl-ink: 226 232 240;
+  --tl-body: 203 213 225;
+  --tl-muted: 163 177 198;
+  --tl-faint: 138 154 178;
+  --tl-line: 30 41 59;
+  --tl-line-soft: 26 36 54;
+  --tl-control: 51 65 85;
+  --tl-brand: 147 197 253;
+  --tl-brand-fill: 37 99 235;
+  --tl-brand-fill-hover: 29 78 216;
+  --tl-on-brand: 255 255 255;
+  --tl-link: 122 167 255;
+  --tl-select: 26 39 64;
+  --tl-track: 30 41 59;
+  --tl-badge: 180 83 9;
+  --tl-success: 74 222 128;
+  --tl-success-bg: 15 42 32;
+  --tl-warning: 251 191 36;
+  --tl-warning-bg: 42 31 10;
+  --tl-danger: 248 113 113;
+  --tl-danger-bg: 46 20 17;
+  --tl-info: 147 197 253;
+  --tl-info-bg: 19 40 74;
+  --tl-accent: 196 181 253;
+  --tl-accent-bg: 34 26 64;
+}
+
+/* Avatar tones: a stable colour per child or person (initials on a tint). */
+.tl-tone-0 { --tone-bg: 234 241 255; --tone-fg: 11 46 94;   --tone-solid: 11 46 94; }   /* navy */
+.tl-tone-1 { --tone-bg: 238 234 248; --tone-fg: 91 69 168;  --tone-solid: 107 79 184; } /* purple */
+.tl-tone-2 { --tone-bg: 225 242 240; --tone-fg: 14 111 104; --tone-solid: 18 134 126; } /* teal */
+.tl-tone-3 { --tone-bg: 247 235 220; --tone-fg: 143 82 23;  --tone-solid: 163 95 28; }  /* amber */
+.tl-tone-4 { --tone-bg: 228 243 236; --tone-fg: 27 122 85;  --tone-solid: 27 122 85; }  /* green */
+.tl-tone-5 { --tone-bg: 247 231 228; --tone-fg: 163 68 56;  --tone-solid: 163 68 56; }  /* red */
+html.dark .tl-tone-0 { --tone-bg: 21 37 74;  --tone-fg: 191 212 255; --tone-solid: 96 140 230; }
+html.dark .tl-tone-1 { --tone-bg: 34 26 64;  --tone-fg: 196 181 253; --tone-solid: 150 125 230; }
+html.dark .tl-tone-2 { --tone-bg: 14 42 45;  --tone-fg: 126 224 230; --tone-solid: 45 175 165; }
+html.dark .tl-tone-3 { --tone-bg: 42 31 14;  --tone-fg: 252 211 77;  --tone-solid: 210 140 50; }
+html.dark .tl-tone-4 { --tone-bg: 15 42 32;  --tone-fg: 134 239 172; --tone-solid: 60 180 120; }
+html.dark .tl-tone-5 { --tone-bg: 46 20 17;  --tone-fg: 252 165 165; --tone-solid: 220 100 90; }
+
+/* Subject tones (the design's 12 subject colours): `solid` for dots and
+   bars, `fg` (darkened where needed) for text on the `bg` tint. */
+.tl-subj-mth { --tone-solid: 79 70 200;  --tone-fg: 79 70 200;  --tone-bg: 236 234 250; }
+.tl-subj-eng { --tone-solid: 44 95 224;  --tone-fg: 39 83 196;  --tone-bg: 232 239 251; }
+.tl-subj-chm { --tone-solid: 18 134 126; --tone-fg: 14 111 104; --tone-bg: 225 242 240; }
+.tl-subj-bio { --tone-solid: 27 122 85;  --tone-fg: 23 107 74;  --tone-bg: 226 241 234; }
+.tl-subj-phy { --tone-solid: 53 115 181; --tone-fg: 45 100 160; --tone-bg: 233 240 249; }
+.tl-subj-geo { --tone-solid: 14 124 146; --tone-fg: 11 106 125; --tone-bg: 225 240 244; }
+.tl-subj-civ { --tone-solid: 107 79 184; --tone-fg: 107 79 184; --tone-bg: 238 234 248; }
+.tl-subj-bus { --tone-solid: 163 95 28;  --tone-fg: 143 82 23;  --tone-bg: 247 235 220; }
+.tl-subj-agr { --tone-solid: 87 129 44;  --tone-fg: 74 110 37;  --tone-bg: 237 243 226; }
+.tl-subj-cmp { --tone-solid: 42 100 128; --tone-fg: 42 100 128; --tone-bg: 230 239 244; }
+.tl-subj-yor { --tone-solid: 163 68 56;  --tone-fg: 163 68 56;  --tone-bg: 247 231 228; }
+.tl-subj-art { --tone-solid: 176 106 32; --tone-fg: 143 84 25;  --tone-bg: 248 237 221; }
+html.dark .tl-subj-mth { --tone-solid: 129 140 248; --tone-fg: 199 210 254; --tone-bg: 30 27 75; }
+html.dark .tl-subj-eng { --tone-solid: 96 140 230;  --tone-fg: 191 212 255; --tone-bg: 21 37 74; }
+html.dark .tl-subj-chm { --tone-solid: 45 175 165;  --tone-fg: 153 246 228; --tone-bg: 14 42 45; }
+html.dark .tl-subj-bio { --tone-solid: 60 180 120;  --tone-fg: 134 239 172; --tone-bg: 15 42 32; }
+html.dark .tl-subj-phy { --tone-solid: 96 165 250;  --tone-fg: 191 219 254; --tone-bg: 23 37 64; }
+html.dark .tl-subj-geo { --tone-solid: 34 180 210;  --tone-fg: 165 243 252; --tone-bg: 12 40 50; }
+html.dark .tl-subj-civ { --tone-solid: 150 125 230; --tone-fg: 221 214 254; --tone-bg: 34 26 64; }
+html.dark .tl-subj-bus { --tone-solid: 210 140 50;  --tone-fg: 253 224 170; --tone-bg: 42 31 14; }
+html.dark .tl-subj-agr { --tone-solid: 132 190 70;  --tone-fg: 217 249 157; --tone-bg: 30 40 16; }
+html.dark .tl-subj-cmp { --tone-solid: 80 160 200;  --tone-fg: 186 230 253; --tone-bg: 16 36 48; }
+html.dark .tl-subj-yor { --tone-solid: 220 100 90;  --tone-fg: 254 202 202; --tone-bg: 46 20 17; }
+html.dark .tl-subj-art { --tone-solid: 220 150 60;  --tone-fg: 254 215 170; --tone-bg: 44 30 12; }
+
+/* The report card prints alone, on white, without the shell. */
+@media print {
+  @page { margin: 12mm; }
+  [data-print-hide="1"] { display: none !important; }
+  [data-sheet="1"] { border: none !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
+  html, body { background: #fff !important; }
+}

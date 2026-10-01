@@ -1,23 +1,19 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
-import Navbar from './Components/Navbar';
-import Sidebar from './Components/Sidebar';
-import Login from './Login';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import SignIn from './Pages/auth/SignIn';
+import ForgotPassword from './Pages/auth/ForgotPassword';
+import SetPassword from './Pages/auth/SetPassword';
 import Dashboard from './Pages/Dashboard';
-import RequestLeave from './Pages/RequestLeave';
-import Result from './Pages/Result';
 import Attendance from './Pages/Attendance';
 import Timetable from './Pages/Timetable';
-import MyChildren from './Pages/MyChildren';
+import Results from './Pages/Results';
+import Leave from './Pages/Leave';
 import Messages from './Pages/Messages';
-import LeaveForm from './Components/LeaveForm';
 import Notifications from './Pages/Notifications';
-import NotificationDetail from './Pages/NotificationDetail';
-import Profile from './Pages/Profile';
-import Settings from './Pages/Settings';
-import ProtectedRoute from './Pages/ProtectedRoute';
 import Payments from './Pages/Payments';
 import MakePayment from './Pages/MakePayment';
+import Settings from './Pages/Settings';
+import ProtectedRoute from './Pages/ProtectedRoute';
 import Onboarding from './Pages/Onboarding';
 import { AuthProvider } from './services/auth.services';
 import { SelectedStudentProvider } from './contexts/SelectedStudentContext';
@@ -26,23 +22,26 @@ import { WebSocketProvider } from './contexts/WebSocketContext';
 import { ChatAlertsProvider } from './contexts/ChatAlertsContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { QueryProvider } from './providers/QueryProvider';
-import ParentGuideTour from './Components/onboarding/ParentGuideTour';
+import { TourProvider } from './Components/portal/tour/TourProvider';
+import { PortalLayout } from './Components/portal/shell/PortalLayout';
 import { ToastViewport } from './Components/CustomToast';
 import { useNotificationRealtime } from './hooks/useNotificationRealtime';
 
 /** Visiting one of these routes counts as completing that onboarding step. */
 const ONBOARDING_ROUTE_STEPS: Record<string, string> = {
-  '/my-children': 'select-ward',
   '/notifications': 'view-notifications',
   '/attendance': 'view-attendance',
   '/timetable': 'view-timetable',
-  '/result': 'view-results',
-  '/requestleave': 'request-leave',
-  '/leaveform': 'request-leave',
+  '/results': 'view-results',
+  '/leave': 'request-leave',
   '/messages': 'open-messages',
 };
 
-/** Marks onboarding steps complete as the parent visits the pages they name. */
+/**
+ * Marks onboarding steps complete as the parent visits the pages they name.
+ *
+ * @returns Nothing visible.
+ */
 function OnboardingRouteTracker() {
   const location = useLocation();
   const { markStepComplete } = useParentOnboarding();
@@ -55,27 +54,38 @@ function OnboardingRouteTracker() {
   return null;
 }
 
-/** Keeps the notification lists live from socket events, once, for the whole signed-in shell. */
+/**
+ * Keeps the notification lists live from socket events, once, for the whole signed-in shell.
+ *
+ * @returns Nothing visible.
+ */
 function LiveNotifications() {
   useNotificationRealtime();
   return null;
 }
 
-/** The signed-in shell: sidebar, top bar and the routed page. */
-function AppLayout() {
+/**
+ * The signed-in shell with the live notification listener.
+ *
+ * @returns The layout.
+ */
+function SignedInShell() {
   return (
-    <div className="flex min-h-screen bg-[#f8f8f8] font-manrope dark:bg-[#0f1629]">
-      <Sidebar />
-      <div className="flex flex-1 flex-col">
-        <Navbar />
-        <div className="flex-grow overflow-auto p-6">
-          <Outlet />
-        </div>
-      </div>
-      <ParentGuideTour />
+    <>
+      <PortalLayout />
       <LiveNotifications />
-    </div>
+    </>
   );
+}
+
+/**
+ * Sends an old notification link (`/notifications/:id`) to the list with that item open.
+ *
+ * @returns The redirect.
+ */
+function NotificationRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/notifications?id=${encodeURIComponent(id ?? '')}`} replace />;
 }
 
 /**
@@ -97,34 +107,41 @@ export default function App() {
               <WebSocketProvider>
                 <Router>
                   <ChatAlertsProvider>
-                    <OnboardingRouteTracker />
-                    <ToastViewport />
-                    <Routes>
-                      <Route path="/" element={<Login />} />
+                    <TourProvider>
+                      <OnboardingRouteTracker />
+                      <ToastViewport />
+                      <Routes>
+                        <Route path="/" element={<SignIn />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/set-password" element={<SetPassword />} />
 
-                      <Route element={<ProtectedRoute />}>
-                        <Route path="/onboarding" element={<Onboarding />} />
-                        <Route element={<AppLayout />}>
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/requestleave" element={<RequestLeave />} />
-                          <Route path="/my-children" element={<MyChildren />} />
-                          <Route path="/timetable" element={<Timetable />} />
-                          <Route path="/attendance" element={<Attendance />} />
-                          <Route path="/result" element={<Result />} />
-                          <Route path="/messages" element={<Messages />} />
-                          <Route path="/leaveform" element={<LeaveForm />} />
-                          <Route path="/notifications" element={<Notifications />} />
-                          <Route path="/notifications/:id" element={<NotificationDetail />} />
-                          <Route path="/profile" element={<Profile />} />
-                          <Route path="/payments" element={<Payments />} />
-                          <Route path="/payments/pay" element={<MakePayment />} />
-                          <Route path="/payments/verify" element={<MakePayment />} />
-                          <Route path="/settings" element={<Settings />} />
+                        <Route element={<ProtectedRoute />}>
+                          <Route path="/onboarding" element={<Onboarding />} />
+                          <Route element={<SignedInShell />}>
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/attendance" element={<Attendance />} />
+                            <Route path="/timetable" element={<Timetable />} />
+                            <Route path="/results" element={<Results />} />
+                            <Route path="/leave" element={<Leave />} />
+                            <Route path="/messages" element={<Messages />} />
+                            <Route path="/notifications" element={<Notifications />} />
+                            <Route path="/payments" element={<Payments />} />
+                            <Route path="/payments/pay" element={<MakePayment />} />
+                            <Route path="/payments/verify" element={<MakePayment />} />
+                            <Route path="/settings" element={<Settings />} />
+                          </Route>
                         </Route>
-                      </Route>
 
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+                        {/* Old addresses, kept so bookmarks, pushes and emails still land. */}
+                        <Route path="/result" element={<Navigate to="/results" replace />} />
+                        <Route path="/requestleave" element={<Navigate to="/leave" replace />} />
+                        <Route path="/leaveform" element={<Navigate to="/leave" replace />} />
+                        <Route path="/my-children" element={<Navigate to="/settings?tab=children" replace />} />
+                        <Route path="/profile" element={<Navigate to="/settings?tab=account" replace />} />
+                        <Route path="/notifications/:id" element={<NotificationRedirect />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </TourProvider>
                   </ChatAlertsProvider>
                 </Router>
               </WebSocketProvider>
