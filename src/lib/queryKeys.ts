@@ -15,6 +15,23 @@ export type QueryKeyParams = object;
  * ad-hoc key arrays inside components.
  */
 export const queryKeys = {
+  /**
+   * Everything about one child (Part B). Keyed by the child, so switching the
+   * active child reads (and fetches) a different entry for every screen; the
+   * previous child's data stays cached for switching back.
+   */
+  child: {
+    all: ['child'] as const,
+    dashboard: (childId: string) => ['child', childId, 'dashboard'] as const,
+    timetable: (childId: string, weekStart: string | undefined) =>
+      ['child', childId, 'timetable', weekStart ?? 'current'] as const,
+    attendance: (childId: string, month: string) => ['child', childId, 'attendance', month] as const,
+    reportTerms: (childId: string) => ['child', childId, 'report-terms'] as const,
+    reportCard: (childId: string, termId: string) => ['child', childId, 'report-card', termId] as const,
+    leave: (childId: string) => ['child', childId, 'leave'] as const,
+    contacts: (childId: string) => ['child', childId, 'contacts'] as const,
+    school: (childId: string) => ['child', childId, 'school'] as const,
+  },
   children: {
     all: ['children'] as const,
     /** Every child linked to the signed-in parent. */
@@ -62,6 +79,13 @@ export const queryKeys = {
     receipt: (receiptId: string) => ['payments', 'receipt', receiptId] as const,
     /** Enabled providers — the same for every parent in a school. */
     providers: () => ['payments', 'providers'] as const,
+    /** C2: every child's bill, one call. */
+    family: (parentId: string, termId: string | undefined) =>
+      ['payments', parentId, 'family', termId ?? 'current'] as const,
+    /** The providers the child's school has enabled (multi-school: per child). */
+    childProviders: (childId: string) => ['payments', 'providers', childId] as const,
+    /** C4: the child's school's bank account. */
+    bankDetails: (childId: string) => ['payments', 'bank-details', childId] as const,
   },
   leaveRequests: {
     all: ['leaveRequests'] as const,
@@ -70,6 +94,11 @@ export const queryKeys = {
   },
   notifications: {
     all: ['notifications'] as const,
+    /** B11: the parent's feed, by filter and child. */
+    feed: (userId: string, params?: QueryKeyParams) => ['notifications', userId, 'feed', params ?? {}] as const,
+    /** §30/B11: the badge and filter counts, by child. */
+    counts: (userId: string, childId: string | undefined) =>
+      ['notifications', userId, 'counts', childId ?? 'all'] as const,
     list: (userId: string, params?: QueryKeyParams) =>
       ['notifications', userId, 'list', params ?? {}] as const,
     announcements: (userId: string, params?: QueryKeyParams) =>
@@ -78,6 +107,10 @@ export const queryKeys = {
   settings: {
     all: ['settings'] as const,
     parent: (parentId: string) => ['settings', parentId] as const,
+    notificationPrefs: (parentId: string) => ['settings', parentId, 'notification-prefs'] as const,
+    chatPrivacy: (parentId: string) => ['settings', parentId, 'chat-privacy'] as const,
+    sessions: (parentId: string) => ['settings', parentId, 'sessions'] as const,
+    passwordPolicy: () => ['settings', 'password-policy'] as const,
     linkedChildren: (parentId: string) => ['settings', parentId, 'children'] as const,
   },
   academic: {

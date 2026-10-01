@@ -8,6 +8,8 @@ import type {
   VerifyPhoneOtpPayload,
 } from '../types/apiPayloads';
 
+import type { PreferredMethod } from '../types/portal/payments';
+
 export type {
   ChangePasswordPayload,
   SendPhoneOtpPayload,
@@ -36,6 +38,10 @@ export interface ParentSettings {
     role: string;
     isEmailVerified: boolean;
     isPhoneVerified: boolean;
+    /** B13: stored on the parent and editable. */
+    occupation?: string | null;
+    /** B13: stored on the parent and editable. */
+    address?: string | null;
   };
   children: LinkedChild[];
   preferences: {
@@ -43,6 +49,8 @@ export interface ParentSettings {
     notifications: Record<string, boolean>;
     theme: ThemePreference;
     language?: string;
+    /** C7: the method offered first at checkout. */
+    preferredProvider?: PreferredMethod | null;
   };
   security: {
     twoFactorEnabled: boolean;

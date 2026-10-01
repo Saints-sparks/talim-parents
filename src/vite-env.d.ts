@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_CLOUDINARY_UPLOAD_PRESET?: string;
   /** When `"true"`, `logger` keeps printing in a production build. */
   readonly VITE_DEBUG_LOGS?: string;
+  /** `true` answers API calls from `src/dev/fixtures` (dev server only; ignored in production builds). */
+  readonly VITE_USE_FIXTURES?: string;
 }
 
 interface ImportMeta {

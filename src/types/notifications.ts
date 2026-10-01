@@ -15,6 +15,8 @@
  * `"notification:<id>"` or `"announcement:<id>"`.
  */
 
+import type { PortalTarget, SchoolRef } from './portal/common';
+
 /** Which backend a notification came from. */
 export type NotificationSourceKind = 'notification' | 'announcement';
 
@@ -75,6 +77,14 @@ export interface AppNotification {
   attachments: NotificationAttachment[];
   related: RelatedItem[];
   metadata: Record<string, unknown>;
+  /** Where "Open …" leads (§30 `metadata.target`), when the producer set one. */
+  target: PortalTarget | null;
+  /** The producer's label for that link ("Open Payments"). */
+  actionLabel: string | null;
+  /** The child it is about (B11 `metadata.childId`), when one applies. */
+  childId: string | null;
+  /** The school it came from (A11). */
+  school: SchoolRef | null;
 }
 
 /** The paginated envelope the notification list routes return. */
@@ -125,6 +135,7 @@ export type NotificationCategoryKey =
   | 'academics'
   | 'grading'
   | 'payments'
+  | 'leave'
   | 'messages'
   | 'resources'
   | 'account'

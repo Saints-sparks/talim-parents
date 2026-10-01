@@ -17,6 +17,13 @@ export interface RequestConfig extends RequestInit {
    * by the timetable and receipt downloads.
    */
   responseType?: 'json' | 'blob';
+  /**
+   * The child this request is about. Child-scoped routes (A11) must say which
+   * linked child they mean, because the child decides the school: the client
+   * sends it as the `X-Talim-Child` header. Leave it out for requests that are
+   * about the parent (settings, sessions, notifications across children).
+   */
+  childId?: string;
   /** Internal: set once a request has been retried after a token refresh. */
   _retry?: boolean;
 }
@@ -25,7 +32,23 @@ export interface RequestConfig extends RequestInit {
 interface Envelope<T> {
   success: true;
   data: T;
+  /** Pagination and other metadata (`ok(data, meta)` on the server). */
+  meta?: Record<string, unknown>;
 }
+
+/**
+ * The header that tells the API which linked child a request is about (A11).
+ * This is the only place in the app that spells it out: services pass
+ * `childId` in the request config and {@link ApiClient} writes the header.
+ */
+export const CHILD_HEADER = 'X-Talim-Child';
+
+/**
+ * A stand-in for the network, used only by the dev fixtures
+ * (`src/dev/fixtures`) and tests. It answers a request with a `Response`, or
+ * `undefined` to let it go to the network.
+ */
+export type FixtureTransport = (url: string, init: RequestConfig) => Promise<Response> | undefined;
 
 type ErrorListener = (error: ApiError) => void;
 
@@ -34,22 +57,37 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 /** Fired when the session cannot be recovered; `AuthProvider` signs the parent out. */
 export const AUTH_LOGOUT_EVENT = 'talim:auth-logout';
 
+/** The only keys an envelope may have. */
+const ENVELOPE_KEYS: ReadonlySet<string> = new Set(['success', 'data', 'meta']);
+
 /**
- * True when a parsed body is the `{ success, data }` envelope rather than the
- * payload itself. A payload of its own that happens to carry a `data` key is
- * only unwrapped when `success` is there too, so this never mis-fires.
+ * True when a parsed body is exactly the `{ success: true, data, meta? }`
+ * envelope. Strict on purpose: a payload of its own that carries `success`
+ * and `data` beside other fields (`{ success, data, total }`) or `success`
+ * without `data` (`{ success, fees }`) is a payload, and is left alone.
  *
  * @param body - The parsed JSON body.
- * @returns Whether to unwrap `body.data`.
+ * @returns Whether to unwrap it.
  */
-function isEnvelope(body: unknown): body is Envelope<unknown> {
-  return (
-    !!body &&
-    typeof body === 'object' &&
-    'success' in (body as Record<string, unknown>) &&
-    'data' in (body as Record<string, unknown>) &&
-    (body as Record<string, unknown>).success === true
-  );
+export function isEnvelope(body: unknown): body is Envelope<unknown> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const record = body as Record<string, unknown>;
+  if (record.success !== true || !('data' in record)) return false;
+  return Object.keys(record).every((key) => ENVELOPE_KEYS.has(key));
+}
+
+/**
+ * The payload inside a body. An envelope gives up its `data`; when it also
+ * carries pagination `meta`, the payload is `{ data, meta }`, the same shape
+ * the paginated routes send when the envelope is off, so callers read one
+ * shape either way. Anything else is returned as it is.
+ *
+ * @param body - The parsed JSON body.
+ * @returns The payload.
+ */
+export function unwrapBody(body: unknown): unknown {
+  if (!isEnvelope(body)) return body;
+  return body.meta ? { data: body.data, meta: body.meta } : body.data;
 }
 
 /**
@@ -64,6 +102,7 @@ function isEnvelope(body: unknown): body is Envelope<unknown> {
  */
 class ApiClient {
   private refreshCallback: (() => Promise<string | null>) | null = null;
+  private transport: FixtureTransport | null = null;
   private refreshInFlight: Promise<string | null> | null = null;
   private errorListeners = new Set<ErrorListener>();
 
@@ -75,6 +114,16 @@ class ApiClient {
    */
   setRefreshCallback(callback: (() => Promise<string | null>) | null): void {
     this.refreshCallback = callback;
+  }
+
+  /**
+   * Routes requests through a stand-in for the network: the dev fixtures
+   * (behind `VITE_USE_FIXTURES`, never in a production build) and tests.
+   *
+   * @param transport - Answers a request, or `null` to restore the network.
+   */
+  setTransport(transport: FixtureTransport | null): void {
+    this.transport = transport;
   }
 
   /**
@@ -153,7 +202,9 @@ class ApiClient {
   }
 
   /**
-   * Adds credentials and the bearer token unless the call opted out.
+   * Adds credentials, the bearer token unless the call opted out, and the
+   * `X-Talim-Child` header for a child-scoped request. This is the one place
+   * the child header is written.
    *
    * @param config - The request options.
    * @returns The options to hand to `fetch`.
@@ -161,13 +212,11 @@ class ApiClient {
   private withAuth(config: RequestConfig): RequestConfig {
     const next: RequestConfig = { ...config, credentials: 'include' };
     if (config.skipAuth) return next;
+    const headers: Record<string, string> = { ...(config.headers as Record<string, string> | undefined) };
     const token = sessionStore.getToken();
-    if (token) {
-      next.headers = {
-        ...(config.headers as Record<string, string> | undefined),
-        Authorization: `Bearer ${token}`,
-      };
-    }
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (config.childId) headers[CHILD_HEADER] = config.childId;
+    next.headers = headers;
     return next;
   }
 
@@ -186,6 +235,9 @@ class ApiClient {
       this.emitError(error);
       throw error;
     }
+
+    const stubbed = this.transport?.(url, config);
+    if (stubbed) return stubbed;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -238,9 +290,10 @@ class ApiClient {
   }
 
   /**
-   * Performs a request and returns the payload. Unwraps the `{ success, data }`
-   * envelope; any non-2xx becomes an `ApiError` carrying the server's
-   * `error.code`, message and field details.
+   * Performs a request and returns the payload. Unwraps the exact
+   * `{ success, data, meta? }` envelope (keeping `meta`, see
+   * {@link unwrapBody}); any non-2xx becomes an `ApiError` carrying the
+   * server's `error.code`, message and field details.
    *
    * @typeParam T - Shape of the successful payload.
    * @param url - Absolute URL or a path relative to `API_BASE_URL`.
@@ -272,7 +325,7 @@ class ApiClient {
       throw error;
     }
 
-    return (isEnvelope(body) ? body.data : body) as T;
+    return unwrapBody(body) as T;
   }
 
   /**
@@ -342,7 +395,7 @@ class ApiClient {
         }
 
         if (request.status >= 200 && request.status < 300) {
-          resolve((isEnvelope(body) ? body.data : body) as T);
+          resolve(unwrapBody(body) as T);
           return;
         }
 

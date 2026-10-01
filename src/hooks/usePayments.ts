@@ -9,6 +9,7 @@ import {
   verifyPayment,
 } from '../services/payments.services';
 import { queryKeys, staleTimes } from '../lib/queryKeys';
+import { invalidatePaymentQueries } from './portal/usePortalPayments';
 import { sessionStore } from '../lib/session';
 import type {
   DueFee,
@@ -138,8 +139,9 @@ export function useVerifyPayment() {
     mutationFn: verifyPayment,
     onSuccess: (result) => {
       if (result.status !== 'pending') {
-        // Due fees, the summary, history and receipts have all moved.
-        queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+        // The bill, history, receipts, the children's balances and each
+        // dashboard's fees tile have all moved.
+        void invalidatePaymentQueries(queryClient);
       }
     },
   });

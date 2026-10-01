@@ -24,6 +24,7 @@ export const CATEGORY_KEYS: readonly NotificationCategoryKey[] = [
   'academics',
   'grading',
   'payments',
+  'leave',
   'messages',
   'resources',
   'account',
@@ -40,6 +41,8 @@ const TYPE_CATEGORIES: Readonly<Record<string, NotificationCategoryKey>> = {
   payment_confirmed: 'payments',
   receipt_generated: 'payments',
   result_published: 'grading',
+  leave_request_update: 'leave',
+  leave_request: 'leave',
   grade_released: 'grading',
   timetable_update: 'academics',
   assessment_reminder: 'academics',
@@ -65,6 +68,8 @@ const SERVER_CATEGORIES: ReadonlySet<string> = new Set([
   'resources',
   'messages',
   'account',
+  'payments',
+  'leave',
   'other',
 ]);
 
@@ -217,6 +222,26 @@ export function normalizeNotification(
     attachments: attachmentsOf(raw),
     related: relatedOf(raw),
     metadata: raw.metadata ?? {},
+    ...portalFieldsOf(raw),
+  };
+}
+
+/**
+ * The redesign's fields on a notification (§30 target and label, B11 child,
+ * A11 school), read defensively: older rows have none of them.
+ *
+ * @param raw - The item as the API returned it.
+ * @returns The target, label, child and school, each `null` when absent.
+ */
+function portalFieldsOf(raw: RawNotification): Pick<AppNotification, 'target' | 'actionLabel' | 'childId' | 'school'> {
+  const metadata = (raw.metadata ?? {}) as Record<string, unknown>;
+  const target = metadata.target as AppNotification['target'] | undefined;
+  const school = raw.school as AppNotification['school'] | undefined;
+  return {
+    target: target && typeof target === 'object' && typeof target.page === 'string' ? target : null,
+    actionLabel: typeof metadata.actionLabel === 'string' ? metadata.actionLabel : null,
+    childId: typeof metadata.childId === 'string' ? metadata.childId : null,
+    school: school && typeof school === 'object' && typeof school.name === 'string' ? school : null,
   };
 }
 
