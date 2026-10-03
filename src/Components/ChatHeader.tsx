@@ -1,4 +1,4 @@
-import { ArrowLeft, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Info, Phone } from 'lucide-react';
 import { formatRoleLabel } from '../lib/chatMessages';
 import type { AvatarInfo, ChatRoom } from '../types/chat';
 import RoomAvatar from './RoomAvatar';
@@ -10,24 +10,31 @@ interface ChatHeaderProps {
   /** Back to the conversation list (phones). */
   onBack: () => void;
   onToggleDetails: () => void;
+  /** The number to call from this thread (§27 `callPhone`), when the API has one. */
+  callPhone?: string | null;
 }
 
 /**
- * The open conversation's title bar: who it is, their status, and the button
- * that opens the details panel.
+ * The open conversation's title bar: who it is, their role or status, Call
+ * (a `tel:` link, only when the API gives a phone: there are no in-app calls
+ * or video), and the button that opens the conversation info.
  *
  * @param props - Component props.
+ * @param props.selectedChat - The open room.
+ * @param props.onBack - Back to the list on phones.
+ * @param props.onToggleDetails - Opens or closes the info panel.
+ * @param props.callPhone - The phone to call, if any.
  * @returns The header.
  */
-function ChatHeader({ selectedChat, onBack, onToggleDetails }: ChatHeaderProps) {
+function ChatHeader({ selectedChat, onBack, onToggleDetails, callPhone }: ChatHeaderProps) {
   if (!selectedChat) return null;
 
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-[#E5EAF2] bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex shrink-0 items-center justify-between border-b border-tl-line-soft bg-tl-surface px-5 py-4">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
-          className="rounded-lg p-2 text-[#667085] hover:bg-[#F2F4F7] md:hidden dark:text-slate-400 dark:hover:bg-slate-800"
+          className="flex h-11 w-11 items-center justify-center rounded-xl text-tl-muted hover:bg-tl-bg md:hidden"
           onClick={onBack}
           aria-label="Back to conversations"
         >
@@ -35,24 +42,36 @@ function ChatHeader({ selectedChat, onBack, onToggleDetails }: ChatHeaderProps) 
         </button>
         <RoomAvatar info={selectedChat.avatarInfo} />
         <div className="min-w-0">
-          <h3 className="truncate text-base font-bold text-[#101828] dark:text-slate-100">{selectedChat.displayName}</h3>
-          <p className="text-sm text-[#667085] dark:text-slate-400">
-            {selectedChat.isGroup
-              ? `${selectedChat.participantCount || 0} members`
-              : selectedChat.isOnline
-                ? 'Online'
-                : formatRoleLabel(selectedChat.role) || 'Conversation'}
+          <h3 className="truncate text-base font-extrabold text-tl-ink">{selectedChat.displayName}</h3>
+          <p className="text-[13px] text-tl-muted">
+            {selectedChat.subtitle ||
+              (selectedChat.isGroup
+                ? `${selectedChat.participantCount || 0} members`
+                : selectedChat.isOnline
+                  ? 'Online'
+                  : formatRoleLabel(selectedChat.role) || 'Conversation')}
           </p>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        {callPhone ? (
+          <a
+            href={`tel:${callPhone.replace(/[^+\d]/g, '')}`}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-tl-line text-tl-muted hover:bg-tl-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tl-link"
+            aria-label={`Call ${selectedChat.displayName} on ${callPhone}`}
+            title={`Call ${callPhone}`}
+          >
+            <Phone className="h-[17px] w-[17px]" aria-hidden="true" />
+          </a>
+        ) : null}
         <button
           type="button"
           onClick={onToggleDetails}
-          className="rounded-lg border border-[#E5EAF2] p-2 text-[#344054] dark:border-slate-700 dark:text-slate-300"
-          aria-label={selectedChat.isGroup ? 'Group info' : 'Conversation details'}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-tl-line text-tl-muted hover:bg-tl-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tl-link"
+          aria-label={selectedChat.isGroup ? 'Group info' : 'Conversation info'}
+          title="Conversation info — members, images, documents and links"
         >
-          <MoreVertical className="h-5 w-5" />
+          <Info className="h-[18px] w-[18px]" aria-hidden="true" />
         </button>
       </div>
     </div>

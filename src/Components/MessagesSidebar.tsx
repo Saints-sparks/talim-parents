@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Search } from 'lucide-react';
 import RoomAvatar from './RoomAvatar';
 import type { ChatRoom } from '../types/chat';
@@ -53,13 +53,23 @@ interface MessagesSidebarProps {
   isConnected: boolean;
   error: string | null;
   onRetry: () => void;
+  /** Shown under the rooms (the child's teachers and the office, to start a thread). */
+  extra?: ReactNode;
 }
 
 /**
  * The conversation list: search, All / Unread / Groups filters, and one row
- * per room with its preview, time and unread count.
+ * per room with its preview, time and unread count, in the redesign's tokens.
  *
  * @param props - Component props.
+ * @param props.rooms - The rooms.
+ * @param props.selectedRoomId - The open room.
+ * @param props.onSelectRoom - Opens a room.
+ * @param props.isLoading - While the list loads.
+ * @param props.isConnected - Whether the socket is up.
+ * @param props.error - Why the list could not load.
+ * @param props.onRetry - Loads the list again.
+ * @param props.extra - Content under the rooms.
  * @returns The sidebar.
  */
 function MessagesSidebar({
@@ -70,6 +80,7 @@ function MessagesSidebar({
   isConnected,
   error,
   onRetry,
+  extra,
 }: MessagesSidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<RoomFilter>('all');
@@ -95,28 +106,21 @@ function MessagesSidebar({
   ];
 
   return (
-    <aside className="flex h-full w-full flex-col border-r border-[#E5EAF2] bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="shrink-0 border-b border-[#E5EAF2] px-4 pb-4 pt-6 dark:border-slate-800">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-bold text-[#101828] dark:text-slate-100">Messages</h2>
-            <p className="text-sm text-[#667085] dark:text-slate-400">
-              {isConnected ? 'Communicate with teachers and school staff.' : 'Connecting to chat...'}
-            </p>
-          </div>
-          <span className="rounded-full bg-[#EAF2FB] px-2.5 py-1 text-xs font-semibold text-[#0A4EA3] dark:bg-blue-950/60 dark:text-blue-300">
-            {totalUnread}
-          </span>
+    <aside className="flex h-full w-full flex-col bg-tl-surface" aria-label="Conversations">
+      <div className="shrink-0 border-b border-tl-line-soft px-[18px] pb-4 pt-[18px]">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-xs font-extrabold uppercase tracking-[0.07em] text-tl-faint">Conversations</h2>
+          <span className="text-xs text-tl-faint">{isConnected ? (totalUnread ? `${totalUnread} unread` : '') : 'Connecting…'}</span>
         </div>
 
-        <label className="flex min-w-0 items-center gap-2 rounded-lg border border-[#DCE5F2] px-3 py-2 dark:border-slate-700">
-          <Search className="h-4 w-4 shrink-0 text-[#98A2B3]" aria-hidden="true" />
+        <label className="flex min-h-[44px] min-w-0 items-center gap-2 rounded-[13px] border border-tl-control px-3 focus-within:ring-2 focus-within:ring-tl-link">
+          <Search className="h-4 w-4 shrink-0 text-tl-faint" aria-hidden="true" />
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search messages..."
+            placeholder="Search messages"
             aria-label="Search messages"
-            className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none dark:text-slate-100"
+            className="min-w-0 flex-1 border-0 bg-transparent text-sm text-tl-ink outline-none placeholder:text-tl-faint"
           />
         </label>
 
@@ -127,10 +131,8 @@ function MessagesSidebar({
               type="button"
               onClick={() => setSelectedFilter(key)}
               aria-pressed={selectedFilter === key}
-              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                selectedFilter === key
-                  ? 'border-[#D9E8FF] bg-[#EAF2FB] text-[#0A4EA3] dark:border-blue-500/40 dark:bg-blue-950/60 dark:text-blue-300'
-                  : 'border-[#E5EAF2] bg-white text-[#667085] hover:bg-[#F8FAFD] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+              className={`min-h-[40px] rounded-xl border px-2 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tl-link ${
+                selectedFilter === key ? 'border-tl-brand-fill bg-tl-brand-fill text-tl-on-brand' : 'border-tl-line bg-tl-surface text-tl-muted hover:text-tl-ink'
               }`}
             >
               {label}
@@ -139,20 +141,20 @@ function MessagesSidebar({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-3" role="status" aria-label="Loading conversations">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="h-20 animate-pulse rounded-xl bg-[#F2F4F7] dark:bg-slate-800" />
+              <div key={item} className="h-16 animate-pulse rounded-xl bg-tl-track" />
             ))}
           </div>
         ) : error && !rooms.length ? (
-          <div className="px-4 py-12 text-center text-sm text-[#667085] dark:text-slate-400">
+          <div className="px-4 py-8 text-center text-sm text-tl-muted">
             <p>{error}</p>
             <button
               type="button"
               onClick={onRetry}
-              className="mt-3 rounded-lg bg-[#0A4EA3] px-4 py-2 text-sm font-semibold text-white hover:bg-[#083F83]"
+              className="mt-3 min-h-[44px] rounded-[14px] bg-tl-brand-fill px-4 py-2 text-sm font-bold text-tl-on-brand hover:bg-tl-brand-fill-hover"
             >
               Retry
             </button>
@@ -163,21 +165,22 @@ function MessagesSidebar({
               key={room.roomId}
               type="button"
               onClick={() => onSelectRoom(room.roomId)}
-              className={`mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left transition ${
-                selectedRoomId === room.roomId ? 'bg-[#EAF2FB] dark:bg-slate-800' : 'hover:bg-[#F8FAFD] dark:hover:bg-slate-800/60'
+              aria-current={selectedRoomId === room.roomId ? 'true' : undefined}
+              className={`mb-1 flex min-h-[44px] w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tl-link ${
+                selectedRoomId === room.roomId ? 'bg-tl-select' : 'hover:bg-tl-subtle'
               }`}
             >
               <RoomAvatar info={room.avatarInfo} />
 
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-bold text-[#101828] dark:text-slate-100">{room.displayName}</span>
-                  <span className="shrink-0 text-xs text-[#667085] dark:text-slate-400">{formatRoomTime(room)}</span>
+                  <span className="truncate text-[15px] font-bold text-tl-ink">{room.displayName}</span>
+                  <span className="shrink-0 text-xs text-tl-faint">{formatRoomTime(room)}</span>
                 </span>
                 <span className="mt-1 flex items-center justify-between gap-2">
-                  <span className="truncate text-sm text-[#667085] dark:text-slate-400">{getPreview(room)}</span>
+                  <span className="truncate text-[13px] text-tl-muted">{getPreview(room)}</span>
                   {room.unreadCount > 0 && (
-                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#0A4EA3] px-1.5 text-xs font-bold text-white">
+                    <span className="inline-flex min-w-[20px] shrink-0 items-center justify-center rounded-[9px] bg-tl-badge px-[7px] py-px text-xs font-extrabold text-white" aria-label={`${room.unreadCount} unread`}>
                       {room.unreadCount}
                     </span>
                   )}
@@ -186,8 +189,9 @@ function MessagesSidebar({
             </button>
           ))
         ) : (
-          <div className="px-4 py-12 text-center text-sm text-[#667085] dark:text-slate-400">No conversations found.</div>
+          <div className="px-4 py-6 text-center text-sm text-tl-muted">No conversations yet.</div>
         )}
+        {extra}
       </div>
     </aside>
   );

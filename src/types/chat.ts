@@ -140,6 +140,12 @@ export interface RawChatRoom {
   lastReadAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** §27: "Mathematics · teacher", "School office · Easy Sparks". */
+  subtitle?: string;
+  /** §27: parent, colleague, class_group, office, group. */
+  category?: string;
+  /** §27: the phone to call from this thread, when the API has one. */
+  callPhone?: string | null;
 }
 
 // ─── Normalised shapes ──────────────────────────────────────────────────────

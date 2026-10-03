@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ChatHeader from '../Components/ChatHeader';
 import ConversationDetails from '../Components/ConversationDetails';
@@ -10,7 +10,14 @@ import { toast } from '../Components/CustomToast';
 import { useChatAlerts } from '../contexts/ChatAlertsContext';
 import { useRealtimeChat } from '../hooks/useRealtimeChat';
 import { getErrorMessage } from '../lib/apiError';
+import { useActiveChild } from '../hooks/useActiveChild';
+import { useChatContacts, useOpenThread } from '../hooks/portal/useMessagesData';
+import { openedRoomId } from '../services/portal/messages';
+import { StartConversation } from '../Components/portal/messages/StartConversation';
+import { PageHeader } from '../Components/portal/ui/primitives';
+import { firstNameOf } from '../lib/format';
 import type { ChatDraft, ChatRoom } from '../types/chat';
+import type { ChatContact } from '../types/portal/messages';
 
 const EMPTY_DRAFT: ChatDraft = { text: '', files: [], errors: [] };
 
@@ -28,9 +35,13 @@ const withoutRoom = (roomId?: string) => (params: URLSearchParams) => {
 };
 
 /**
- * The parent's inbox: conversation list, the open thread and its composer,
- * and the details panel. The URL (`?room=<id>`) decides which room is open, so
- * links from toasts, pushes and reloads land in the right chat.
+ * The parent's inbox: the conversation list with the active child's teachers
+ * and the school office to start a thread with (B10), the open thread and its
+ * composer, and the details panel. The URL (`?room=<id>`) decides which room
+ * is open, so links from toasts, pushes and reloads land in the right chat;
+ * `?to=office` opens the office thread of the child's school ("Payment not
+ * showing?"). Call is a `tel:` link, shown only when the API gives a phone;
+ * there are no in-app calls or video.
  *
  * @returns The page.
  */
@@ -70,6 +81,13 @@ function Messages() {
     currentUserId,
   } = useRealtimeChat({ onRoomRemoved: handleRoomRemoved });
   const { setOpenRoomId } = useChatAlerts();
+  const { child } = useActiveChild();
+  const contacts = useChatContacts(child?.id);
+  const openThread = useOpenThread(child?.id);
+  // The phone each thread opened here can be called on (§27 `callPhone`).
+  const [phones, setPhones] = useState<Record<string, string | null>>({});
+  const [opening, setOpening] = useState<string | null>(null);
+  const officeAsked = useRef(false);
 
   // Composer state belongs to a room, so nothing typed or attached for one chat is sent to another.
   const [drafts, setDrafts] = useState<Record<string, ChatDraft>>({});
@@ -98,6 +116,37 @@ function Messages() {
 
   // Back to the list (phones): the room is closed and left, so nothing is marked read behind the list.
   const closeRoom = () => setSearchParams({}, { replace: true });
+
+  /**
+   * Opens (creating on first use) the thread with a teacher or the office,
+   * then shows it.
+   *
+   * @param contact - Who to write to.
+   */
+  const startThread = useCallback(
+    (contact: ChatContact) => {
+      setOpening(contact.userId);
+      openThread.mutate(contact, {
+        onSuccess: (room) => {
+          const roomId = openedRoomId(room);
+          setPhones((current) => ({ ...current, [roomId]: room.callPhone ?? contact.phone ?? null }));
+          refreshChatRooms();
+          if (roomId) setSearchParams({ room: roomId });
+        },
+        onSettled: () => setOpening(null),
+      });
+    },
+    [openThread, refreshChatRooms, setSearchParams],
+  );
+
+  // "Message the bursary" and the no-class state link here with ?to=office.
+  useEffect(() => {
+    if (searchParams.get('to') !== 'office' || officeAsked.current || !contacts.data) return;
+    const office = contacts.data.find((contact) => contact.group === 'office');
+    if (!office) return;
+    officeAsked.current = true;
+    startThread(office);
+  }, [searchParams, contacts.data, startThread]);
 
   const draft = (selectedRoomId && drafts[selectedRoomId]) || EMPTY_DRAFT;
   const reply = (selectedRoomId && replies[selectedRoomId]) || null;
@@ -142,15 +191,18 @@ function Messages() {
   };
 
   const showConnectionBanner = !isConnected && connectionStatus !== 'connecting';
+  const firstName = firstNameOf(child?.name);
+  const callPhone = selectedRoomId ? (selectedRoom?.callPhone ?? phones[selectedRoomId] ?? null) : null;
 
   return (
-    <div
-      data-guide="messages-shell"
-      className="relative flex h-[calc(100dvh-128px)] min-h-0 overflow-hidden rounded-xl border border-[#E5EAF2] bg-white max-md:h-[calc(100dvh-96px)] max-md:rounded-none max-md:border-x-0 dark:border-slate-800 dark:bg-slate-900"
-    >
+    <div className="flex flex-col gap-[18px]">
+      <PageHeader
+        title="Messages"
+        subtitle={firstName ? `Talk to ${firstName}'s teachers and the school office.` : 'Talk to the teachers and the school office.'}
+      />
+    <div className="relative flex h-[calc(100dvh-230px)] min-h-[560px] gap-3.5 max-md:h-[calc(100dvh-180px)]">
       <div
-        data-guide="messages-conversations"
-        className={`fixed inset-y-0 left-0 z-50 w-screen bg-white transition-transform duration-300 md:static md:w-[360px] md:translate-x-0 dark:bg-slate-900 ${
+        className={`fixed inset-y-0 left-0 z-50 w-screen overflow-hidden bg-tl-surface transition-transform duration-300 md:static md:w-[300px] md:shrink-0 md:translate-x-0 md:rounded-[22px] md:border md:border-tl-line ${
           selectedRoomId ? '-translate-x-full' : 'translate-x-0'
         }`}
       >
@@ -162,19 +214,33 @@ function Messages() {
           isConnected={isConnected}
           error={error}
           onRetry={refreshChatRooms}
+          extra={
+            child ? (
+              <StartConversation
+                firstName={firstName}
+                contacts={contacts.data}
+                isPending={contacts.isPending}
+                error={contacts.error}
+                opening={opening}
+                openError={openThread.error}
+                onOpen={startThread}
+              />
+            ) : null
+          }
         />
       </div>
 
-      <main data-guide="messages-chat-area" className="flex min-w-0 flex-1 flex-col">
+      <section aria-label="Conversation" className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[22px] border border-tl-line bg-tl-surface">
         {selectedRoomId ? (
           <>
             <ChatHeader
               selectedChat={selectedRoom || { displayName: 'Conversation', avatarInfo: null }}
               onBack={closeRoom}
               onToggleDetails={() => setShowDetails((value) => !value)}
+              callPhone={callPhone}
             />
             {showConnectionBanner && (
-              <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-semibold text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+              <div role="status" className="shrink-0 border-b border-tl-line-soft bg-tl-warning-bg px-4 py-2 text-center text-xs font-semibold text-tl-warning">
                 {connectionStatus === 'unauthenticated'
                   ? 'Your session has expired. Sign in again to keep chatting.'
                   : "You're offline. Messages you send will go out when you reconnect."}
@@ -229,10 +295,7 @@ function Messages() {
                     onClick={() => setShowDetails(false)}
                     aria-label="Close conversation details overlay"
                   />
-                  <div
-                    data-guide="messages-details"
-                    className="fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none"
-                  >
+                  <div className="fixed inset-y-0 right-0 z-50 w-[88vw] max-w-[360px] shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none">
                     <ConversationDetails
                       room={selectedRoom}
                       messages={messages}
@@ -246,16 +309,17 @@ function Messages() {
             </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center bg-[#F8FAFD] p-6 text-center dark:bg-slate-950">
+          <div className="flex flex-1 items-center justify-center bg-tl-subtle p-6 text-center">
             <div>
-              <h2 className="text-lg font-bold text-[#101828] dark:text-slate-100">Select a conversation</h2>
-              <p className="mt-2 text-sm text-[#667085] dark:text-slate-400">
-                {error || 'Messages from teachers and school staff will appear here.'}
+              <h2 className="text-lg font-extrabold text-tl-ink">Select a conversation</h2>
+              <p className="mt-2 text-sm text-tl-muted">
+                {error || 'Pick a conversation, or start one with a teacher or the school office.'}
               </p>
             </div>
           </div>
         )}
-      </main>
+      </section>
+    </div>
     </div>
   );
 }
