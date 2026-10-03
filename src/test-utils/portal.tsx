@@ -23,6 +23,8 @@ export interface RenderPortalOptions {
   childId?: string;
   /** Changes the fixture database before the first request. */
   prepare?: (db: InstalledFixtures['db']) => void;
+  /** Start signed out (the sign-in pages). Default: signed in. */
+  signedOut?: boolean;
   queryClient?: QueryClient;
 }
 
@@ -58,7 +60,7 @@ function LocationProbe() {
  * @returns The render result, the fixtures (database and request log) and the client.
  */
 export function renderPortal(ui: ReactElement, options: RenderPortalOptions = {}): PortalRender {
-  const { scenario = 'family', path = '/', route = path, childId, prepare, queryClient = createTestQueryClient() } = options;
+  const { scenario = 'family', path = '/', route = path, childId, prepare, signedOut = false, queryClient = createTestQueryClient() } = options;
   const fixtures = installFixtures({ scenario });
   prepare?.(fixtures.db);
   trackFixtures(fixtures);
@@ -70,6 +72,11 @@ export function renderPortal(ui: ReactElement, options: RenderPortalOptions = {}
   window.localStorage.setItem(`parent_onboarding_${PARENT.id}`, JSON.stringify({ completedSteps: ['parent-profile', 'select-ward'], setupDismissed: true }));
   window.localStorage.setItem(`talim_tour_seen_${PARENT.id}`, '1');
   if (childId) window.localStorage.setItem(selectedChildStorageKey(PARENT.id), childId);
+  if (signedOut) {
+    window.localStorage.removeItem(STORAGE_KEYS.accessToken);
+    window.localStorage.removeItem(STORAGE_KEYS.user);
+    window.localStorage.removeItem(STORAGE_KEYS.parentId);
+  }
   sessionStore.__resetForTests();
 
   /**
