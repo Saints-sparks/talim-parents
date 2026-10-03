@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useActiveChild } from '../hooks/useActiveChild';
-import { useInitializePayment, useVerifyPayment } from '../hooks/usePayments';
-import { SelectFeesStep } from '../Components/payments/SelectFeesStep';
+import { useVerifyPayment } from '../hooks/usePayments';
+import { useCheckout, useFamilyFees } from '../hooks/portal/usePortalPayments';
+import { SelectFeesStep, type FeeSelection } from '../Components/payments/SelectFeesStep';
 import { ChooseProviderStep } from '../Components/payments/ChooseProviderStep';
 import { ReviewStep } from '../Components/payments/ReviewStep';
 import { PaymentResult, type VerifyOutcome } from '../Components/payments/PaymentResult';
 import { STEP_LABELS, StepIndicator, TOTAL_STEPS } from '../Components/payments/StepIndicator';
 import { logger } from '../lib/logger';
-import type { DueFee, PaymentProviderName, Receipt } from '../types/payments';
+import type { PaymentProviderName, Receipt } from '../types/payments';
 
 /** Router state the Payments page can hand this one. */
 interface MakePaymentRouteState {
@@ -28,9 +29,13 @@ interface VerifyState {
 }
 
 /**
- * The payment flow: select fees, choose a provider, review, then hand off to
- * the provider's hosted checkout. The provider redirects back to
- * `/payments/verify?reference=…`, which this same page picks up and verifies.
+ * The payment flow: select fees (in full or in part), choose a provider,
+ * review, then hand off to the provider's hosted checkout. The provider
+ * redirects back to `/payments/verify?reference=…` (or `trxref`), which this
+ * same page picks up and verifies once. The Payments page's checkout dialog
+ * starts the same guarded checkout ({@link useCheckout}).
+ *
+ * @returns The page.
  */
 export default function MakePayment() {
   const navigate = useNavigate();
@@ -39,25 +44,23 @@ export default function MakePayment() {
   const { child: activeChild } = useActiveChild();
 
   const [step, setStep] = useState(1);
-  const [selectedFees, setSelectedFees] = useState<DueFee[]>([]);
+  const [selection, setSelection] = useState<FeeSelection>({ items: [] });
   const [provider, setProvider] = useState<PaymentProviderName | null>(null);
   const [verify, setVerify] = useState<VerifyState | null>(null);
-  // Anything that stopped the hand-off, whether the request failed or it
-  // came back without somewhere to send the parent.
-  const [confirmError, setConfirmError] = useState<unknown>(null);
 
-  const initialize = useInitializePayment();
   const verifyPayment = useVerifyPayment();
+  const family = useFamilyFees();
 
-  // Set the instant a checkout redirect is committed to. `mutation.isPending`
-  // alone is not enough: it flips back to false the moment the request
-  // resolves, leaving a window before the browser actually navigates in which
-  // a second click would start a second transaction — and a parent who then
-  // paid both would be charged twice.
-  const redirecting = useRef(false);
+  // The double-submit guard and the per-attempt idempotency key live in
+  // useCheckout: a ref set the instant a checkout redirect is committed to
+  // (`mutation.isPending` alone flips back before the browser navigates),
+  // and one key reused by every retry of the same attempt.
+  const checkout = useCheckout();
 
   const studentId = state?.studentId ?? activeChild?.id;
   const studentName = activeChild?.name || 'your child';
+  const bill = useMemo(() => family.data?.children.find((entry) => entry.child.id === studentId), [family.data, studentId]);
+  const owed = useMemo(() => bill?.items.filter((item) => item.balance > 0), [bill]);
 
   const runVerification = useCallback(
     async (reference: string) => {
@@ -104,51 +107,27 @@ export default function MakePayment() {
     void runVerification(reference);
   }, [searchParams, runVerification]);
 
-  /**
-   * Creates the checkout and hands the parent to the provider.
-   */
-  const handleConfirm = useCallback(async () => {
-    if (redirecting.current || !studentId || !provider || selectedFees.length === 0) return;
-    redirecting.current = true;
-    setConfirmError(null);
+  /** Creates the checkout and hands the parent to the provider (guarded in useCheckout). */
+  const handleConfirm = useCallback(() => {
+    if (!studentId || !provider || selection.items.length === 0) return;
+    void checkout.start({
+      childId: studentId,
+      feeAssignmentIds: selection.items.map((fee) => fee.id),
+      ...(selection.amount !== undefined ? { amount: selection.amount } : {}),
+      provider,
+    });
+  }, [studentId, provider, selection, checkout]);
 
-    try {
-      const result = await initialize.mutateAsync({
-        studentId,
-        feeAssignmentIds: selectedFees.map((fee) => fee._id),
-        providerName: provider,
-      });
-
-      if (!result?.checkoutUrl) {
-        // The transaction exists server-side but there is nowhere to send the
-        // parent. Saying so beats a dead button that looks like nothing
-        // happened — and the pending transaction will expire on its own.
-        throw new Error(
-          "The payment provider didn't return a checkout page. Nothing has been charged — please try again.",
-        );
-      }
-      window.location.assign(result.checkoutUrl);
-    } catch (error) {
-      // The flow stays on this screen with the error shown inline, so the
-      // parent can correct it — and the guard reopens so they can retry.
-      logger.error('payments', 'Could not start payment', error);
-      setConfirmError(error);
-      redirecting.current = false;
-    }
-  }, [studentId, provider, selectedFees, initialize]);
-
-  /** Returns to fee selection with a clean slate. */
+  /** Returns to fee selection with a clean slate (and a new attempt). */
   const startOver = useCallback(() => {
     verifiedRef.current = null;
-    redirecting.current = false;
-    initialize.reset();
-    setConfirmError(null);
+    checkout.reset();
     setVerify(null);
-    setSelectedFees([]);
+    setSelection({ items: [] });
     setProvider(null);
     setStep(1);
     navigate('/payments/pay', { replace: true });
-  }, [initialize, navigate]);
+  }, [checkout, navigate]);
 
   /** Leaves for the Payments page. */
   const done = useCallback(() => navigate('/payments', { replace: true }), [navigate]);
@@ -207,9 +186,15 @@ export default function MakePayment() {
         {step === 1 && (
           <SelectFeesStep
             studentId={studentId}
+            fees={owed ?? (family.isSuccess ? [] : undefined)}
+            isPending={family.isPending}
+            isError={family.isError}
+            error={family.error}
+            onRetry={() => void family.refetch()}
             preSelected={state?.feeAssignmentIds ?? []}
-            onNext={(fees) => {
-              setSelectedFees(fees);
+            minimumPartPayment={bill?.minimumPartPayment}
+            onNext={(next) => {
+              setSelection(next);
               setStep(2);
             }}
           />
@@ -217,6 +202,7 @@ export default function MakePayment() {
 
         {step === 2 && (
           <ChooseProviderStep
+            childId={studentId}
             onNext={(chosen) => {
               setProvider(chosen);
               setStep(3);
@@ -227,13 +213,14 @@ export default function MakePayment() {
 
         {step === 3 && provider && (
           <ReviewStep
-            selectedFees={selectedFees}
+            selectedFees={selection.items}
+            amount={selection.amount}
             provider={provider}
             studentName={studentName}
-            onConfirm={() => void handleConfirm()}
+            onConfirm={handleConfirm}
             onBack={() => setStep(2)}
-            submitting={initialize.isPending || redirecting.current}
-            error={confirmError ?? initialize.error}
+            submitting={checkout.submitting}
+            error={checkout.error}
           />
         )}
       </section>

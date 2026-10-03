@@ -22,6 +22,9 @@ globalThis.matchMedia ??= ((query: string) => ({
   dispatchEvent: () => false,
 })) as unknown as typeof matchMedia;
 
+// jsdom does not scroll; the body-scroll lock restores the position on close.
+window.scrollTo = (() => undefined) as typeof window.scrollTo;
+
 beforeEach(() => {
   window.localStorage.clear();
 });

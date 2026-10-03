@@ -38,26 +38,6 @@ export interface DueFee {
   status: string;
 }
 
-/** Body of `GET /payments/parent/due-fees`. */
-export interface DueFeesResponse {
-  success: true;
-  fees: DueFee[];
-}
-
-/** Body of `GET /payments/parent/summary`. */
-export interface PaymentSummary {
-  success: true;
-  totalPaid: number;
-  totalOutstanding: number;
-  totalReceipts: number;
-}
-
-/** Query accepted by `GET /payments/parent/due-fees` (`DueFeesQueryDto`). */
-export interface DueFeesQuery {
-  academicYearId?: string;
-  termId?: string;
-}
-
 /**
  * Body of `POST /payments/parent/initialize` (`InitializePaymentDto`), taken
  * from the generated contract: `studentId` is the 24-hex Student record id of
@@ -65,28 +45,6 @@ export interface DueFeesQuery {
  * one active fee-assignment id.
  */
 export type { InitializePaymentPayload } from './apiPayloads';
-
-/**
- * What `POST /payments/parent/initialize` returns. The amount is computed
- * server-side from the fee assignments — the client never sends one, and
- * `amount` here is the authoritative figure the parent will be charged.
- */
-export interface InitializePaymentResult {
-  transactionId: string;
-  /** The reference the provider redirects back with. */
-  internalReference: string;
-  /** Hosted checkout to send the parent to. */
-  checkoutUrl: string;
-  /** `subtotal + lateFee` — what the card is charged. */
-  amount: number;
-  subtotal: number;
-  lateFee: number;
-  /** Deducted from `amount` on settlement; the parent does not pay it on top. */
-  platformFee: number;
-  schoolAmount: number;
-  currency: string;
-  provider: PaymentProviderName;
-}
 
 /** One line on an issued receipt. */
 export interface ReceiptFeeItem {
@@ -153,29 +111,6 @@ export interface VerifyPaymentResult {
   transaction: PaymentTransaction;
   /** Present only once a receipt has been issued. */
   receipt?: Receipt | null;
-}
-
-/** Query accepted by `GET /payments/parent/history` (`PaymentHistoryQueryDto`). */
-export interface PaymentHistoryQuery {
-  studentId?: string;
-  status?: string;
-  startDate?: string;
-  endDate?: string;
-  page?: number;
-  limit?: number;
-}
-
-/** Query accepted by `GET /payments/parent/receipts` (`ReceiptQueryDto`). */
-export interface ReceiptsQuery {
-  studentId?: string;
-  page?: number;
-  limit?: number;
-}
-
-/** The un-enveloped `{ data, total }` shape the list endpoints return. */
-export interface PaginatedList<T> {
-  data: T[];
-  total: number;
 }
 
 /** One enabled payment provider from `GET /payments/parent/providers`. */

@@ -21,6 +21,8 @@ export interface RenderPortalOptions {
   path?: string;
   /** Start on this child (a fixture child id). */
   childId?: string;
+  /** Changes the fixture database before the first request. */
+  prepare?: (db: InstalledFixtures['db']) => void;
   queryClient?: QueryClient;
 }
 
@@ -56,8 +58,9 @@ function LocationProbe() {
  * @returns The render result, the fixtures (database and request log) and the client.
  */
 export function renderPortal(ui: ReactElement, options: RenderPortalOptions = {}): PortalRender {
-  const { scenario = 'family', path = '/', route = path, childId, queryClient = createTestQueryClient() } = options;
+  const { scenario = 'family', path = '/', route = path, childId, prepare, queryClient = createTestQueryClient() } = options;
   const fixtures = installFixtures({ scenario });
+  prepare?.(fixtures.db);
   trackFixtures(fixtures);
 
   const user = { userId: PARENT.id, _id: PARENT.id, role: 'parent', firstName: PARENT.firstName, lastName: PARENT.lastName, email: PARENT.email };

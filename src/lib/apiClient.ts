@@ -450,7 +450,7 @@ export const apiClient = new ApiClient();
  *
  * @example
  * const children = await api.get<ParentChild[]>('/parents/me/children');
- * await api.post<InitializePaymentResult>('/payments/parent/initialize', body);
+ * await api.post<CheckoutResult>('/payments/parent/initialize', body, { childId });
  */
 export const api = {
   /**

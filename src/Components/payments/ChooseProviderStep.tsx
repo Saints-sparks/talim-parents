@@ -1,26 +1,30 @@
 import { useState } from 'react';
 import { AlertCircle, Lock } from 'lucide-react';
-import { usePaymentProviders } from '../../hooks/usePayments';
+import { useChildProviders } from '../../hooks/portal/usePortalPayments';
 import { EmptyState, ErrorState, LoadingState } from '../StateComponents';
 import { providerMeta } from './providerMeta';
 import type { PaymentProviderName } from '../../types/payments';
 
 /**
- * Step 2 — the parent picks who processes the payment.
+ * Step 2 — the parent picks who processes the payment: the providers the
+ * child's school has enabled (each a hosted checkout; no card form here).
  *
  * @param props - Component props.
+ * @param props.childId - The child being paid for (decides the school).
  * @param props.onNext - Called with the chosen provider.
  * @param props.onBack - Returns to fee selection.
  * @returns The step.
  */
 export function ChooseProviderStep({
+  childId,
   onNext,
   onBack,
 }: {
+  childId: string | undefined;
   onNext: (provider: PaymentProviderName) => void;
   onBack: () => void;
 }) {
-  const { data: providers, isPending, isError, error, refetch } = usePaymentProviders();
+  const { data: providers, isPending, isError, error, refetch } = useChildProviders(childId);
   const [selected, setSelected] = useState<PaymentProviderName | null>(null);
 
   if (isPending) return <LoadingState count={3} label="Loading payment providers" />;
