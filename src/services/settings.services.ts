@@ -4,7 +4,6 @@ import type {
   ChangePasswordPayload,
   SendPhoneOtpPayload,
   ThemePayload,
-  UpdateProfilePayload,
   VerifyPhoneOtpPayload,
 } from '../types/apiPayloads';
 
@@ -90,17 +89,6 @@ export function getParentSettings(): Promise<ParentSettings> {
   return api.get<ParentSettings>('/parent/settings');
 }
 
-/**
- * Updates the parent's display name or avatar.
- *
- * @param payload - Only `fullName` and `avatar` are accepted.
- * @returns The acknowledgement and the updated profile.
- * @throws {ApiError} `VALIDATION_FAILED` with per-field details.
- */
-export function updateParentSettingsProfile(payload: UpdateProfilePayload): Promise<SettingsAck> {
-  return api.patch<SettingsAck>('/parent/settings/profile', payload);
-}
-
 /** What `PUT /auth/profile/avatar` answers with. */
 export interface AvatarResult {
   message: string;
@@ -181,12 +169,3 @@ export interface LinkedChild {
   classId?: string;
 }
 
-/**
- * The children linked to the signed-in parent.
- *
- * @returns The children; an empty array when the parent has no profile yet.
- * @throws {ApiError} On any non-2xx.
- */
-export function getLinkedChildren(): Promise<LinkedChild[]> {
-  return api.get<LinkedChild[]>('/parent/settings/children');
-}

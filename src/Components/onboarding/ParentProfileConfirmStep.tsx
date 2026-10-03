@@ -1,7 +1,7 @@
 import { ArrowRight, Camera, Info, Loader2, UserRound } from 'lucide-react';
 import { useRef, type ChangeEvent } from 'react';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
-import { useSchool } from '../../hooks/useSchool';
+import { useActiveChild } from '../../hooks/useActiveChild';
 import { useParentOnboarding } from '../../contexts/ParentOnboardingContext';
 import { useAuth } from '../../services/auth.services';
 import ParentOnboardingLayout from './ParentOnboardingLayout';
@@ -34,7 +34,9 @@ function InfoField({ label, value }: { label: string; value: string }) {
 export default function ParentProfileConfirmStep() {
   const inputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
-  const { data: school, isLoading: schoolLoading } = useSchool();
+  // Multi-school families: every school a linked child attends (B13).
+  const { groups, status } = useActiveChild();
+  const schools = groups.map((group) => group.school.name).join(', ');
   const { markStepComplete } = useParentOnboarding();
   const { canUpload, busy, changePhoto } = useAvatarUpload();
 
@@ -96,8 +98,8 @@ export default function ParentProfileConfirmStep() {
               <InfoField label="Email address" value={user?.email || 'Not set'} />
               <InfoField label="Phone number" value={user?.phoneNumber || 'Not set'} />
               <InfoField
-                label="School"
-                value={schoolLoading ? 'Loading...' : school?.name || user?.schoolName || 'School not set'}
+                label={groups.length > 1 ? 'Schools' : 'School'}
+                value={status === 'loading' ? 'Loading...' : schools || user?.schoolName || 'School not set'}
               />
             </div>
           </div>

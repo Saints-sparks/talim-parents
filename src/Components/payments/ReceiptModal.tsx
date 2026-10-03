@@ -5,7 +5,14 @@ import { amountInWords } from '../../lib/amountInWords';
 import { useLockBodyScroll } from '../../hooks/useLockBodyScroll';
 import { providerMeta } from './providerMeta';
 import type { Receipt } from '../../types/payments';
-import type { School } from '../../services/school.services';
+
+/** The school header a receipt prints (only what the school has set). */
+export interface ReceiptSchool {
+  name: string;
+  address?: string;
+  phoneNumber?: string;
+  email?: string;
+}
 
 /**
  * Formats a payment date for the printed receipt.
@@ -39,7 +46,7 @@ export function ReceiptModal({
   onClose,
 }: {
   receipt: Receipt | null;
-  school: School | undefined;
+  school: ReceiptSchool | undefined;
   onClose: () => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);

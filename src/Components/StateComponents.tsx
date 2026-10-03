@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AlertCircle, Loader2, RefreshCw, WifiOff } from 'lucide-react';
+import { AlertCircle, RefreshCw, WifiOff } from 'lucide-react';
 import { ApiError, getErrorMessage } from '../lib/apiError';
 
 /**
@@ -42,16 +42,6 @@ export function LoadingState({
       {Array.from({ length: count }, (_, i) => (
         <SkeletonBlock key={i} className={className} />
       ))}
-    </div>
-  );
-}
-
-/** A centred spinner for a short, blocking wait. */
-export function InlineSpinner({ label = 'Loading' }: { label?: string }) {
-  return (
-    <div className="flex items-center justify-center gap-2 py-8 text-sm text-gray-500 dark:text-slate-400" role="status">
-      <Loader2 size={18} className="animate-spin" aria-hidden="true" />
-      <span>{label}…</span>
     </div>
   );
 }

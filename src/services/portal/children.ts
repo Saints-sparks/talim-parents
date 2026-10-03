@@ -32,16 +32,3 @@ export function linkChild(payload: LinkChildPayload): Promise<LinkChildResult> {
   });
 }
 
-/**
- * Makes one child the parent's default (shown first after sign-in).
- *
- * @param childId - Student record id of a linked child.
- * @returns The server's confirmation.
- * @throws {ApiError} `FORBIDDEN` when the child is not linked to this parent.
- */
-export function setDefaultChild(childId: string): Promise<{ childId: string; message: string }> {
-  return api.patch<{ childId: string; message: string }>(
-    `/parents/me/default-child/${encodeURIComponent(childId)}`,
-    {},
-  );
-}

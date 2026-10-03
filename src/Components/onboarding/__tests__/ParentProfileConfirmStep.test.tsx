@@ -8,7 +8,9 @@ let user: AuthUser | null;
 let upload: { canUpload: boolean; busy: boolean; changePhoto: typeof changePhoto };
 
 vi.mock('../../../services/auth.services', () => ({ useAuth: () => ({ user }) }));
-vi.mock('../../../hooks/useSchool', () => ({ useSchool: () => ({ data: { name: 'Grace Academy' }, isLoading: false }) }));
+vi.mock('../../../hooks/useActiveChild', () => ({
+  useActiveChild: () => ({ status: 'ready', groups: [{ school: { id: 's1', name: 'Grace Academy' }, children: [] }] }),
+}));
 vi.mock('../../../hooks/useAvatarUpload', () => ({ useAvatarUpload: () => upload }));
 vi.mock('../../../contexts/ParentOnboardingContext', () => ({ useParentOnboarding: () => ({ markStepComplete }) }));
 

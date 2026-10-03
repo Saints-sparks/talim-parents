@@ -5,10 +5,9 @@ import { downloadReceiptsPdf, receiptFileName } from '../../../lib/receiptPdf';
 import { logger } from '../../../lib/logger';
 import { ErrorCard } from '../ui/primitives';
 import { ghostButton, rowButton } from '../ui/styles';
-import { ReceiptModal } from '../../payments/ReceiptModal';
+import { ReceiptModal, type ReceiptSchool } from '../../payments/ReceiptModal';
 import type { Receipt } from '../../../types/payments';
 import type { ParentReceipt } from '../../../types/portal/payments';
-import type { School } from '../../../services/school.services';
 
 /**
  * The shape the kept `ReceiptModal` renders, from a C5 receipt.
@@ -16,7 +15,7 @@ import type { School } from '../../../services/school.services';
  * @param receipt - The receipt.
  * @returns The modal's receipt and school header.
  */
-export function toModalReceipt(receipt: ParentReceipt): { receipt: Receipt; school: School } {
+export function toModalReceipt(receipt: ParentReceipt): { receipt: Receipt; school: ReceiptSchool } {
   return {
     receipt: {
       _id: receipt.id,
@@ -35,7 +34,7 @@ export function toModalReceipt(receipt: ParentReceipt): { receipt: Receipt; scho
       status: 'issued',
       issuedAt: receipt.paidAt,
     },
-    school: { _id: '', name: receipt.school.name, address: receipt.school.address ?? undefined },
+    school: { name: receipt.school.name, address: receipt.school.address ?? undefined },
   };
 }
 

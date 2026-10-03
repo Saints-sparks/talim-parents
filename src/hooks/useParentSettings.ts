@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tan
 import { useAuth } from '../services/auth.services';
 import {
   getParentSettings,
-  updateParentSettingsProfile,
   updateThemePreference,
   type ParentSettings,
   type ThemePreference,
@@ -23,27 +22,6 @@ export function useParentSettings(): UseQueryResult<ParentSettings> {
     queryFn: getParentSettings,
     enabled: Boolean(parentId),
     staleTime: staleTimes.list,
-  });
-}
-
-/**
- * Saves the parent's display name and mirrors it into the session so the
- * header shows it straight away.
- *
- * @returns A mutation taking the new full name.
- */
-export function useUpdateFullName() {
-  const { parentId, updateUser } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (fullName: string) => updateParentSettingsProfile({ fullName }),
-    onSuccess: (_ack, fullName) => {
-      const [firstName, ...rest] = fullName.trim().split(/\s+/);
-      // The API splits the name the same way: first word, then the rest.
-      updateUser({ firstName, lastName: rest.join(' ') || firstName });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.settings.parent(parentId || 'anon') });
-    },
   });
 }
 

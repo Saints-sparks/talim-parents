@@ -34,51 +34,17 @@ export const queryKeys = {
   },
   children: {
     all: ['children'] as const,
-    /** Every child linked to the signed-in parent. */
+    /** Every child linked to the signed-in parent (B13), across schools. */
     list: (parentId: string) => ['children', parentId, 'list'] as const,
-    /** The dashboard overview card set. */
-    overview: (parentId: string) => ['children', parentId, 'overview'] as const,
-    /** Recent updates across every child. */
-    updates: (parentId: string) => ['children', parentId, 'updates'] as const,
-  },
-  attendance: {
-    all: ['attendance'] as const,
-    dashboard: (childId: string) => ['attendance', childId, 'dashboard'] as const,
-    monthly: (childId: string, month: number, year: number) =>
-      ['attendance', childId, 'monthly', month, year] as const,
-  },
-  timetable: {
-    all: ['timetable'] as const,
-    byChild: (childId: string, params?: QueryKeyParams) =>
-      ['timetable', childId, params ?? {}] as const,
-  },
-  results: {
-    all: ['results'] as const,
-    summary: (childId: string, params?: QueryKeyParams) =>
-      ['results', childId, 'summary', params ?? {}] as const,
-    subjects: (childId: string, params?: QueryKeyParams) =>
-      ['results', childId, 'subjects', params ?? {}] as const,
-    gradeSummary: (childId: string, params?: QueryKeyParams) =>
-      ['results', childId, 'grade-summary', params ?? {}] as const,
-    termProgress: (childId: string, params?: QueryKeyParams) =>
-      ['results', childId, 'term-progress', params ?? {}] as const,
-    assessmentBreakdown: (childId: string, params?: QueryKeyParams) =>
-      ['results', childId, 'assessment-breakdown', params ?? {}] as const,
   },
   payments: {
     all: ['payments'] as const,
-    /** Outstanding fee assignments for one child. */
-    dueFees: (childId: string, params?: QueryKeyParams) =>
-      ['payments', childId, 'due-fees', params ?? {}] as const,
-    /** Paid / outstanding totals across every child. */
-    summary: (parentId: string) => ['payments', parentId, 'summary'] as const,
+    /** C6: one child's payments, a page at a time. */
     history: (parentId: string, params?: QueryKeyParams) =>
       ['payments', parentId, 'history', params ?? {}] as const,
+    /** C5: one child's receipts for a term. */
     receipts: (parentId: string, params?: QueryKeyParams) =>
       ['payments', parentId, 'receipts', params ?? {}] as const,
-    receipt: (receiptId: string) => ['payments', 'receipt', receiptId] as const,
-    /** Enabled providers — the same for every parent in a school. */
-    providers: () => ['payments', 'providers'] as const,
     /** C2: every child's bill, one call. */
     family: (parentId: string, termId: string | undefined) =>
       ['payments', parentId, 'family', termId ?? 'current'] as const,
@@ -87,11 +53,6 @@ export const queryKeys = {
     /** C4: the child's school's bank account. */
     bankDetails: (childId: string) => ['payments', 'bank-details', childId] as const,
   },
-  leaveRequests: {
-    all: ['leaveRequests'] as const,
-    byChild: (childId: string) => ['leaveRequests', childId, 'list'] as const,
-    detail: (id: string) => ['leaveRequests', 'detail', id] as const,
-  },
   notifications: {
     all: ['notifications'] as const,
     /** B11: the parent's feed, by filter and child. */
@@ -99,10 +60,6 @@ export const queryKeys = {
     /** §30/B11: the badge and filter counts, by child. */
     counts: (userId: string, childId: string | undefined) =>
       ['notifications', userId, 'counts', childId ?? 'all'] as const,
-    list: (userId: string, params?: QueryKeyParams) =>
-      ['notifications', userId, 'list', params ?? {}] as const,
-    announcements: (userId: string, params?: QueryKeyParams) =>
-      ['notifications', userId, 'announcements', params ?? {}] as const,
   },
   settings: {
     all: ['settings'] as const,
@@ -111,31 +68,8 @@ export const queryKeys = {
     chatPrivacy: (parentId: string) => ['settings', parentId, 'chat-privacy'] as const,
     sessions: (parentId: string) => ['settings', parentId, 'sessions'] as const,
     passwordPolicy: () => ['settings', 'password-policy'] as const,
-    linkedChildren: (parentId: string) => ['settings', parentId, 'children'] as const,
-  },
-  academic: {
-    all: ['academic'] as const,
-    currentTerm: () => ['academic', 'current-term'] as const,
-    /** Every term of the parent's school. */
-    terms: () => ['academic', 'terms'] as const,
-  },
-  school: {
-    all: ['school'] as const,
-    detail: (schoolId: string) => ['school', schoolId] as const,
   },
 } as const;
-
-/**
- * The prefix of a params-carrying list key, for invalidating every page of a
- * list at once — invalidating with the full key would only match one page.
- *
- * @param key - A key built by one of the factories above.
- * @returns The key without its trailing params object.
- */
-export function listPrefix(key: readonly unknown[]): readonly unknown[] {
-  const last = key[key.length - 1];
-  return last && typeof last === 'object' && !Array.isArray(last) ? key.slice(0, -1) : key;
-}
 
 /** Stale times (ms) by how often the data actually changes. */
 export const staleTimes = {

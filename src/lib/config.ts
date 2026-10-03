@@ -16,13 +16,3 @@ if (!configuredApiBaseUrl) {
 
 /** Origin of the Talim API, with any trailing slashes removed. */
 export const API_BASE_URL: string = configuredApiBaseUrl.replace(/\/+$/, '');
-
-/**
- * Turns a relative API path into a full URL, for the few callers that cannot
- * go through `apiClient` (an `XMLHttpRequest` reporting upload progress, or a
- * `<img src>` pointing at the API).
- *
- * @param path - A path starting with "/".
- * @returns The absolute URL.
- */
-export const absoluteUrl = (path: string): string => `${API_BASE_URL}${path}`;
