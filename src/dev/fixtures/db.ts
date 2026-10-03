@@ -193,7 +193,7 @@ export function createFixtureDb(scenario: FixtureScenario = 'family'): FixtureDb
       child.id,
       LEAVE.map((row) => ({
         ...row,
-        id: `${row.id.slice(0, -2)}${child.key.slice(0, 2)}`,
+        id: `${row.id}-${child.key}`,
         status: row.status,
         decidedBy: row.status === 'pending' ? null : { name: teacher },
         decidedAt: row.status === 'pending' ? null : row.createdAt,
