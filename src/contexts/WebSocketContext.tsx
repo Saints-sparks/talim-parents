@@ -2,6 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type { Socket } from 'socket.io-client';
 import { useAuth } from '../services/auth.services';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { FIXTURES_ON } from '../lib/devFlags';
 
 /** Where the socket is in its life. */
 export type ConnectionStatus =
@@ -43,7 +44,7 @@ const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
 /**
  * Opens the single Socket.IO connection while a parent is signed in and shares
- * it with the whole app.
+ * it with the whole app (never with the dev fixtures on).
  *
  * @param props - Component props.
  * @param props.children - The application tree.
@@ -51,7 +52,9 @@ const WebSocketContext = createContext<WebSocketContextValue | null>(null);
  */
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user, parentId, refreshSession } = useAuth();
-  const userId = isAuthenticated ? (user?.userId ?? user?._id ?? user?.id ?? parentId) : undefined;
+  // The dev fixtures answer HTTP only: with them on, no socket is opened
+  // (its fake token would be refused and retried forever).
+  const userId = isAuthenticated && !FIXTURES_ON ? (user?.userId ?? user?._id ?? user?.id ?? parentId) : undefined;
   // A failed refresh throws, which the hook reads as "the session is over".
   const refreshToken = async (): Promise<string> => {
     const token = await refreshSession();
