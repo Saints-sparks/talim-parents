@@ -22,7 +22,7 @@ const TourContext = createContext<TourValue>({ openTour: () => {} });
  * @param parentId - The signed-in parent.
  * @returns The localStorage key.
  */
-export const tourSeenKey = (parentId: string): string => `talim_tour_seen_${parentId}`;
+const tourSeenKey = (parentId: string): string => `talim_tour_seen_${parentId}`;
 
 /** Pages where the tour never opens on its own. */
 const QUIET_PATHS = new Set(['/', '/onboarding', '/forgot-password', '/set-password']);

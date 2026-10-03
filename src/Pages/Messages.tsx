@@ -165,7 +165,13 @@ function Messages() {
     }
   };
 
-  /** Adds picked files to a room's draft; unsupported, oversized and over-limit files come back as errors. */
+  /**
+   * Adds picked files to a room's draft; unsupported, oversized and over-limit files come back as errors.
+   *
+   * @param roomId - The room whose draft gets the files.
+   * @param picked - The files the parent picked.
+   * @returns Nothing; the draft is updated.
+   */
   const addFiles = (roomId: string, picked: File[]) =>
     setDrafts((current) => {
       const previous = current[roomId] || EMPTY_DRAFT;

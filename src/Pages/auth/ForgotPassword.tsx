@@ -20,7 +20,8 @@ import { usePasswordPolicy } from '../../hooks/portal/useAccount';
 import { meetsPolicy } from '../../lib/passwordPolicy';
 import { getErrorMessage } from '../../lib/apiError';
 import { SUPPORT_EMAIL } from '../../lib/support';
-import { PARENT_PANEL, ParentIllustration } from './SignIn';
+import { ParentIllustration } from './SignIn';
+import { PARENT_PANEL } from './signInCopy';
 
 /** The steps of the reset. */
 type Step = 'email' | 'code' | 'password' | 'done';

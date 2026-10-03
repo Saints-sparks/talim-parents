@@ -47,7 +47,7 @@ interface Metric {
  * @param firstName - The child's first name.
  * @returns The tiles' content.
  */
-export function dashboardMetrics(data: ParentDashboard, firstName: string): Metric[] {
+function dashboardMetrics(data: ParentDashboard, firstName: string): Metric[] {
   const { glance, fees } = data;
   const subjects = data.subjectTotals.filter((subject) => subject.percent !== null).length;
   const rate = glance.attendance.rate;

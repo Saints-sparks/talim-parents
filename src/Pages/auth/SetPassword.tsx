@@ -16,7 +16,8 @@ import { useAuth } from '../../services/auth.services';
 import { meetsPolicy } from '../../lib/passwordPolicy';
 import { getErrorMessage } from '../../lib/apiError';
 import { SUPPORT_EMAIL } from '../../lib/support';
-import { PARENT_PANEL, ParentIllustration } from './SignIn';
+import { ParentIllustration } from './SignIn';
+import { PARENT_PANEL } from './signInCopy';
 
 /**
  * The first sign-in of an account the school created with a temporary

@@ -2,20 +2,8 @@ import { type ReactNode } from 'react';
 import { AlertCircle, Inbox, School, UserRoundX } from 'lucide-react';
 import { getErrorMessage } from '../../../lib/apiError';
 import { initialsOf } from '../../../lib/format';
+import { toneOf } from './tone';
 import { card, focusRing, ghostButton, pageSubtitle, pageTitle, pill, pillTone, primaryButton, type Tone } from './styles';
-
-/**
- * A stable avatar tone (`tl-tone-N`) for an id, so a child or a person has the
- * same colour on every screen.
- *
- * @param id - A stable id.
- * @returns The tone class.
- */
-export function toneOf(id: string): string {
-  let hash = 0;
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return `tl-tone-${hash % 6}`;
-}
 
 /**
  * A round avatar: the photo when there is one, else initials on the person's

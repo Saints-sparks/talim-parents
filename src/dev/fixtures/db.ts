@@ -102,7 +102,13 @@ export interface FixtureDb {
   counter: number;
 }
 
-/** The fee assignment id of one child's fee. */
+/**
+ * The fee assignment id of one child's fee.
+ *
+ * @param child - The child.
+ * @param feeKey - The fee's catalogue key.
+ * @returns The fee assignment id.
+ */
 export const feeAssignmentId = (child: SeedChild, feeKey: string): string => `fa-${child.key}-${feeKey}`;
 
 /**
@@ -228,7 +234,13 @@ export function createFixtureDb(scenario: FixtureScenario = 'family'): FixtureDb
   };
 }
 
-/** Subject rows for one child, with that child's shifted scores. */
+/**
+ * Subject rows for one child, with that child's shifted scores.
+ *
+ * @param child - The child.
+ * @param termShift - Points to shift every score by (per term).
+ * @returns One row per subject: key, course id, title, short name, teacher, total, the three scores, rank and class average.
+ */
 export function subjectScores(child: SeedChild, termShift = 0) {
   return SUBJECTS.map(([key, title, short, base, rank, classAverage], index) => {
     const total = Math.max(38, Math.min(96, base + child.shift + termShift));

@@ -7,7 +7,7 @@ import { rowButton, type Tone } from '../ui/styles';
 import type { HistoryStatus } from '../../../types/portal/payments';
 
 /** How each payment status reads. A bank transfer stays Pending until the bursary confirms it. */
-export const HISTORY_STATUS: Record<HistoryStatus, { label: string; tone: Tone }> = {
+const HISTORY_STATUS: Record<HistoryStatus, { label: string; tone: Tone }> = {
   successful: { label: 'Successful', tone: 'success' },
   pending: { label: 'Pending', tone: 'warning' },
   failed: { label: 'Failed', tone: 'danger' },

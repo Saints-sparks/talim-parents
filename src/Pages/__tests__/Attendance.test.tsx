@@ -4,8 +4,8 @@ import { renderPortal, requestsTo } from '../../test-utils/portal';
 import { userEvent } from '../../test-utils/render';
 import { CHILDREN } from '../../dev/fixtures/seed';
 import { CHILD_HEADER } from '../../lib/apiClient';
-import { monthWeeks } from '../../Components/portal/attendance/MonthGrid';
-import Attendance, { startMonth } from '../Attendance';
+import { monthWeeks, startMonth } from '../../Components/portal/attendance/attendanceMath';
+import Attendance from '../Attendance';
 
 const MUSA = CHILDREN[0];
 

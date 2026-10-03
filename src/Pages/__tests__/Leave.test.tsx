@@ -4,7 +4,8 @@ import { renderPortal, requestsTo } from '../../test-utils/portal';
 import { userEvent } from '../../test-utils/render';
 import { CHILDREN } from '../../dev/fixtures/seed';
 import { CHILD_HEADER } from '../../lib/apiClient';
-import Leave, { validateLeave } from '../Leave';
+import Leave from '../Leave';
+import { validateLeave } from '../../Components/portal/leave/leaveForm';
 
 vi.setConfig({ testTimeout: 20_000 });
 const MUSA = CHILDREN[0];

@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { userEvent } from '../../../test-utils/render';
 import { renderPortal, requestsTo } from '../../../test-utils/portal';
-import SignIn, { failureOf } from '../SignIn';
+import SignIn from '../SignIn';
+import { failureOf } from '../signInCopy';
 import ForgotPassword from '../ForgotPassword';
 
 vi.setConfig({ testTimeout: 20_000 });

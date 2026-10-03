@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { groupBySchool, resolveActiveChild } from '../useActiveChild';
-import { parseStoredChildId } from '../../contexts/SelectedStudentContext';
+import { parseStoredChildId } from '../../contexts/selectedChildStorage';
 import type { ChildSummary } from '../../types/portal/children';
 
 /**

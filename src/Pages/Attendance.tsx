@@ -3,11 +3,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useChildAttendance } from '../hooks/portal/useChildData';
 import { ChildGate } from '../Components/portal/ChildGate';
 import { MonthGrid } from '../Components/portal/attendance/MonthGrid';
+import { attendanceShares, startMonth } from '../Components/portal/attendance/attendanceMath';
 import { ErrorCard, LoadingCard, PageHeader, Pill } from '../Components/portal/ui/primitives';
 import { card, cardTitle, focusRing, statBox } from '../Components/portal/ui/styles';
 import { firstNameOf, monthOf, monthTitle, percent, shiftMonth, todayIso } from '../lib/format';
 import type { ChildSummary } from '../types/portal/children';
-import type { ChildAttendance } from '../types/portal/learner';
 
 /** The legend under the month title. */
 const LEGEND = [
@@ -17,37 +17,6 @@ const LEGEND = [
   { label: 'On approved leave', dot: 'bg-tl-accent' },
   { label: 'Not yet marked', dot: 'bg-tl-control' },
 ];
-
-/**
- * The share of the term's school days in each mark, for the stacked bar.
- *
- * @param data - The term's numbers.
- * @returns Percent of school days present, late, on leave and absent.
- */
-export function attendanceShares(data: ChildAttendance): { present: number; late: number; leave: number; absent: number } {
-  const days = Math.max(1, data.schoolDays);
-  const share = (n: number): number => Math.round((n / days) * 1000) / 10;
-  return { present: share(data.present), late: share(data.late), leave: share(data.onLeave), absent: share(data.absent) };
-}
-
-/**
- * The month to open on: this month when it is inside the term, else the
- * term's last (or first) month.
- *
- * @param today - Today as `YYYY-MM-DD`.
- * @param term - The term's dates, when known.
- * @param term.startDate - The term's first day.
- * @param term.endDate - The term's last day.
- * @returns `YYYY-MM`.
- */
-export function startMonth(today: string, term?: { startDate?: string | null; endDate?: string | null } | null): string {
-  const month = monthOf(today);
-  const first = term?.startDate ? monthOf(term.startDate) : null;
-  const last = term?.endDate ? monthOf(term.endDate) : null;
-  if (last && month > last) return last;
-  if (first && month < first) return first;
-  return month;
-}
 
 /**
  * Attendance for one child (B6): the term's rate and numbers, and a month of

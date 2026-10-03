@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { dayParts, weekdayOf } from '../../../lib/format';
+import { weekdayOf } from '../../../lib/format';
+import { monthWeeks } from './attendanceMath';
 import type { AttendanceDayStatus } from '../../../types/portal/learner';
 
 /** How each register mark looks and reads. */
-export const DAY_LOOK: Record<AttendanceDayStatus, { label: string; cell: string; text: string }> = {
+const DAY_LOOK: Record<AttendanceDayStatus, { label: string; cell: string; text: string }> = {
   present: { label: 'Present', cell: 'bg-tl-success-bg', text: 'text-tl-success' },
   late: { label: 'Late', cell: 'bg-tl-warning-bg', text: 'text-tl-warning' },
   absent: { label: 'Absent', cell: 'bg-tl-danger-bg', text: 'text-tl-danger' },
@@ -14,44 +15,6 @@ export const DAY_LOOK: Record<AttendanceDayStatus, { label: string; cell: string
 };
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-
-/** One cell of the month: a school day, or a blank before the 1st. */
-export interface MonthCell {
-  date: string | null;
-  status: AttendanceDayStatus;
-}
-
-/**
- * Lays a month's school days out in Monday–Friday weeks (weekends dropped),
- * with blanks before the first weekday so each date sits under its weekday.
- *
- * @param days - The month's days from B6.
- * @returns The weeks, five cells each.
- */
-export function monthWeeks(days: readonly { date: string; status: AttendanceDayStatus }[]): MonthCell[][] {
-  const weeks: MonthCell[][] = [];
-  let week: MonthCell[] = [];
-  for (const day of days) {
-    const parts = dayParts(day.date);
-    if (!parts) continue;
-    const weekday = new Date(Date.UTC(parts.y, parts.m, parts.d)).getUTCDay();
-    if (weekday === 0 || weekday === 6) continue;
-    const column = weekday - 1;
-    if (week.length === 0 && column > 0) {
-      for (let i = 0; i < column; i += 1) week.push({ date: null, status: 'unmarked' });
-    }
-    week.push({ date: day.date, status: day.status });
-    if (column === 4) {
-      weeks.push(week);
-      week = [];
-    }
-  }
-  if (week.length) {
-    while (week.length < 5) week.push({ date: null, status: 'unmarked' });
-    weeks.push(week);
-  }
-  return weeks;
-}
 
 /**
  * The month calendar: Monday to Friday, each school day showing its date and

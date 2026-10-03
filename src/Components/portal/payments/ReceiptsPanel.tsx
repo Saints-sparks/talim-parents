@@ -15,7 +15,7 @@ import type { ParentReceipt } from '../../../types/portal/payments';
  * @param receipt - The receipt.
  * @returns The modal's receipt and school header.
  */
-export function toModalReceipt(receipt: ParentReceipt): { receipt: Receipt; school: ReceiptSchool } {
+function toModalReceipt(receipt: ParentReceipt): { receipt: Receipt; school: ReceiptSchool } {
   return {
     receipt: {
       _id: receipt.id,

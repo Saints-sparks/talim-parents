@@ -5,7 +5,7 @@ import { userEvent } from '../../test-utils/render';
 import { CHILD_HEADER } from '../../lib/apiClient';
 import { CHILDREN } from '../../dev/fixtures/seed';
 import Settings from '../Settings';
-import { relationshipLine } from '../../Components/portal/settings/AccountPanel';
+import { relationshipLine } from '../../Components/portal/settings/relationships';
 
 vi.setConfig({ testTimeout: 20_000 });
 const MUSA = CHILDREN[0];

@@ -13,38 +13,10 @@ import {
   SignInPrimaryButton,
   SignInShell,
   signInLinkClass,
-  type SignInErrorTone,
 } from '../../Components/auth/signin-ui';
 import { useAuth } from '../../services/auth.services';
 import { SUPPORT_EMAIL } from '../../lib/support';
-import type { LoginOutcome } from '../../types/auth';
-
-/** The banner a failed sign-in shows. */
-interface Failure {
-  tone: SignInErrorTone;
-  title?: string;
-  message: string;
-}
-
-/**
- * Turns a sign-in refusal into the banner's tone: red with a title for a
- * refused account, amber for wrong credentials, grey for anything else.
- *
- * @param outcome - What `login` returned.
- * @returns The banner, or `null` on success.
- */
-export function failureOf(outcome: LoginOutcome): Failure | null {
-  if (outcome.kind === 'success') return null;
-  if (outcome.kind === 'access_denied') return { tone: 'danger', title: 'Access denied', message: outcome.message };
-  if (outcome.kind === 'invalid_credentials') return { tone: 'warning', message: outcome.message };
-  return { tone: 'neutral', message: outcome.message };
-}
-
-/** The panel and copy every signed-out page of this app shares. */
-export const PARENT_PANEL = {
-  title: 'Talim Parent Portal',
-  text: "Stay connected with your child's school, track their progress, and manage leave requests.",
-} as const;
+import { PARENT_PANEL, failureOf, type Failure } from './signInCopy';
 
 /**
  * The illustration on the navy panel.

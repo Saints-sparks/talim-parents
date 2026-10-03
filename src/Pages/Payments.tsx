@@ -29,7 +29,7 @@ type TabKey = (typeof TABS)[number]['key'];
  * @param bill - The child's bill (C2).
  * @returns Outstanding, paid, bill, percent paid and the items still owed.
  */
-export function billSummary(bill: ChildFees) {
+function billSummary(bill: ChildFees) {
   const due = bill.items.filter((item) => item.balance > 0);
   const paidPercent = bill.billTotal > 0 ? Math.round((bill.paid / bill.billTotal) * 100) : 100;
   return { due, paidPercent };

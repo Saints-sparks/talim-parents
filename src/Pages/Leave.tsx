@@ -7,15 +7,7 @@ import { ApiError, getErrorMessage } from '../lib/apiError';
 import { firstNameOf, leaveRange } from '../lib/format';
 import type { ChildSummary } from '../types/portal/children';
 import type { LeaveRequest, LeaveStatus, LeaveType } from '../types/portal/leave';
-
-/** The leave types (B9), in the design's order and wording. */
-export const LEAVE_TYPES: readonly { value: LeaveType; label: string }[] = [
-  { value: 'illness', label: 'Illness' },
-  { value: 'medical', label: 'Medical appointment' },
-  { value: 'family_travel', label: 'Family travel' },
-  { value: 'religious', label: 'Religious observance' },
-  { value: 'other', label: 'Other' },
-];
+import { EMPTY, LEAVE_TYPES, validateLeave, type LeaveForm } from '../Components/portal/leave/leaveForm';
 
 const TYPE_LABEL = new Map(LEAVE_TYPES.map((type) => [type.value, type.label]));
 
@@ -25,30 +17,6 @@ const STATUS: Record<LeaveStatus, { label: string; tone: Tone }> = {
   approved: { label: 'Approved', tone: 'success' },
   declined: { label: 'Declined', tone: 'danger' },
 };
-
-/** The form's fields. */
-interface LeaveForm {
-  type: LeaveType;
-  startDate: string;
-  endDate: string;
-  note: string;
-}
-
-const EMPTY: LeaveForm = { type: 'illness', startDate: '', endDate: '', note: '' };
-
-/**
- * Checks the form before it is sent.
- *
- * @param form - The fields.
- * @returns A message per invalid field.
- */
-export function validateLeave(form: LeaveForm): Partial<Record<keyof LeaveForm, string>> {
-  const errors: Partial<Record<keyof LeaveForm, string>> = {};
-  if (!form.startDate) errors.startDate = 'Choose the first day of leave.';
-  if (form.endDate && form.startDate && form.endDate < form.startDate) errors.endDate = 'The last day must be on or after the first.';
-  if (form.note.length > 500) errors.note = 'Keep the note under 500 characters.';
-  return errors;
-}
 
 /**
  * Leave requests for one child (B9): the form (new, or editing a pending

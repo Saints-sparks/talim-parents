@@ -6,7 +6,7 @@ import { useChildLeave } from '../../../hooks/portal/useChildData';
 import { useNotificationCounts } from '../../../hooks/portal/useNotificationFeed';
 import { useChatAlerts } from '../../../contexts/ChatAlertsContext';
 import { focusRing, countBadge } from '../ui/styles';
-import { toneOf } from '../ui/primitives';
+import { toneOf } from '../ui/tone';
 import { BADGE_MEANING, NAV_GROUPS, SETTINGS_ITEM, type NavBadgeKey, type NavItem } from './navItems';
 
 /** Props for {@link Sidebar}. */

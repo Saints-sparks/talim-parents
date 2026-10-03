@@ -8,7 +8,13 @@ import { ApiError, getErrorMessage } from '../lib/apiError';
  * request must never leave a spinner spinning.
  */
 
-/** A shimmering placeholder block, sized by the caller. */
+/**
+ * A shimmering placeholder block, sized by the caller.
+ *
+ * @param props - Component props.
+ * @param props.className - Size classes.
+ * @returns The block.
+ */
 export function SkeletonBlock({ className = 'h-24' }: { className?: string }) {
   return (
     <div

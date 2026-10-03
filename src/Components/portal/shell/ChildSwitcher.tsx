@@ -14,7 +14,7 @@ import type { ChildSummary } from '../../../types/portal/children';
  * @param child - The child.
  * @returns e.g. "Jss1 A · 94% attendance".
  */
-export function switcherMeta(child: ChildSummary): string {
+function switcherMeta(child: ChildSummary): string {
   const cls = child.class?.name ?? 'No class yet';
   return child.attendanceRate === null ? cls : `${cls} · ${percent(child.attendanceRate)} attendance`;
 }

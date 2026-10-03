@@ -4,7 +4,8 @@ import { renderPortal, requestsTo } from '../../test-utils/portal';
 import { userEvent } from '../../test-utils/render';
 import { CHILDREN } from '../../dev/fixtures/seed';
 import { CHILD_HEADER } from '../../lib/apiClient';
-import Timetable, { lessonIndex } from '../Timetable';
+import Timetable from '../Timetable';
+import { lessonIndex } from '../../Components/portal/timetable/lessonIndex';
 import type { ChildTimetable } from '../../types/portal/learner';
 
 const ZAINAB = CHILDREN[2];

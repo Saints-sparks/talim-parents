@@ -3,32 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../services/auth.services';
 import { useAcknowledgeReport, useReportCard, useReportTerms } from '../hooks/portal/useChildData';
 import { ChildGate } from '../Components/portal/ChildGate';
-import { ReportSheet, gradeTone, positionText } from '../Components/portal/results/ReportSheet';
+import { ReportSheet } from '../Components/portal/results/ReportSheet';
+import { gradeTone, positionText, reportPhase, type ReportPhase } from '../Components/portal/results/reportFormat';
 import { EmptyCard, ErrorCard, LoadingCard, PageHeader, Pill } from '../Components/portal/ui/primitives';
 import { card, fieldControl, primaryButton, type Tone } from '../Components/portal/ui/styles';
 import { getErrorMessage } from '../lib/apiError';
 import { firstNameOf, longDate, ordinal, percent } from '../lib/format';
 import type { ChildSummary } from '../types/portal/children';
-import type { ReportCard, ReportTerm } from '../types/portal/reportCard';
-
-/** Where a term's report stands, as the design names it. */
-export type ReportPhase = 'pending' | 'live' | 'published' | 'archived';
-
-/**
- * The state of a term's report: not published yet, live (scores still being
- * published), published this term, or archived (a past term).
- *
- * @param term - The term from the picker.
- * @param report - The report, once loaded.
- * @returns The phase.
- */
-export function reportPhase(term: ReportTerm | undefined, report?: ReportCard): ReportPhase {
-  const status = report?.status ?? term?.status;
-  if (!status || status === 'none') return 'pending';
-  if (status === 'partial') return 'live';
-  const current = report?.term.isCurrent ?? term?.isCurrent;
-  return current ? 'published' : 'archived';
-}
 
 /** The note beside the term picker. */
 const PHASE_NOTE: Record<ReportPhase, { tone: Tone; text: (closed: string | null) => string }> = {

@@ -44,17 +44,33 @@ const SEPTEMBER_MARKS: Record<string, { absent: number[]; late: number[]; leave:
   ibrahim: { absent: [5, 11, 12, 18], late: [2, 17], leave: [] },
 };
 
-/** A date as `YYYY-MM-DD` in UTC. */
+/**
+ * A date as `YYYY-MM-DD` in UTC.
+ *
+ * @param date - The date.
+ * @returns The day.
+ */
 const isoDay = (date: Date): string => date.toISOString().slice(0, 10);
 
-/** Adds days to a `YYYY-MM-DD`. */
+/**
+ * Adds days to a `YYYY-MM-DD`.
+ *
+ * @param day - A `YYYY-MM-DD` day.
+ * @param n - How many days to add, or the number to round.
+ * @returns The new `YYYY-MM-DD`.
+ */
 function addDays(day: string, n: number): string {
   const date = new Date(`${day}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + n);
   return isoDay(date);
 }
 
-/** The Monday on or before a `YYYY-MM-DD` (Saturday and Sunday move to the next week). */
+/**
+ * The Monday on or before a `YYYY-MM-DD` (Saturday and Sunday move to the next week).
+ *
+ * @param day - A `YYYY-MM-DD` day.
+ * @returns That week's Monday.
+ */
 function mondayOf(day: string): string {
   const date = new Date(`${day}T00:00:00.000Z`);
   const weekday = date.getUTCDay();
@@ -62,20 +78,41 @@ function mondayOf(day: string): string {
   return addDays(day, shift);
 }
 
-/** The letter grade for a percent on the fixture scale. */
+/**
+ * The letter grade for a percent on the fixture scale.
+ *
+ * @param percent - The percent, or null.
+ * @returns The letter, or null.
+ */
 const gradeOf = (percent: number | null): string | null =>
   percent === null ? null : (GRADE_SCALE.find((band) => percent >= band.min)?.grade ?? 'F');
 
-/** Rounds to one decimal. */
+/**
+ * Rounds to one decimal.
+ *
+ * @param n - The number to round.
+ * @returns The number to one decimal.
+ */
 const one = (n: number): number => Math.round(n * 10) / 10;
 
-/** A child's attendance rate (A7): (present + late) / (present + late + absent). */
+/**
+ * A child's attendance rate (A7): (present + late) / (present + late + absent).
+ *
+ * @param child - The child.
+ * @returns The percent to one decimal, or null before any register.
+ */
 function rateOf(child: SeedChild): number | null {
   const marked = child.present + child.late + child.absent;
   return marked ? one(((child.present + child.late) / marked) * 100) : null;
 }
 
-/** The child a child-scoped request is about, or the error to answer with. */
+/**
+ * The child a child-scoped request is about, or the error to answer with.
+ *
+ * @param db - The fixture database.
+ * @param request - The request.
+ * @returns The child, or the 400/404 response.
+ */
 function resolveChild(db: FixtureDb, request: FixtureRequest): SeedChild | Response {
   const header = request.headers[CHILD_HEADER] ?? request.headers[CHILD_HEADER.toLowerCase()];
   if (!header) return fail(400, 'CHILD_HEADER_REQUIRED', `${CHILD_HEADER} is required on child-scoped routes (fixture check).`);
@@ -87,13 +124,26 @@ function resolveChild(db: FixtureDb, request: FixtureRequest): SeedChild | Respo
   return child ?? fail(404, 'NOT_FOUND', 'That child is not linked to this account.');
 }
 
-/** Paid so far on one fee, seed plus fixture payments. */
+/**
+ * Paid so far on one fee, seed plus fixture payments.
+ *
+ * @param db - The fixture database.
+ * @param child - The child.
+ * @param feeKey - The fee's catalogue key.
+ * @returns Naira paid on that fee.
+ */
 function paidOn(db: FixtureDb, child: SeedChild, feeKey: string): number {
   const [amount, seedPaid] = child.feePlan[feeKey];
   return Math.min(amount, seedPaid + (db.extraPaid.get(child.id)?.[feeKey] ?? 0));
 }
 
-/** One child's fee items (C2). */
+/**
+ * One child's fee items (C2).
+ *
+ * @param db - The fixture database.
+ * @param child - The child.
+ * @returns The items with paid, balance and status.
+ */
 function feeItems(db: FixtureDb, child: SeedChild) {
   return Object.entries(child.feePlan).map(([feeKey, [amount]]) => {
     const fee = FEE_CATALOG[feeKey];
@@ -117,7 +167,13 @@ function feeItems(db: FixtureDb, child: SeedChild) {
   });
 }
 
-/** One child's bill (C2). */
+/**
+ * One child's bill (C2).
+ *
+ * @param db - The fixture database.
+ * @param child - The child.
+ * @returns The child's C2 entry.
+ */
 function childFees(db: FixtureDb, child: SeedChild) {
   const items = feeItems(db, child);
   const school = SCHOOLS[child.school];
@@ -133,7 +189,13 @@ function childFees(db: FixtureDb, child: SeedChild) {
   };
 }
 
-/** The B13 summary of one child. */
+/**
+ * The B13 summary of one child.
+ *
+ * @param db - The fixture database.
+ * @param child - The child.
+ * @returns The child's B13 entry.
+ */
 function childSummary(db: FixtureDb, child: SeedChild) {
   const school = SCHOOLS[child.school];
   const scores = subjectScores(child);
@@ -155,7 +217,12 @@ function childSummary(db: FixtureDb, child: SeedChild) {
   };
 }
 
-/** A notification row as the API lists it. */
+/**
+ * A notification row as the API lists it.
+ *
+ * @param row - The notification row.
+ * @returns The notification as the list route returns it.
+ */
 function notificationView(row: FixtureDb['notifications'][number]) {
   const school = SCHOOLS[row.schoolKey];
   return {
@@ -172,14 +239,26 @@ function notificationView(row: FixtureDb['notifications'][number]) {
   };
 }
 
-/** The notifications a child filter keeps: that child's, plus their school's notices. */
+/**
+ * The notifications a child filter keeps: that child's, plus their school's notices.
+ *
+ * @param db - The fixture database.
+ * @param childId - The child, or null for every child.
+ * @returns The rows that pass the filter.
+ */
 function forChild(db: FixtureDb, childId: string | null) {
   if (!childId) return db.notifications;
   const child = db.children.find((entry) => entry.id === childId);
   return db.notifications.filter((row) => row.childId === childId || (row.childId === null && row.schoolKey === child?.school));
 }
 
-/** Today's lessons and the week's lessons for one child. */
+/**
+ * Today's lessons and the week's lessons for one child.
+ *
+ * @param child - The child.
+ * @param day - A `YYYY-MM-DD` day.
+ * @returns The day's lessons, by period.
+ */
 function lessonsFor(child: SeedChild, day: string) {
   const weekday = new Date(`${day}T00:00:00.000Z`).getUTCDay() - 1;
   if (weekday < 0 || weekday > 4 || !child.className) return [];
@@ -214,7 +293,13 @@ function lessonsFor(child: SeedChild, day: string) {
   return lessons;
 }
 
-/** The register mark of one school day. */
+/**
+ * The register mark of one school day.
+ *
+ * @param child - The child.
+ * @param day - A `YYYY-MM-DD` day.
+ * @returns The mark.
+ */
 function dayStatus(child: SeedChild, day: string): string {
   const date = new Date(`${day}T00:00:00.000Z`);
   const weekday = date.getUTCDay();
@@ -231,7 +316,14 @@ function dayStatus(child: SeedChild, day: string): string {
   return 'present';
 }
 
-/** The report card of one child and term (B5). */
+/**
+ * The report card of one child and term (B5).
+ *
+ * @param db - The fixture database.
+ * @param child - The child.
+ * @param termId - The term.
+ * @returns The B5 body.
+ */
 function reportCard(db: FixtureDb, child: SeedChild, termId: string) {
   const index = TERMS.findIndex((term) => term.id === termId);
   const term = TERMS[index];
@@ -294,7 +386,13 @@ function reportCard(db: FixtureDb, child: SeedChild, termId: string) {
   };
 }
 
-/** A transaction as the history lists it (C6). */
+/**
+ * A transaction as the history lists it (C6).
+ *
+ * @param db - The fixture database.
+ * @param txn - The transaction.
+ * @returns The C6 row.
+ */
 function historyRow(db: FixtureDb, txn: TxnRow) {
   const child = db.children.find((entry) => entry.id === txn.childId);
   return {
@@ -309,7 +407,13 @@ function historyRow(db: FixtureDb, txn: TxnRow) {
   };
 }
 
-/** A receipt (C5) for a settled transaction. */
+/**
+ * A receipt (C5) for a settled transaction.
+ *
+ * @param db - The fixture database.
+ * @param txn - The transaction.
+ * @returns The C5 receipt.
+ */
 function receiptOf(db: FixtureDb, txn: TxnRow) {
   const child = db.children.find((entry) => entry.id === txn.childId) as SeedChild;
   const school = SCHOOLS[child.school];
@@ -331,7 +435,13 @@ function receiptOf(db: FixtureDb, txn: TxnRow) {
   };
 }
 
-/** Pages a list the way the API does. */
+/**
+ * Pages a list the way the API does.
+ *
+ * @param items - The rows.
+ * @param query - The query string (page, limit).
+ * @returns One page and its `meta`.
+ */
 function page<T>(items: T[], query: URLSearchParams) {
   const limit = Math.max(1, Number(query.get('limit') ?? 20));
   const current = Math.max(1, Number(query.get('page') ?? 1));
@@ -339,7 +449,12 @@ function page<T>(items: T[], query: URLSearchParams) {
   return { data: items.slice((current - 1) * limit, current * limit), meta: { total: items.length, page: current, lastPage, limit } };
 }
 
-/** The settings body (`GET /parent/settings`). */
+/**
+ * The settings body (`GET /parent/settings`).
+ *
+ * @param db - The fixture database.
+ * @returns The settings body.
+ */
 function settingsView(db: FixtureDb) {
   const { profile } = db;
   return {
@@ -363,7 +478,12 @@ function settingsView(db: FixtureDb) {
   };
 }
 
-/** The signed-in parent as introspect returns them. */
+/**
+ * The signed-in parent as introspect returns them.
+ *
+ * @param db - The fixture database.
+ * @returns The introspected user.
+ */
 function userView(db: FixtureDb) {
   const first = db.children[0];
   return {
@@ -381,8 +501,12 @@ function userView(db: FixtureDb) {
 }
 
 /**
- * Applies a settled checkout to the bill, issues the receipt and the
- * notification, as verify and the webhook do.
+ * Applies a settled checkout to the bill and issues the receipt, as verify
+ * and the webhook do. Settling twice changes nothing.
+ *
+ * @param db - The fixture database.
+ * @param reference - The checkout's reference.
+ * @returns The settled transaction, or null for an unknown reference.
  */
 function settle(db: FixtureDb, reference: string): TxnRow | null {
   const checkout = db.checkouts.get(reference);
@@ -415,7 +539,12 @@ function settle(db: FixtureDb, reference: string): TxnRow | null {
   return db.transactions.find((txn) => txn.reference === reference) ?? null;
 }
 
-/** Validates a leave body; answers the 400 when it is wrong. */
+/**
+ * Validates a leave body; answers the 400 when it is wrong.
+ *
+ * @param body - The request body.
+ * @returns The 400 response, or null when the body is fine.
+ */
 function leaveError(body: Record<string, unknown>): Response | null {
   const types = ['illness', 'medical', 'family_travel', 'religious', 'other'];
   const details: { field: string; reason: string }[] = [];
@@ -426,7 +555,13 @@ function leaveError(body: Record<string, unknown>): Response | null {
   return details.length ? fail(400, 'VALIDATION_FAILED', 'Some fields need attention.', details) : null;
 }
 
-/** School days between two dates, inclusive. */
+/**
+ * School days between two dates, inclusive.
+ *
+ * @param start - The first day.
+ * @param end - The last day.
+ * @returns The number of weekdays, at least one.
+ */
 function schoolDaysBetween(start: string, end: string): number {
   let count = 0;
   for (let day = start; day <= end; day = addDays(day, 1)) {

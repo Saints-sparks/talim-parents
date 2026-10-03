@@ -58,7 +58,13 @@ const SERVER_CATEGORIES: ReadonlySet<string> = new Set([
   'other',
 ]);
 
-/** The category of one item, decided by its type, then the server's own category. */
+/**
+ * The category of one item, decided by its type, then the server's own category.
+ *
+ * @param raw - The item as the API returned it.
+ * @param kind - Which feed it came from.
+ * @returns The category.
+ */
 function categoryOf(raw: RawNotification, kind: NotificationSourceKind): NotificationCategoryKey {
   const type = String(raw.type ?? '').toLowerCase();
   const fromType = TYPE_CATEGORIES[type];
@@ -142,7 +148,12 @@ export function attachmentsOf(raw: RawNotification): NotificationAttachment[] {
     .filter((entry): entry is NotificationAttachment => Boolean(entry?.url && isSafeUrl(entry.url)));
 }
 
-/** The things an item is about — a child, class or course, and a link. */
+/**
+ * The things an item is about — a child, class or course, and a link.
+ *
+ * @param raw - The item as the API returned it.
+ * @returns The related items, possibly empty.
+ */
 function relatedOf(raw: RawNotification): RelatedItem[] {
   const metadata = (raw.metadata ?? {}) as Record<string, unknown>;
   const related: RelatedItem[] = [];
