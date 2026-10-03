@@ -3,7 +3,6 @@ import type {
   NotificationAttachment,
   NotificationCategoryKey,
   NotificationSourceKind,
-  PaginatedNotifications,
   RawNotification,
   RelatedItem,
 } from '../types/notifications';
@@ -11,25 +10,11 @@ import type {
 /**
  * Turning what the notification routes return into what the UI shows.
  *
- * The API has two inboxes (per-user notifications, school announcements); this
- * file folds both into one `AppNotification` shape. Categories come from the
+ * One feed per parent (A10, B11): each item becomes an `AppNotification`, with
+ * the §30 target and label, the B11 child and the A11 school. Categories come from the
  * notification's `type`, which the server sets from a closed enum — never from
  * guessing at words in the title.
  */
-
-/** The categories a parent can filter by, in the order the UI lists them. */
-export const CATEGORY_KEYS: readonly NotificationCategoryKey[] = [
-  'announcement',
-  'attendance',
-  'academics',
-  'grading',
-  'payments',
-  'leave',
-  'messages',
-  'resources',
-  'account',
-  'other',
-];
 
 /** Notification `type` (`NotificationType` in the API) to UI category. */
 const TYPE_CATEGORIES: Readonly<Record<string, NotificationCategoryKey>> = {
@@ -170,15 +155,6 @@ function relatedOf(raw: RawNotification): RelatedItem[] {
   return related;
 }
 
-/** Whether a notification is the feed's copy of an announcement shown from the other inbox. */
-export function isAnnouncementCopy(raw: RawNotification): boolean {
-  const meta = (raw.metadata ?? {}) as Record<string, unknown>;
-  const source = raw.source ?? meta.source;
-  const category = raw.category ?? meta.category;
-  const type = String(raw.type ?? '').toLowerCase();
-  return source === 'school' && (category === 'announcement' || type.includes('announcement') || Boolean(meta.announcementId));
-}
-
 /**
  * Normalises one API item into the shape the UI renders.
  *
@@ -245,106 +221,3 @@ function portalFieldsOf(raw: RawNotification): Pick<AppNotification, 'target' | 
   };
 }
 
-/**
- * The items on a page, tolerating a bare array.
- *
- * @param page - One list response.
- * @returns The raw items.
- */
-export function itemsOf(page: PaginatedNotifications | RawNotification[] | undefined): RawNotification[] {
-  if (!page) return [];
-  if (Array.isArray(page)) return page;
-  return Array.isArray(page.data) ? page.data : [];
-}
-
-/**
- * Newest first; items without a usable date sink to the bottom.
- *
- * @param items - Normalised notifications.
- * @returns A new, sorted array.
- */
-export function sortNewest(items: readonly AppNotification[]): AppNotification[] {
-  const time = (value: string): number => {
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
-  return [...items].sort((a, b) => time(b.createdAt) - time(a.createdAt));
-}
-
-/** Counts shown on the tabs. */
-export type NotificationCounts = Record<NotificationCategoryKey | 'all' | 'unread', number>;
-
-/**
- * How many items are in each tab.
- *
- * @param items - Normalised notifications.
- * @returns A count per category, plus `all` and `unread`.
- */
-export function countNotifications(items: readonly AppNotification[]): NotificationCounts {
-  const counts = Object.fromEntries([...CATEGORY_KEYS, 'all', 'unread'].map((key) => [key, 0])) as NotificationCounts;
-  for (const item of items) {
-    counts.all += 1;
-    if (!item.isRead) counts.unread += 1;
-    counts[item.category] += 1;
-  }
-  return counts;
-}
-
-/** A tab key: everything, only unread, or one category. */
-export type NotificationFilter = 'all' | 'unread' | NotificationCategoryKey;
-
-/**
- * Applies the active tab and the search box.
- *
- * @param items - Normalised notifications.
- * @param filter - The active tab.
- * @param query - The search text.
- * @param categoryLabel - Turns a category into the label the parent sees, so searching for it works.
- * @returns The matching items, order preserved.
- */
-export function filterNotifications(
-  items: readonly AppNotification[],
-  filter: NotificationFilter,
-  query: string,
-  categoryLabel: (category: NotificationCategoryKey) => string,
-): AppNotification[] {
-  const needle = query.trim().toLowerCase();
-  return items.filter((item) => {
-    const inTab = filter === 'all' ? true : filter === 'unread' ? !item.isRead : item.category === filter;
-    if (!inTab) return false;
-    if (!needle) return true;
-    return [item.title, item.message, item.senderName, item.sourceLabel, categoryLabel(item.category)]
-      .join(' ')
-      .toLowerCase()
-      .includes(needle);
-  });
-}
-
-/**
- * The clock time of a timestamp, e.g. "09:30".
- *
- * @param value - An ISO timestamp.
- * @returns The time, or an empty string when the date is unusable.
- */
-export function formatTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(date);
-}
-
-/**
- * A day label: "Today", "Yesterday" or a short date.
- *
- * @param value - An ISO timestamp.
- * @param now - The current time (a parameter so tests are deterministic).
- * @returns The label, or an empty string when the date is unusable.
- */
-export function formatDay(value: string, now: Date = new Date()): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (date.toDateString() === now.toDateString()) return 'Today';
-  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
-}

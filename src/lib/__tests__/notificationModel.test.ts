@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  attachmentsOf,
-  countNotifications,
-  filterNotifications,
-  formatDay,
-  isAnnouncementCopy,
-  normalizeNotification,
-  sortNewest,
-} from '../notificationModel';
-import { categoryLabel } from '../../Components/notifications/categoryMeta';
+import { attachmentsOf, normalizeNotification } from '../notificationModel';
 
 const USER = 'u1';
 
@@ -59,37 +50,25 @@ describe('links', () => {
   });
 });
 
-describe('lists', () => {
-  const items = [
-    normalizeNotification({ _id: '1', type: 'attendance_alert', title: 'Absent', createdAt: '2026-01-02T00:00:00Z', isRead: false }, 'notification', USER),
-    normalizeNotification({ _id: '2', title: 'Sports day', createdAt: '2026-01-03T00:00:00Z', isRead: true }, 'announcement', USER),
-    normalizeNotification({ _id: '3', type: 'fee_reminder', title: 'Fees due', createdAt: '2026-01-01T00:00:00Z', isRead: false }, 'notification', USER),
-  ];
-
-  it('sorts newest first and counts per tab', () => {
-    expect(sortNewest(items).map((i) => i.rawId)).toEqual(['2', '1', '3']);
-    const counts = countNotifications(items);
-    expect(counts).toMatchObject({ all: 3, unread: 2, attendance: 1, payments: 1, announcement: 1 });
+describe('the redesign fields', () => {
+  it('reads the target, action label, child and school, and ignores malformed ones', () => {
+    const item = normalizeNotification(
+      {
+        _id: 'n1',
+        title: 'Fee reminder',
+        category: 'payments',
+        school: { id: 's1', name: 'Easy Sparks' },
+        metadata: { childId: 'c1', target: { page: 'payments' }, actionLabel: 'Open Payments' },
+      },
+      'notification',
+      USER,
+    );
+    expect(item).toMatchObject({ category: 'payments', childId: 'c1', target: { page: 'payments' }, actionLabel: 'Open Payments', school: { name: 'Easy Sparks' } });
+    const bare = normalizeNotification({ _id: 'n2', metadata: { target: 'payments' } }, 'notification', USER);
+    expect(bare).toMatchObject({ target: null, actionLabel: null, childId: null, school: null });
   });
 
-  it('filters by tab and searches the visible category label too', () => {
-    expect(filterNotifications(items, 'unread', '', categoryLabel)).toHaveLength(2);
-    expect(filterNotifications(items, 'payments', '', categoryLabel).map((i) => i.rawId)).toEqual(['3']);
-    expect(filterNotifications(items, 'all', 'fee & payments', categoryLabel).map((i) => i.rawId)).toEqual(['3']);
-  });
-
-  it('spots the feed copy of an announcement so it is not listed twice', () => {
-    expect(isAnnouncementCopy({ source: 'school', type: 'announcement' })).toBe(true);
-    expect(isAnnouncementCopy({ source: 'school', metadata: { announcementId: 'a' } })).toBe(true);
-    expect(isAnnouncementCopy({ source: 'talim', type: 'fee_reminder' })).toBe(false);
-  });
-});
-
-describe('formatDay', () => {
-  it('names today and yesterday', () => {
-    const now = new Date('2026-05-10T12:00:00');
-    expect(formatDay('2026-05-10T08:00:00', now)).toBe('Today');
-    expect(formatDay('2026-05-09T08:00:00', now)).toBe('Yesterday');
-    expect(formatDay('nonsense', now)).toBe('');
+  it('files leave updates under leave', () => {
+    expect(normalizeNotification({ _id: 'n3', type: 'leave_request_update' }, 'notification', USER).category).toBe('leave');
   });
 });

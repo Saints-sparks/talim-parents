@@ -87,12 +87,6 @@ export interface AppNotification {
   school: SchoolRef | null;
 }
 
-/** The paginated envelope the notification list routes return. */
-export interface PaginatedNotifications {
-  data: RawNotification[];
-  meta: { total: number; page: number; lastPage: number; limit: number };
-}
-
 /**
  * The switches on `GET /notifications/preferences`, mirroring
  * `UpdateNotificationPreferenceDto`. Delivery (in-app, push, email) consults

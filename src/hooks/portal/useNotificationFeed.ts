@@ -50,14 +50,15 @@ type FeedPages = InfiniteData<Paginated<RawPortalNotification>, number>;
  * child, instead of loading the feeds on every page.
  *
  * @param childId - Count one child's notifications; every child when omitted.
+ * @param enabled - Hold the request (until the child filter is known).
  * @returns The query.
  */
-export function useNotificationCounts(childId?: string): UseQueryResult<NotificationCounts> {
+export function useNotificationCounts(childId?: string, enabled = true): UseQueryResult<NotificationCounts> {
   const { parentId, isAuthenticated } = useAuth();
   return useQuery({
     queryKey: queryKeys.notifications.counts(parentId || 'anon', childId),
     queryFn: () => getNotificationCounts(childId),
-    enabled: Boolean(parentId && isAuthenticated),
+    enabled: Boolean(parentId && isAuthenticated) && enabled,
     staleTime: staleTimes.fresh,
   });
 }
@@ -81,9 +82,10 @@ export interface NotificationFeed {
  *
  * @param filter - The filter chip.
  * @param childId - The child chip (the active child by default); `undefined` is every child.
+ * @param enabled - Hold the request (until the child filter is known).
  * @returns The items and paging.
  */
-export function useNotificationFeed(filter: NotificationFilterKey, childId: string | undefined): NotificationFeed {
+export function useNotificationFeed(filter: NotificationFilterKey, childId: string | undefined, enabled = true): NotificationFeed {
   const { parentId, isAuthenticated } = useAuth();
   const category = NOTIFICATION_FILTERS.find((entry) => entry.key === filter)?.category;
   const unread = filter === 'unread';
@@ -93,7 +95,7 @@ export function useNotificationFeed(filter: NotificationFilterKey, childId: stri
     queryFn: ({ pageParam }) => getNotificationFeed({ childId, category, unread, page: pageParam, limit: FEED_PAGE_SIZE }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.meta && last.meta.page < last.meta.lastPage ? last.meta.page + 1 : undefined),
-    enabled: Boolean(parentId && isAuthenticated),
+    enabled: Boolean(parentId && isAuthenticated) && enabled,
     staleTime: staleTimes.fresh,
   });
 
@@ -113,7 +115,7 @@ export function useNotificationFeed(filter: NotificationFilterKey, childId: stri
 
   return {
     items,
-    isLoading: query.isPending && query.fetchStatus !== 'idle',
+    isLoading: query.isPending && (query.fetchStatus !== 'idle' || !enabled),
     isError: query.isError,
     error: query.error,
     hasMore: Boolean(query.hasNextPage),
