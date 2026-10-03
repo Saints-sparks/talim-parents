@@ -498,7 +498,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
     { method: 'POST', pattern: '/parent/settings/phone/send-otp', handler: () => raw({ success: true, message: 'Code sent to your email.' }) },
     { method: 'POST', pattern: '/parent/settings/phone/verify-otp', handler: (request) => {
       if (body(request).otp !== '123456') return fail(400, 'VALIDATION_FAILED', 'That code is wrong or has expired.', [{ field: 'otp', reason: 'invalid' }]);
-      db.profile.phoneNumber = String(body(request).phoneNumber);
+      db.profile.phoneNumber = String(body(request).newPhoneNumber);
       return raw({ success: true, message: 'Phone number updated.' });
     } },
     { method: 'PATCH', pattern: '/parent/settings/theme', handler: () => raw({ success: true, message: 'Theme saved' }) },
