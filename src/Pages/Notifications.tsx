@@ -134,7 +134,7 @@ export default function Notifications() {
                 aria-pressed={filter === entry.key}
                 onClick={() => setFilter(entry.key)}
                 title={entry.key === 'unread' ? 'Only what you have not opened' : `Show ${entry.label.toLowerCase()}`}
-                className={`${chip(filter === entry.key)} !min-h-[40px] !py-[9px]`}
+                className={`${chip(filter === entry.key)}`}
               >
                 {entry.label}
                 {unread > 0 && entry.key !== 'all' ? (
@@ -153,7 +153,7 @@ export default function Notifications() {
             </label>
             <select
               id={childSelectId}
-              className={`${fieldControl} !min-h-[40px] !w-auto !rounded-full !py-1.5 !text-sm`}
+              className={`${fieldControl} !min-h-[44px] !w-auto !rounded-full !py-1.5 !text-sm`}
               value={childId ?? ALL_CHILDREN}
               onChange={(event) => setChildChoice(event.target.value)}
             >

@@ -119,7 +119,7 @@ export function BankTransferStep({ childId, feeAssignmentIds, amount, onBack, on
             {details.data.number}
             <button
               type="button"
-              className={`${rowButton} !min-h-[36px] gap-1.5`}
+              className={`${rowButton} gap-1.5`}
               onClick={() => {
                 void navigator.clipboard?.writeText(details.data.number).then(() => setCopied(true), () => undefined);
               }}

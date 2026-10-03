@@ -131,7 +131,7 @@ function MessagesSidebar({
               type="button"
               onClick={() => setSelectedFilter(key)}
               aria-pressed={selectedFilter === key}
-              className={`min-h-[40px] rounded-xl border px-2 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tl-link ${
+              className={`min-h-[44px] rounded-xl border px-2 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tl-link ${
                 selectedFilter === key ? 'border-tl-brand-fill bg-tl-brand-fill text-tl-on-brand' : 'border-tl-line bg-tl-surface text-tl-muted hover:text-tl-ink'
               }`}
             >
