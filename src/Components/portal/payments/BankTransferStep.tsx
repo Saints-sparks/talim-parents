@@ -2,7 +2,7 @@ import { useId, useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, Copy } from 'lucide-react';
 import { useBankDetails, useBankTransfer } from '../../../hooks/portal/usePortalPayments';
 import { getCloudinaryConfig, uploadImage } from '../../../lib/cloudinary';
-import { getErrorMessage } from '../../../lib/apiError';
+import { ApiError, getErrorMessage } from '../../../lib/apiError';
 import { formatWholeNaira } from '../../../lib/paymentTotals';
 import { todayIso } from '../../../lib/format';
 import { ErrorCard } from '../ui/primitives';
@@ -41,6 +41,8 @@ export function BankTransferStep({ childId, feeAssignmentIds, amount, onBack, on
   const referenceRef = useRef<HTMLInputElement>(null);
   const ids = { reference: useId(), date: useId(), proof: useId() };
   const canUpload = Boolean(getCloudinaryConfig());
+  // 404: the school has no account for transfers (C4); nothing to retry.
+  const noAccount = details.isError && details.error instanceof ApiError && details.error.status === 404;
 
   if (transfer.isSuccess) {
     return (
@@ -60,6 +62,20 @@ export function BankTransferStep({ childId, feeAssignmentIds, amount, onBack, on
         </div>
         <button type="button" className={primaryButton} onClick={onDone}>
           Done
+        </button>
+      </div>
+    );
+  }
+
+  if (noAccount) {
+    return (
+      <div role="alert" className={`${statBox} flex flex-col gap-3 text-sm leading-relaxed text-tl-muted`}>
+        <p>
+          <strong className="text-tl-ink">The school has not set up a bank account for transfers yet.</strong> Choose another way to pay, or
+          ask the bursary for their account details.
+        </p>
+        <button type="button" className={`${ghostButton} self-start`} onClick={onBack}>
+          Choose another method
         </button>
       </div>
     );

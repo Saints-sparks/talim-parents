@@ -121,6 +121,19 @@ describe('Payments (fixtures)', () => {
     expect(screen.getAllByText('₦62,000').length).toBeGreaterThan(0);
   });
 
+  it('bank transfer: a school with no transfer account says so, and goes back to the methods', async () => {
+    const user = userEvent.setup();
+    renderPortal(<Payments />, { prepare: (db) => (db.noBankAccount = true) });
+    await user.click(await screen.findByRole('button', { name: 'Pay all' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('radio', { name: /Bank transfer/ }));
+    await user.click(within(dialog).getByRole('button', { name: /by bank transfer/ }));
+    expect(await within(dialog).findByText('The school has not set up a bank account for transfers yet.')).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText('Transfer reference')).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Choose another method' }));
+    expect(await within(dialog).findByText('How much would you like to pay?')).toBeInTheDocument();
+  });
+
   it('receipts tab lists the term receipts with view and download', async () => {
     const user = userEvent.setup();
     renderPortal(<Payments />);

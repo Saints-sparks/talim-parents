@@ -1143,6 +1143,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
     { method: 'GET', pattern: '/payments/parent/bank-details', handler: (request) => {
       const kid = child(request);
       if (kid instanceof Response) return kid;
+      if (db.noBankAccount) return fail(404, 'NOT_FOUND', 'This school has not set up a bank account for transfers yet.');
       const school = SCHOOLS[kid.school];
       const details: BankDetails = { ...school.bank, school: { id: school.id, name: school.name } };
       return ok(details);

@@ -97,6 +97,8 @@ export interface FixtureDb {
   tourCompletedAt: string | null;
   /** The school lets parents download receipts (C5 `downloadAllowed`). */
   receiptDownloads: boolean;
+  /** The school has set up no account for transfers (C4 bank details answer 404). */
+  noBankAccount: boolean;
   notificationPrefs: Record<string, boolean | string>;
   chatPrivacy: Schema<'ChatPreferencesResponseDto'>;
   sessions: { id: string; device: string | null; browser: string | null; os: string | null; ip: string | null; lastUsedAt: string; createdAt: string; current: boolean }[];
@@ -225,6 +227,7 @@ export function createFixtureDb(scenario: FixtureScenario = 'family'): FixtureDb
     // Seen, so the tour does not cover the screens under test; a tour test clears it.
     tourCompletedAt: '2026-09-01T08:00:00.000Z',
     receiptDownloads: true,
+    noBankAccount: false,
     notificationPrefs: {
       pushEnabled: true, webPushEnabled: true, emailEnabled: true, messagesEnabled: true,
       announcementsEnabled: true, attendanceEnabled: true, feesEnabled: true, resultsEnabled: true,
