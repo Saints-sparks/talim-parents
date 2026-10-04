@@ -50,7 +50,7 @@ export const SCENARIO_STORAGE_KEY = 'talim_fixture_scenario';
 function storedScenario(): FixtureScenario {
   try {
     const value = window.localStorage.getItem(SCENARIO_STORAGE_KEY);
-    if (value === 'single' || value === 'empty' || value === 'no-class' || value === 'family') return value;
+    if (value === 'single' || value === 'empty' || value === 'no-class' || value === 'no-term' || value === 'family') return value;
   } catch {
     /* storage may be blocked */
   }
