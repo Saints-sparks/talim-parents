@@ -68,6 +68,27 @@ describe('the redesign fields', () => {
     expect(bare).toMatchObject({ target: null, actionLabel: null, childId: null, school: null });
   });
 
+  it('reads a dashboard feed item (FeedItemDto): id, and target and label at the top level', () => {
+    const item = normalizeNotification(
+      {
+        id: 'f1',
+        title: 'Results published',
+        message: 'First term totals are visible.',
+        category: 'grading',
+        createdAt: '2026-10-03T08:00:00.000Z',
+        isRead: false,
+        senderName: null,
+        target: { page: 'results', termId: 't1' },
+        actionLabel: 'Open Results',
+        school: { id: 's1', name: 'Greenfield' },
+        metadata: { childId: 'c1' },
+      },
+      'notification',
+      USER,
+    );
+    expect(item).toMatchObject({ rawId: 'f1', target: { page: 'results', termId: 't1' }, actionLabel: 'Open Results', childId: 'c1', isRead: false });
+  });
+
   it('files leave updates under leave', () => {
     expect(normalizeNotification({ _id: 'n3', type: 'leave_request_update' }, 'notification', USER).category).toBe('leave');
   });
