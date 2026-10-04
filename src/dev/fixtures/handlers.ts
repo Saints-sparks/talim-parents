@@ -499,6 +499,9 @@ function historyRow(db: FixtureDb, txn: TxnRow): PaymentHistoryRow {
     currency: 'NGN',
     createdAt: txn.date,
     ...(txn.method !== 'bank_transfer' ? { providerName: txn.method } : {}),
+    ...(txn.method === 'bank_transfer' && txn.transferReference
+      ? { bankTransfer: { transferReference: txn.transferReference, rejectionReason: txn.rejectionReason ?? '' } }
+      : {}),
   };
 }
 

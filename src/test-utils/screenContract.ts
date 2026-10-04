@@ -427,6 +427,9 @@ export const HISTORY_PAGE = shape<HistoryPage>({
       reference: 'string',
       status: oneOf('pending', 'successful', 'failed', 'cancelled', 'refunded', 'partial'),
       receiptId: nullable('string'),
+      bankTransfer: optional(
+        nullable(shape<NonNullable<PaymentHistoryRow['bankTransfer']>>({ transferReference: optional('string'), rejectionReason: optional('string') })),
+      ),
     }),
   ),
 });

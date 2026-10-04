@@ -118,6 +118,7 @@ describe('Payments (fixtures)', () => {
     const row = (await screen.findByText(reference)).closest('tr') as HTMLElement;
     expect(within(row).getByText('Pending')).toBeInTheDocument();
     expect(within(row).getByText('Waiting for the bursary')).toBeInTheDocument();
+    expect(within(row).getByText('Bank ref. FT2626XYZ')).toBeInTheDocument();
     expect(screen.getAllByText('₦62,000').length).toBeGreaterThan(0);
   });
 
@@ -132,6 +133,32 @@ describe('Payments (fixtures)', () => {
     expect(within(dialog).queryByLabelText('Transfer reference')).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Choose another method' }));
     expect(await within(dialog).findByText('How much would you like to pay?')).toBeInTheDocument();
+  });
+
+  it('history: a transfer the bursary rejected reads "Not confirmed", with its reason', async () => {
+    const user = userEvent.setup();
+    renderPortal(<Payments />, {
+      prepare: (db) => {
+        db.transactions.unshift({
+          id: 'tx-rejected',
+          childId: MUSA.id,
+          date: '2026-09-10T00:00:00.000Z',
+          items: [{ feeAssignmentId: `fa-${MUSA.key}-exam`, label: 'Examination fee', amount: 15_000 }],
+          amount: 15_000,
+          method: 'bank_transfer',
+          reference: 'TXN-2026-REJECTED000001',
+          transferReference: 'FT-WRONG-1',
+          rejectionReason: 'No transfer with this reference reached the school account.',
+          receiptNumber: null,
+          status: 'failed',
+          termId: 'term',
+        });
+      },
+    });
+    await user.click(await screen.findByRole('tab', { name: 'Payment history' }));
+    const row = (await screen.findByText('TXN-2026-REJECTED000001')).closest('tr') as HTMLElement;
+    expect(within(row).getByText('Not confirmed')).toBeInTheDocument();
+    expect(within(row).getByText('No transfer with this reference reached the school account.')).toBeInTheDocument();
   });
 
   it('receipts tab lists the term receipts with view and download', async () => {

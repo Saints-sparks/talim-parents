@@ -50,6 +50,8 @@ export interface TxnRow {
   termId: string;
   /** Bank transfers only: the bank's reference the parent gave. */
   transferReference?: string;
+  /** Bank transfers only: why the bursary rejected it. */
+  rejectionReason?: string;
 }
 
 /** A checkout started with `initialize`, waiting for verify. */

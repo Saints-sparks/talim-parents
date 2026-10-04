@@ -75,11 +75,17 @@ export function HistoryPanel({ childId }: { childId: string }) {
                   <td className="px-1.5 py-4 pr-2.5 font-bold text-tl-ink">{row.items.map((item) => item.label).join(', ') || '—'}</td>
                   <td className="px-1.5 py-4 font-extrabold text-tl-ink">{naira(row.amount)}</td>
                   <td className="px-1.5 py-4 text-tl-muted">{methodName(row.method)}</td>
-                  <td className="px-1.5 py-4 text-[13px] text-tl-muted">{row.reference}</td>
+                  <td className="px-1.5 py-4 text-[13px] text-tl-muted">
+                    {row.reference}
+                    {row.bankTransfer?.transferReference ? <span className="block text-xs text-tl-faint">Bank ref. {row.bankTransfer.transferReference}</span> : null}
+                  </td>
                   <td className="px-1.5 py-4">
                     <Pill tone={status.tone}>{status.label}</Pill>
                     {row.status === 'pending' && row.methodKind === 'bank_transfer' ? (
                       <span className="mt-1 block text-xs text-tl-faint">Waiting for the bursary</span>
+                    ) : null}
+                    {row.status === 'failed' && row.bankTransfer?.rejectionReason ? (
+                      <span className="mt-1 block max-w-[220px] text-xs text-tl-muted">{row.bankTransfer.rejectionReason}</span>
                     ) : null}
                   </td>
                 </tr>
