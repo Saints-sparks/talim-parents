@@ -111,17 +111,17 @@ export function BankTransferStep({ childId, feeAssignmentIds, amount, onBack, on
       ) : (
         <dl className={`${statBox} grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm`}>
           <dt className="font-bold text-tl-muted">Bank</dt>
-          <dd className="font-extrabold text-tl-ink">{details.data.bank}</dd>
+          <dd className="font-extrabold text-tl-ink">{details.data.bankName}</dd>
           <dt className="font-bold text-tl-muted">Account name</dt>
-          <dd className="font-extrabold text-tl-ink">{details.data.name}</dd>
+          <dd className="font-extrabold text-tl-ink">{details.data.accountName}</dd>
           <dt className="font-bold text-tl-muted">Account number</dt>
           <dd className="flex flex-wrap items-center gap-2 font-extrabold tracking-wide text-tl-ink">
-            {details.data.number}
+            {details.data.accountNumber}
             <button
               type="button"
               className={`${rowButton} gap-1.5`}
               onClick={() => {
-                void navigator.clipboard?.writeText(details.data.number).then(() => setCopied(true), () => undefined);
+                void navigator.clipboard?.writeText(details.data.accountNumber).then(() => setCopied(true), () => undefined);
               }}
             >
               <Copy className="h-3.5 w-3.5" aria-hidden="true" />

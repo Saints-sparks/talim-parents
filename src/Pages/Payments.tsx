@@ -27,12 +27,14 @@ type TabKey = (typeof TABS)[number]['key'];
  * The numbers the hero and the tiles show for one child's bill.
  *
  * @param bill - The child's bill (C2).
- * @returns Outstanding, paid, bill, percent paid and the items still owed.
+ * @returns The items still owed, those of them that can be paid now (no
+ *   checkout or bank transfer holds them), and the percent paid.
  */
 function billSummary(bill: ChildFees) {
   const due = bill.items.filter((item) => item.balance > 0);
+  const payable = due.filter((item) => !item.pendingPayment);
   const paidPercent = bill.billTotal > 0 ? Math.round((bill.paid / bill.billTotal) * 100) : 100;
-  return { due, paidPercent };
+  return { due, payable, paidPercent };
 }
 
 /**
@@ -95,8 +97,8 @@ function ChildPayments({ child }: { child: ChildSummary }) {
                 <Pill tone={bill.outstanding > 0 ? 'warning' : 'success'} className="!px-4 !py-3 !text-sm">
                   {bill.outstanding > 0 ? (bill.paid > 0 ? 'Part paid' : 'Unpaid') : 'Fully paid'}
                 </Pill>
-                {bill.outstanding > 0 ? (
-                  <button type="button" className={primaryButton} onClick={() => setCheckoutItems(summary.due)} title="Pay everything still outstanding">
+                {bill.outstanding > 0 && summary.payable.length > 0 ? (
+                  <button type="button" className={primaryButton} onClick={() => setCheckoutItems(summary.payable)} title="Pay everything still outstanding">
                     Pay all
                   </button>
                 ) : null}

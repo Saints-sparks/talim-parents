@@ -1,5 +1,6 @@
 import { amountInWords } from './amountInWords';
 import { longDate } from './format';
+import type { ChildSummary } from '../types/portal/children';
 import type { ParentReceipt, PaymentMethodName } from '../types/portal/payments';
 
 /**
@@ -15,6 +16,9 @@ const METHOD_NAMES: Record<string, string> = {
   stripe: 'Stripe',
   bank_transfer: 'Bank transfer',
   cash: 'Cash',
+  pos: 'POS',
+  cheque: 'Cheque',
+  online: 'Online',
   other: 'Other',
 };
 
@@ -51,31 +55,64 @@ export interface ReceiptLayout {
 }
 
 /**
+ * What the receipt itself does not carry about the student (C5's `child` is
+ * `{ id, name }`), from the children list.
+ */
+export interface ReceiptStudent {
+  admissionNumber?: string | null;
+  className?: string | null;
+}
+
+/**
+ * Looks a receipt's child up in the children list, for the details the
+ * receipt does not carry.
+ *
+ * @param children - The parent's children (B13).
+ * @returns A lookup by child id.
+ */
+export function studentLookup(children: readonly Pick<ChildSummary, 'id' | 'admissionNumber' | 'class'>[]): (childId: string) => ReceiptStudent | undefined {
+  const byId = new Map(children.map((child) => [child.id, { admissionNumber: child.admissionNumber, className: child.class?.name ?? null }]));
+  return (childId) => byId.get(childId);
+}
+
+/**
+ * How a receipt's payment reads: the provider for an online payment, else the
+ * method the bursary recorded (`cash`, `pos`, `bank_transfer`…).
+ *
+ * @param receipt - The receipt.
+ * @returns e.g. "Paystack", "Bank transfer".
+ */
+export function receiptMethod(receipt: Pick<ParentReceipt, 'paymentProvider' | 'paymentMethod'>): string {
+  return methodName(receipt.paymentProvider || receipt.paymentMethod || 'other');
+}
+
+/**
  * The content of one receipt page.
  *
  * @param receipt - The receipt (C5).
+ * @param student - The admission number and class, when known.
  * @returns The page's text, top to bottom.
  */
-export function receiptLayout(receipt: ParentReceipt): ReceiptLayout {
-  const term = [receipt.termName, receipt.session].filter(Boolean).join(', ');
+export function receiptLayout(receipt: ParentReceipt, student: ReceiptStudent = {}): ReceiptLayout {
+  const term = [receipt.term?.name, receipt.term?.session].filter(Boolean).join(', ');
   const details: [string, string][] = [
     ['Receipt no.', receipt.receiptNumber],
-    ['Date paid', longDate(receipt.paidAt)],
+    ['Date paid', longDate(receipt.paymentDate)],
     ['Student', receipt.child.name],
   ];
-  if (receipt.child.admissionNumber) details.push(['Admission no.', receipt.child.admissionNumber]);
-  if (receipt.child.className) details.push(['Class', receipt.child.className]);
+  if (student.admissionNumber) details.push(['Admission no.', student.admissionNumber]);
+  if (student.className) details.push(['Class', student.className]);
   if (term) details.push(['Term', term]);
-  details.push(['Paid with', methodName(receipt.method)]);
-  if (receipt.reference) details.push(['Reference', receipt.reference]);
+  details.push(['Paid with', receiptMethod(receipt)]);
+  if (receipt.transactionReference) details.push(['Reference', receipt.transactionReference]);
   return {
-    schoolName: receipt.school.name,
-    schoolAddress: receipt.school.address,
+    schoolName: receipt.school?.name ?? 'School',
+    schoolAddress: receipt.school?.address || null,
     title: 'School fees receipt',
     details,
     items: receipt.items.map((item) => [item.label, pdfMoney(item.amount)]),
-    total: pdfMoney(receipt.total),
-    words: amountInWords(receipt.total),
+    total: pdfMoney(receipt.totalPaid),
+    words: amountInWords(receipt.totalPaid),
   };
 }
 
@@ -97,12 +134,17 @@ export interface PdfDoc {
  *
  * @param doc - A jspdf document (A4, millimetres).
  * @param receipts - The receipts, in order.
+ * @param studentOf - The admission number and class of a receipt's child, when known.
  * @returns The same document.
  */
-export function drawReceipts<T extends PdfDoc>(doc: T, receipts: readonly ParentReceipt[]): T {
+export function drawReceipts<T extends PdfDoc>(
+  doc: T,
+  receipts: readonly ParentReceipt[],
+  studentOf: (childId: string) => ReceiptStudent | undefined = () => undefined,
+): T {
   receipts.forEach((receipt, index) => {
     if (index > 0) doc.addPage();
-    const page = receiptLayout(receipt);
+    const page = receiptLayout(receipt, studentOf(receipt.child.id));
     let y = 22;
     doc.setTextColor(11, 46, 94);
     doc.setFont('helvetica', 'bold');
@@ -166,13 +208,18 @@ export function drawReceipts<T extends PdfDoc>(doc: T, receipts: readonly Parent
  *
  * @param receipts - One receipt, or a term's receipts.
  * @param filename - The file name, ending in `.pdf`.
+ * @param studentOf - The admission number and class of a receipt's child, when known.
  * @returns Resolves once the download has been handed to the browser.
  */
-export async function downloadReceiptsPdf(receipts: readonly ParentReceipt[], filename: string): Promise<void> {
+export async function downloadReceiptsPdf(
+  receipts: readonly ParentReceipt[],
+  filename: string,
+  studentOf?: (childId: string) => ReceiptStudent | undefined,
+): Promise<void> {
   if (receipts.length === 0) return;
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  drawReceipts(doc as unknown as PdfDoc, receipts).save(filename);
+  drawReceipts(doc as unknown as PdfDoc, receipts, studentOf).save(filename);
 }
 
 /**

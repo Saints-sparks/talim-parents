@@ -238,6 +238,9 @@ function ChildLeave({ child }: { child: ChildSummary }) {
                         {status.label} by {request.decidedBy.name}
                       </div>
                     ) : null}
+                    {request.status === 'declined' && request.declineReason ? (
+                      <div className="mt-1 text-xs text-tl-muted">Reason: {request.declineReason}</div>
+                    ) : null}
                     {pending ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button type="button" className={rowButton} onClick={() => startEdit(request)} aria-label={`Edit the ${TYPE_LABEL.get(request.type)} request`}>

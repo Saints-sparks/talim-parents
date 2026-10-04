@@ -24,7 +24,8 @@ export interface SeedSchool {
   email: string;
   address: string;
   officeHours: { start: string; end: string };
-  bank: { bank: string; name: string; number: string };
+  /** The school's default account (C4 `bank-details`). */
+  bank: { bankName: string; accountName: string; accountNumber: string };
   providers: ('paystack' | 'opay' | 'stripe')[];
   minimumPartPayment: number;
   receiptPrefix: string;
@@ -40,7 +41,7 @@ export const SCHOOLS: Record<string, SeedSchool> = {
     email: 'office@easysparks.edu.ng',
     address: '14 Oduduwa Crescent, GRA Ikeja, Lagos',
     officeHours: { start: '08:00', end: '16:00' },
-    bank: { bank: 'Zenith Bank', name: 'Easy Sparks Education Center', number: '0123456789' },
+    bank: { bankName: 'Zenith Bank', accountName: 'Easy Sparks Education Center', accountNumber: '0123456789' },
     providers: ['paystack', 'opay', 'stripe'],
     minimumPartPayment: 10_000,
     receiptPrefix: 'RCP',
@@ -54,7 +55,7 @@ export const SCHOOLS: Record<string, SeedSchool> = {
     email: 'frontdesk@brightgate.edu.ng',
     address: 'Plot 62, 3rd Avenue, Gwarinpa Estate, Abuja',
     officeHours: { start: '07:30', end: '15:30' },
-    bank: { bank: 'GTBank', name: 'Brightgate Academy Ltd', number: '0234567891' },
+    bank: { bankName: 'GTBank', accountName: 'Brightgate Academy Ltd', accountNumber: '0234567891' },
     providers: ['paystack', 'stripe'],
     minimumPartPayment: 15_000,
     receiptPrefix: 'BGA',
@@ -219,5 +220,5 @@ export const LEAVE = [
   { id: '68l0000000000000000000l1', type: 'medical', startDate: '2026-09-24', endDate: '2026-09-24', days: 1, note: 'Dental review at 10am, back before lunch.', status: 'pending', createdAt: '2026-09-17T09:12:00.000Z' },
   { id: '68l0000000000000000000l2', type: 'family_travel', startDate: '2026-09-04', endDate: '2026-09-07', days: 2, note: "Grandmother's burial in Abeokuta.", status: 'approved', createdAt: '2026-08-30T10:00:00.000Z' },
   { id: '68l0000000000000000000l3', type: 'illness', startDate: '2026-08-22', endDate: '2026-08-22', days: 1, note: 'Malaria, seen at Reddington Clinic.', status: 'approved', createdAt: '2026-08-22T07:30:00.000Z' },
-  { id: '68l0000000000000000000l4', type: 'other', startDate: '2026-08-12', endDate: '2026-08-12', days: 1, note: 'Family event, submitted late.', status: 'declined', createdAt: '2026-08-12T06:00:00.000Z' },
+  { id: '68l0000000000000000000l4', type: 'other', startDate: '2026-08-12', endDate: '2026-08-12', days: 1, note: 'Family event, submitted late.', status: 'declined', declineReason: 'Requests must reach the school before the day.', createdAt: '2026-08-12T06:00:00.000Z' },
 ] as const;

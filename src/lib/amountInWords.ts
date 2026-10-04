@@ -9,10 +9,12 @@ const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 
  * Spells out a whole number of naira, for the "amount in words" line on a
  * printed receipt.
  *
- * @param value - A non-negative number; the fractional part is dropped.
+ * @param value - A non-negative number; the fractional part is dropped. A
+ *   missing or non-numeric amount reads as zero instead of recursing forever.
  * @returns The amount in words, ending "Naira Only".
  */
 export function amountInWords(value: number): string {
+  if (!Number.isFinite(value)) value = 0;
   const convert = (num: number): string => {
     if (num === 0) return 'Zero';
     if (num < 20) return ONES[num];

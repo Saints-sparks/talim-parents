@@ -13,13 +13,12 @@ import {
 import { queryKeys, staleTimes } from '../../lib/queryKeys';
 import { logger } from '../../lib/logger';
 import type { PaymentProvider, PaymentProviderName } from '../../types/payments';
-import type { Paginated } from '../../types/portal/common';
 import type {
   BankDetails,
   BankTransferPayload,
   BankTransferResult,
   FamilyFees,
-  PaymentHistoryRow,
+  HistoryPage,
   ReceiptList,
 } from '../../types/portal/payments';
 
@@ -116,7 +115,7 @@ export function useParentReceipts(childId: string | undefined, termId: string | 
  * @param enabled - Load only when the tab is open.
  * @returns The query; the previous page stays on screen while the next loads.
  */
-export function usePaymentHistory(childId: string | undefined, page: number, enabled = true): UseQueryResult<Paginated<PaymentHistoryRow>> {
+export function usePaymentHistory(childId: string | undefined, page: number, enabled = true): UseQueryResult<HistoryPage> {
   const { parentId } = useAuth();
   return useQuery({
     queryKey: queryKeys.payments.history(parentId || 'anon', { childId, page }),

@@ -38,7 +38,7 @@ export interface RawNotification {
   isRead?: boolean;
   read?: boolean;
   readBy?: unknown[];
-  senderName?: string;
+  senderName?: string | null;
   senderEmail?: string;
   senderDisplay?: { name?: string; email?: string };
   senderId?: unknown;

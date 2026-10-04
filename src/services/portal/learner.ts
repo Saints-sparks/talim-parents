@@ -1,7 +1,7 @@
 import { api, buildQuery } from '../../lib/apiClient';
 import type { ChildAttendance, ChildTimetable, ParentDashboard } from '../../types/portal/learner';
 import type { AcknowledgeResult, ReportCard, ReportTerm } from '../../types/portal/reportCard';
-import type { ChildLeave, LeavePayload, LeaveRequest } from '../../types/portal/leave';
+import type { ChildLeave, LeaveCancelled, LeavePayload, LeaveRequest } from '../../types/portal/leave';
 import type { SchoolContact } from '../../types/portal/school';
 
 /**
@@ -106,7 +106,7 @@ export function getChildLeave(childId: string): Promise<ChildLeave> {
  *
  * @param childId - Student record id of a linked child.
  * @param payload - Type, dates and note.
- * @returns The new, pending request.
+ * @returns The new, pending request (201).
  * @throws {ApiError} `VALIDATION_FAILED` with field details.
  */
 export function createLeave(childId: string, payload: LeavePayload): Promise<LeaveRequest> {
@@ -120,7 +120,7 @@ export function createLeave(childId: string, payload: LeavePayload): Promise<Lea
  * @param leaveId - The request.
  * @param payload - The new type, dates and note.
  * @returns The updated request.
- * @throws {ApiError} `CONFLICT` once the school has decided it.
+ * @throws {ApiError} `BAD_REQUEST` (400) once the school has decided it.
  */
 export function updateLeave(childId: string, leaveId: string, payload: LeavePayload): Promise<LeaveRequest> {
   return api.patch<LeaveRequest>(`${childPath(childId)}/leave/${encodeURIComponent(leaveId)}`, payload, { childId });
@@ -131,11 +131,11 @@ export function updateLeave(childId: string, leaveId: string, payload: LeavePayl
  *
  * @param childId - Student record id of a linked child.
  * @param leaveId - The request.
- * @returns Resolves once it is gone.
- * @throws {ApiError} `CONFLICT` once the school has decided it.
+ * @returns `{ id, deleted: true }`.
+ * @throws {ApiError} `BAD_REQUEST` (400) once the school has decided it.
  */
-export async function deleteLeave(childId: string, leaveId: string): Promise<void> {
-  await api.delete(`${childPath(childId)}/leave/${encodeURIComponent(leaveId)}`, { childId });
+export function deleteLeave(childId: string, leaveId: string): Promise<LeaveCancelled> {
+  return api.delete<LeaveCancelled>(`${childPath(childId)}/leave/${encodeURIComponent(leaveId)}`, { childId });
 }
 
 /**

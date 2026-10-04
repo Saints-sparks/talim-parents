@@ -90,9 +90,10 @@ export function ReportSheet({ report, parentName }: ReportSheetProps) {
                     <span className="truncate">{row.course.title}</span>
                   </span>
                 </th>
-                {row.scores.map((score, column) => (
-                  <td key={columns[column]?.id ?? column} className="border-b border-tl-line-soft px-1 py-3 text-center text-tl-muted">
-                    {score ?? <span title="Not published yet">–</span>}
+                {/* `scores` is null until a score of the row is published. */}
+                {columns.map((column, index) => (
+                  <td key={column.id} className="border-b border-tl-line-soft px-1 py-3 text-center text-tl-muted">
+                    {row.scores?.[index] ?? <span title="Not published yet">–</span>}
                   </td>
                 ))}
                 <td className="border-b border-tl-line-soft px-1 py-3 text-center text-[15px] font-extrabold text-tl-ink">{row.total ?? '–'}</td>
@@ -118,10 +119,10 @@ export function ReportSheet({ report, parentName }: ReportSheetProps) {
           <h3 className={eyebrow}>Grading scale</h3>
           <ul className="mt-2.5 flex flex-col gap-1.5">
             {scaleRanges(scale).map((band) => (
-              <li key={band.grade} className="flex items-center gap-2.5 text-[13px]">
-                <span className="w-[18px] font-extrabold text-tl-ink">{band.grade}</span>
+              <li key={band.letter} className="flex items-center gap-2.5 text-[13px]">
+                <span className="w-[18px] font-extrabold text-tl-ink">{band.letter}</span>
                 <span className="w-[92px] text-tl-muted">{band.range}</span>
-                <span className="text-tl-faint">{band.label}</span>
+                <span className="text-tl-faint">{band.remark}</span>
               </li>
             ))}
           </ul>

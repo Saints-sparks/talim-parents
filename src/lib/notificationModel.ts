@@ -215,18 +215,21 @@ export function normalizeNotification(
 
 /**
  * The redesign's fields on a notification (§30 target and label, B11 child,
- * A11 school), read defensively: older rows have none of them.
+ * A11 school), read defensively: older rows have none of them. The list
+ * (`GET /notifications`) keeps them in `metadata`; the dashboard feed
+ * (`FeedItemDto`) lifts `target` and `actionLabel` to the top level.
  *
  * @param raw - The item as the API returned it.
  * @returns The target, label, child and school, each `null` when absent.
  */
 function portalFieldsOf(raw: RawNotification): Pick<AppNotification, 'target' | 'actionLabel' | 'childId' | 'school'> {
   const metadata = (raw.metadata ?? {}) as Record<string, unknown>;
-  const target = metadata.target as AppNotification['target'] | undefined;
+  const target = (raw.target ?? metadata.target) as AppNotification['target'] | undefined;
+  const actionLabel = raw.actionLabel ?? metadata.actionLabel;
   const school = raw.school as AppNotification['school'] | undefined;
   return {
     target: target && typeof target === 'object' && typeof target.page === 'string' ? target : null,
-    actionLabel: typeof metadata.actionLabel === 'string' ? metadata.actionLabel : null,
+    actionLabel: typeof actionLabel === 'string' ? actionLabel : null,
     childId: typeof metadata.childId === 'string' ? metadata.childId : null,
     school: school && typeof school === 'object' && typeof school.name === 'string' ? school : null,
   };

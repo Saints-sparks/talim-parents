@@ -11,10 +11,13 @@ const WARD: ChildSummary = {
   school: { id: 's1', name: 'Easy Sparks' },
   attendanceRate: null,
   average: null,
-  grade: null,
+  averageGrade: null,
+  gradeLevel: 'JSS 1',
   position: null,
   outstanding: 0,
   isDefault: false,
+  relationship: null,
+  avatarUrl: null,
 };
 
 describe('WardCard', () => {

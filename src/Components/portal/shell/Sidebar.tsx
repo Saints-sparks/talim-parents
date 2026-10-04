@@ -29,7 +29,8 @@ function useNavBadges(): Record<NavBadgeKey, number> {
   const { childId, children } = useActiveChild();
   const leave = useChildLeave(childId);
   const { unreadCount } = useChatAlerts();
-  const counts = useNotificationCounts();
+  // The active child's count (B11 `?childId=`), the same request the bell makes.
+  const counts = useNotificationCounts(childId, Boolean(childId));
 
   return useMemo(
     () => ({

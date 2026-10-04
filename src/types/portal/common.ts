@@ -1,32 +1,34 @@
 /**
- * Shared shapes of the parent-portal redesign contract.
+ * Shared shapes of the parent portal, over the backend's generated contract
+ * (`src/types/api.d.ts`, refreshed with `npm run types:api`).
  *
- * HAND-WRITTEN from `talimBE-V2/docs/redesign-portals-students-parents.md`
- * (Parts B and C), because the backend for these routes is being built in
- * parallel and is not in `src/types/api.d.ts` yet. When it lands:
- *
- *   1. run `npm run types:api` to refresh the generated contract;
- *   2. replace each interface in `src/types/portal/` with a `Schema<'…Dto'>`
- *      or `ResponseBody<'/route'>` alias from `src/types/apiContract.ts`;
- *   3. run `npm run typecheck` — every screen that drifted fails there.
- *
- * Fields the contract does not name but the screens need are marked
- * `CONTRACT GAP` and are optional, so the UI degrades when they are absent.
+ * Every alias below is a `Schema<'…Dto'>` from `../apiContract`, so a backend
+ * change fails `npm run typecheck` instead of reaching a screen. The few
+ * interfaces left hand-written are marked `BACKEND GAP`: the API returns them
+ * (checked against the running API by `src/__live__/contract.live.test.ts`),
+ * but its OpenAPI document does not describe them yet.
  */
+import type { Schema } from '../apiContract';
 
-/** A term as the learner-view routes return it. */
-export interface TermRef {
+/** A term as the learner-view routes return it (B1, B2, B5, B6). */
+export type LearnerTerm = Schema<'LearnerTermDto'>;
+
+/**
+ * The term on a bill (C2) or a receipt (C5), and each of the receipts' terms.
+ * BACKEND GAP: the API adds `session` (and the bill's `term`), but the
+ * OpenAPI `TermRefDto` has only `id` and `name`.
+ */
+export interface TermLabel {
   id: string;
   name: string;
-  /** "2026 / 2027". */
+  /** "2026/2027". */
   session: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
-  /** CONTRACT GAP: whether this is the school's current term (B5 "live" state). */
-  isCurrent?: boolean;
 }
 
-/** A school, as the multi-school lists carry it (A11). */
+/**
+ * A school, as the children list carries it (B13: `city` is the school's
+ * state). BACKEND GAP: `GET /parents/me/children` documents no response.
+ */
 export interface SchoolRef {
   id: string;
   name: string;
@@ -34,34 +36,18 @@ export interface SchoolRef {
 }
 
 /** A class reference. */
-export interface ClassRef {
-  id: string;
-  name: string;
-}
+export type ClassRef = Schema<'IdNameDto'>;
 
 /** A competition rank: ties share a rank (A7). */
-export interface Position {
-  rank: number;
-  of: number;
-}
+export type Position = Schema<'PositionDto'>;
 
-/**
- * One band of the school's grade scale (Round 3: per-school, editable, default
- * A70/B60/C50/D45/E40/F). CONTRACT GAP: the contract names `scale` but not its
- * item shape; this is the shape the screens read.
- */
-export interface GradeBand {
-  grade: string;
-  /** Lowest percent that earns this grade. */
-  min: number;
-  /** "Excellent", "Very good"… */
-  label?: string | null;
-}
+/** One band of the school's grade scale (per school; default A70/B60/C50/D45/E40/F). */
+export type GradeBand = Schema<'GradeBandDto'>;
 
 /** How a parent is related to one linked child (A11). */
-export type Relationship = 'MOTHER' | 'FATHER' | 'GUARDIAN' | 'OTHER';
+export type Relationship = Schema<'LinkChildDto'>['relationship'];
 
-/** Pagination `meta`, kept by the API client's strict unwrap. */
+/** Pagination `meta` of `GET /notifications`, kept by the API client's strict unwrap. */
 export interface PageMeta {
   total: number;
   page: number;
@@ -69,13 +55,17 @@ export interface PageMeta {
   limit: number;
 }
 
-/** A paginated list: `{ data, meta }` with or without the envelope. */
+/** A paginated list with `meta` (`GET /notifications`). */
 export interface Paginated<T> {
   data: T[];
   meta: PageMeta;
 }
 
-/** Where a notification, an attention item or a deep link leads (§30 targets). */
+/**
+ * Where a notification, an attention item or a deep link leads (§30 targets).
+ * The API types `target` as an open object (`FeedItemDto.target`); this is
+ * the subset the app routes on, checked at read time.
+ */
 export interface PortalTarget {
   page:
     | 'dashboard'

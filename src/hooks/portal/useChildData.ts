@@ -15,7 +15,7 @@ import {
 import { queryKeys, staleTimes } from '../../lib/queryKeys';
 import type { ChildAttendance, ChildTimetable, ParentDashboard } from '../../types/portal/learner';
 import type { AcknowledgeResult, ReportCard, ReportTerm } from '../../types/portal/reportCard';
-import type { ChildLeave, LeavePayload, LeaveRequest } from '../../types/portal/leave';
+import type { ChildLeave, LeaveCancelled, LeavePayload, LeaveRequest } from '../../types/portal/leave';
 import type { SchoolContact } from '../../types/portal/school';
 
 /**
@@ -146,7 +146,7 @@ export function useChildLeave(childId: string | undefined): UseQueryResult<Child
 export interface LeaveMutations {
   create: UseMutationResult<LeaveRequest, unknown, LeavePayload>;
   update: UseMutationResult<LeaveRequest, unknown, { id: string; payload: LeavePayload }>;
-  remove: UseMutationResult<void, unknown, string>;
+  remove: UseMutationResult<LeaveCancelled, unknown, string>;
 }
 
 /**
@@ -171,7 +171,7 @@ export function useLeaveMutations(childId: string | undefined): LeaveMutations {
       mutationFn: ({ id, payload }) => updateLeave(childId as string, id, payload),
       onSuccess: refresh,
     }),
-    remove: useMutation<void, unknown, string>({
+    remove: useMutation<LeaveCancelled, unknown, string>({
       mutationFn: (id) => deleteLeave(childId as string, id),
       onSuccess: refresh,
     }),

@@ -75,7 +75,7 @@ export function ChildrenPanel() {
                   <dl className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-2.5">
                     {[
                       ['Average', percent(child.average)],
-                      ['Grade', child.grade ?? '—'],
+                      ['Grade', child.averageGrade ?? '—'],
                       ['Position', child.position ? ordinal(child.position.rank) : '—'],
                       ['Attendance', percent(child.attendanceRate)],
                     ].map(([label, value]) => (

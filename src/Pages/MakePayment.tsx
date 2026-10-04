@@ -60,7 +60,8 @@ export default function MakePayment() {
   const studentId = state?.studentId ?? activeChild?.id;
   const studentName = activeChild?.name || 'your child';
   const bill = useMemo(() => family.data?.children.find((entry) => entry.child.id === studentId), [family.data, studentId]);
-  const owed = useMemo(() => bill?.items.filter((item) => item.balance > 0), [bill]);
+  // A fee held by a checkout or bank transfer cannot be paid again until that one ends (409).
+  const owed = useMemo(() => bill?.items.filter((item) => item.balance > 0 && !item.pendingPayment), [bill]);
 
   const runVerification = useCallback(
     async (reference: string) => {

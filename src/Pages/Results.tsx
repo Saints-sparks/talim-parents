@@ -53,6 +53,8 @@ function ChildResults({ child }: { child: ChildSummary }) {
   const session = selected?.session ?? '—';
   const sessionTerms = (terms.data ?? []).filter((term) => (term.session ?? '—') === session);
   const data = report.data;
+  // With one subject scored the API names it both strongest and weakest; it is not "needs attention" then.
+  const weakest = data?.weakest && data.weakest.courseId !== data.strongest?.courseId ? data.weakest : null;
   const phase = reportPhase(selected, data);
   const note = PHASE_NOTE[phase];
   const signed = Boolean(data?.acknowledgedAt);
@@ -177,17 +179,17 @@ function ChildResults({ child }: { child: ChildSummary }) {
             />
             <SummaryTile
               label="Strongest subject"
-              value={data.strongest?.course.short ?? data.strongest?.course.title ?? '—'}
+              value={data.strongest ? data.strongest.short || data.strongest.title : '—'}
               pill={data.strongest ? percent(data.strongest.percent) : '—'}
               tone="success"
               note={data.strongest?.position ? `${positionText(data.strongest.position).replace(' of ', ' in class of ')}` : ' '}
             />
             <SummaryTile
               label="Needs attention"
-              value={data.weakest?.course.short ?? data.weakest?.course.title ?? '—'}
-              pill={data.weakest ? percent(data.weakest.percent) : '—'}
-              tone={data.weakest && data.weakest.percent < data.passMark ? 'danger' : 'warning'}
-              note={data.weakest && data.weakest.percent < data.passMark ? `Below the pass mark of ${data.passMark}%` : 'Below the term average'}
+              value={weakest ? weakest.short || weakest.title : '—'}
+              pill={weakest ? percent(weakest.percent) : '—'}
+              tone={weakest && weakest.percent < data.passMark ? 'danger' : 'warning'}
+              note={!weakest ? 'Needs more than one subject scored' : weakest.percent < data.passMark ? `Below the pass mark of ${data.passMark}%` : 'Below the term average'}
             />
           </div>
           <ReportSheet report={data} parentName={parentName} />

@@ -32,10 +32,13 @@ describe('a child', () => {
     school: { id: 's1', name: 'Easy Sparks', city: 'Ikeja' },
     attendanceRate: 95,
     average: 70,
-    grade: 'B',
+    averageGrade: 'B',
+    gradeLevel: 'JSS 1',
     position: null,
     outstanding: 0,
     isDefault: true,
+    relationship: 'MOTHER',
+    avatarUrl: null,
   };
 
   it('labels the class with the school, for families across schools', () => {

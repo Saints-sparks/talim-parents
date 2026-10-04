@@ -52,6 +52,9 @@ function item(overrides: Partial<FeeItem> = {}): FeeItem {
     status: 'due',
     allowPartial: true,
     parts: [],
+    pendingPayment: false,
+    termId: 'term-1',
+    lateFee: 0,
     ...overrides,
   };
 }
@@ -63,10 +66,10 @@ function item(overrides: Partial<FeeItem> = {}): FeeItem {
  * @param minimumPartPayment - The school's minimum.
  * @returns The C2 body.
  */
-function family(items: FeeItem[], minimumPartPayment: number | null = 10_000): FamilyFees {
+function family(items: FeeItem[], minimumPartPayment = 10_000): FamilyFees {
   const outstanding = items.reduce((sum, entry) => sum + entry.balance, 0);
   return {
-    children: [{ child: { id: CHILD_ID, name: 'Amara Okafor', school: { id: 's1', name: 'Bright Star' } }, outstanding, paid: 0, billTotal: outstanding, overdue: 0, items, minimumPartPayment }],
+    children: [{ child: { id: CHILD_ID, name: 'Amara Okafor', school: { id: 's1', name: 'Bright Star' } }, outstanding, paid: 0, billTotal: outstanding, overdue: 0, items, minimumPartPayment, term: { id: 'term-1', name: 'Third Term', session: '2025/2026' } }],
     totals: { outstanding, paidThisSession: 0, receipts: 0, overdue: 0 },
   };
 }

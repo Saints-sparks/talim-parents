@@ -9,6 +9,23 @@
  * reading the default child.
  */
 import { CHILD_HEADER } from '../../lib/apiClient';
+import type { Schema } from '../../types/apiContract';
+import type { ChildSummary } from '../../types/portal/children';
+import type { GradeBand, LearnerTerm } from '../../types/portal/common';
+import type { AttendanceDayStatus, ChildAttendance, ChildTimetable, FeedItem, ParentDashboard, StudentLesson } from '../../types/portal/learner';
+import type { LeaveType } from '../../types/portal/leave';
+import type { ChatContact } from '../../types/portal/messages';
+import type { RawPortalNotification } from '../../types/portal/notifications';
+import type {
+  BankDetails,
+  BankTransferResponse,
+  CheckoutResult,
+  ChildFees,
+  FeeItem,
+  ParentReceipt,
+  PaymentHistoryRow,
+} from '../../types/portal/payments';
+import type { ReportCard, ReportTerm } from '../../types/portal/reportCard';
 import { feeAssignmentId, subjectScores, type FixtureDb, type LeaveRow, type TxnRow } from './db';
 import { fail, ok, raw, type FixtureRequest, type FixtureRoute } from './router';
 import {
@@ -27,12 +44,13 @@ import {
 } from './seed';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const GRADE_SCALE = [
-  { grade: 'A', min: 75, label: 'Excellent' },
-  { grade: 'B', min: 65, label: 'Very good' },
-  { grade: 'C', min: 55, label: 'Good' },
-  { grade: 'D', min: 45, label: 'Fair' },
-  { grade: 'F', min: 0, label: 'Needs work' },
+const GRADE_SCALE: GradeBand[] = [
+  { letter: 'A', min: 70, remark: 'Excellent' },
+  { letter: 'B', min: 60, remark: 'Very good' },
+  { letter: 'C', min: 50, remark: 'Good' },
+  { letter: 'D', min: 45, remark: 'Fair' },
+  { letter: 'E', min: 40, remark: 'Pass' },
+  { letter: 'F', min: 0, remark: 'Fail' },
 ];
 const PASS_MARK = 45;
 
@@ -85,7 +103,7 @@ function mondayOf(day: string): string {
  * @returns The letter, or null.
  */
 const gradeOf = (percent: number | null): string | null =>
-  percent === null ? null : (GRADE_SCALE.find((band) => percent >= band.min)?.grade ?? 'F');
+  percent === null ? null : (GRADE_SCALE.find((band) => percent >= band.min)?.letter ?? 'F');
 
 /**
  * Rounds to one decimal.
@@ -105,6 +123,33 @@ function rateOf(child: SeedChild): number | null {
   const marked = child.present + child.late + child.absent;
   return marked ? one(((child.present + child.late) / marked) * 100) : null;
 }
+
+/**
+ * A fixture term as the learner-view routes return it.
+ *
+ * @param term - The seed term.
+ * @returns The `LearnerTermDto`.
+ */
+function learnerTerm(term: (typeof TERMS)[number]): LearnerTerm {
+  const weeks = Math.ceil((Date.parse(term.endDate) - Date.parse(term.startDate)) / (7 * 86_400_000)) + 1;
+  return { id: term.id, name: term.name, session: term.session, startDate: term.startDate, endDate: term.endDate, totalWeeks: Math.min(30, weeks), isCurrent: term.isCurrent };
+}
+
+/**
+ * Whether the child's school has a current term (the `no-term` scenario has none).
+ *
+ * @param db - The fixture database.
+ * @returns False when the school has no current term.
+ */
+const hasTerm = (db: FixtureDb): boolean => db.scenario !== 'no-term';
+
+/**
+ * The grade level of a class name: "Jss1 A" is in "Jss1".
+ *
+ * @param className - The class, or null.
+ * @returns The level, or null.
+ */
+const gradeLevelOf = (className: string | null): string | null => (className ? className.replace(/\s+\S+$/, '') : null);
 
 /**
  * The child a child-scoped request is about, or the error to answer with.
@@ -144,15 +189,20 @@ function paidOn(db: FixtureDb, child: SeedChild, feeKey: string): number {
  * @param child - The child.
  * @returns The items with paid, balance and status.
  */
-function feeItems(db: FixtureDb, child: SeedChild) {
+function feeItems(db: FixtureDb, child: SeedChild): (FeeItem & { feeKey: string; dueDate: string })[] {
   return Object.entries(child.feePlan).map(([feeKey, [amount]]) => {
     const fee = FEE_CATALOG[feeKey];
+    const id = feeAssignmentId(child, feeKey);
     const paid = paidOn(db, child, feeKey);
     const balance = amount - paid;
     const overdue = balance > 0 && fee.due < FIXTURE_TODAY;
     const status = balance <= 0 ? 'paid' : paid > 0 ? 'part_paid' : overdue ? 'overdue' : 'due';
+    // A pending bank transfer (or an unsettled checkout) holds the fee until it is decided.
+    const pendingPayment =
+      db.transactions.some((txn) => txn.status === 'pending' && txn.items.some((item) => item.feeAssignmentId === id)) ||
+      [...db.checkouts.values()].some((checkout) => !checkout.settled && checkout.allocations.some((allocation) => allocation.feeAssignmentId === id));
     return {
-      id: feeAssignmentId(child, feeKey),
+      id,
       feeKey,
       label: fee.label,
       category: fee.category,
@@ -163,6 +213,9 @@ function feeItems(db: FixtureDb, child: SeedChild) {
       status,
       allowPartial: fee.allowPartial,
       parts: fee.parts.map(([label, share]) => ({ label, amount: Math.round(amount * share) })),
+      pendingPayment: balance > 0 && pendingPayment,
+      termId: TERMS[0].id,
+      lateFee: 0,
     };
   });
 }
@@ -174,18 +227,18 @@ function feeItems(db: FixtureDb, child: SeedChild) {
  * @param child - The child.
  * @returns The child's C2 entry.
  */
-function childFees(db: FixtureDb, child: SeedChild) {
+function childFees(db: FixtureDb, child: SeedChild): ChildFees {
   const items = feeItems(db, child);
   const school = SCHOOLS[child.school];
   return {
-    child: { id: child.id, name: child.name, school: { id: school.id, name: school.name, city: school.city } },
+    child: { id: child.id, name: child.name, school: { id: school.id, name: school.name } },
     outstanding: items.reduce((sum, item) => sum + item.balance, 0),
     paid: items.reduce((sum, item) => sum + item.paid, 0),
     billTotal: items.reduce((sum, item) => sum + item.amount, 0),
     overdue: items.filter((item) => item.dueDate < FIXTURE_TODAY).reduce((sum, item) => sum + item.balance, 0),
     items: items.map(({ feeKey: _feeKey, ...item }) => item),
-    minimumPartPayment: school.minimumPartPayment,
-    term: { id: TERMS[0].id, name: TERMS[0].name, session: TERMS[0].session },
+    minimumPartPayment: hasTerm(db) ? school.minimumPartPayment : 0,
+    term: hasTerm(db) ? { id: TERMS[0].id, name: TERMS[0].name, session: TERMS[0].session } : null,
   };
 }
 
@@ -196,7 +249,7 @@ function childFees(db: FixtureDb, child: SeedChild) {
  * @param child - The child.
  * @returns The child's B13 entry.
  */
-function childSummary(db: FixtureDb, child: SeedChild) {
+function childSummary(db: FixtureDb, child: SeedChild): ChildSummary & { grade: string | null } {
   const school = SCHOOLS[child.school];
   const scores = subjectScores(child);
   const average = child.className ? one(scores.reduce((sum, row) => sum + row.total, 0) / scores.length) : null;
@@ -208,7 +261,10 @@ function childSummary(db: FixtureDb, child: SeedChild) {
     school: { id: school.id, name: school.name, city: school.city },
     attendanceRate: child.className ? rateOf(child) : null,
     average,
-    grade: gradeOf(average),
+    averageGrade: gradeOf(average),
+    gradeLevel: gradeLevelOf(child.className),
+    // The API keeps `grade` as the grade level, for older clients.
+    grade: gradeLevelOf(child.className),
     position: child.className && child.rank ? { rank: child.rank, of: child.of } : null,
     outstanding: feeItems(db, child).reduce((sum, item) => sum + item.balance, 0),
     isDefault: child.isDefault,
@@ -223,7 +279,7 @@ function childSummary(db: FixtureDb, child: SeedChild) {
  * @param row - The notification row.
  * @returns The notification as the list route returns it.
  */
-function notificationView(row: FixtureDb['notifications'][number]) {
+function notificationView(row: FixtureDb['notifications'][number]): RawPortalNotification {
   const school = SCHOOLS[row.schoolKey];
   return {
     _id: row._id,
@@ -236,6 +292,30 @@ function notificationView(row: FixtureDb['notifications'][number]) {
     senderName: row.senderName,
     school: { id: school.id, name: school.name },
     metadata: { ...(row.childId ? { childId: row.childId } : {}), target: row.target, actionLabel: row.actionLabel },
+  };
+}
+
+/**
+ * A notification as the dashboard feed carries it (B1 `FeedItemDto`): `id`,
+ * and `target` and `actionLabel` lifted out of `metadata`.
+ *
+ * @param row - The notification row.
+ * @returns The feed item.
+ */
+function feedItemView(row: FixtureDb['notifications'][number]): FeedItem {
+  const school = SCHOOLS[row.schoolKey];
+  return {
+    id: row._id,
+    title: row.title,
+    message: row.message,
+    category: row.category,
+    createdAt: row.createdAt,
+    isRead: row.isRead,
+    senderName: row.senderName,
+    target: row.target,
+    actionLabel: row.actionLabel,
+    school: { id: school.id, name: school.name },
+    metadata: row.childId ? { childId: row.childId } : {},
   };
 }
 
@@ -259,12 +339,12 @@ function forChild(db: FixtureDb, childId: string | null) {
  * @param day - A `YYYY-MM-DD` day.
  * @returns The day's lessons, by period.
  */
-function lessonsFor(child: SeedChild, day: string) {
+function lessonsFor(child: SeedChild, day: string): StudentLesson[] {
   const weekday = new Date(`${day}T00:00:00.000Z`).getUTCDay() - 1;
   if (weekday < 0 || weekday > 4 || !child.className) return [];
   const scores = subjectScores(child);
   const byKey = new Map(scores.map((row) => [row.key, row]));
-  const lessons = [];
+  const lessons: StudentLesson[] = [];
   for (let p = 0; p < PERIODS.length; p += 1) {
     const key = WEEK_GRID[p][weekday];
     if (key === 'break') continue;
@@ -287,7 +367,8 @@ function lessonsFor(child: SeedChild, day: string) {
       cancelled: null,
       teacher: { id: `tc-${child.school}-${key}`, name: subject.teacher },
       courseShort: subject.short,
-      colourKey: key,
+      colourKey: subject.colourKey,
+      offSchedule: false,
     });
   }
   return lessons;
@@ -300,7 +381,7 @@ function lessonsFor(child: SeedChild, day: string) {
  * @param day - A `YYYY-MM-DD` day.
  * @returns The mark.
  */
-function dayStatus(child: SeedChild, day: string): string {
+function dayStatus(child: SeedChild, day: string): AttendanceDayStatus {
   const date = new Date(`${day}T00:00:00.000Z`);
   const weekday = date.getUTCDay();
   if (weekday === 0 || weekday === 6) return 'weekend';
@@ -324,7 +405,7 @@ function dayStatus(child: SeedChild, day: string): string {
  * @param termId - The term.
  * @returns The B5 body.
  */
-function reportCard(db: FixtureDb, child: SeedChild, termId: string) {
+function reportCard(db: FixtureDb, child: SeedChild, termId: string): ReportCard {
   const index = TERMS.findIndex((term) => term.id === termId);
   const term = TERMS[index];
   const school = SCHOOLS[child.school];
@@ -346,7 +427,8 @@ function reportCard(db: FixtureDb, child: SeedChild, termId: string) {
     const max = examPending ? 40 : 100;
     const percent = one((total / max) * 100);
     return {
-      course: { id: row.courseId, title: row.title, short: row.short, colourKey: row.key },
+      course: { id: row.courseId, code: row.short.toUpperCase().slice(0, 3), title: row.title, short: row.short, colourKey: row.colourKey },
+      teacher: { id: `tc-${child.school}-${row.key}`, name: row.teacher },
       scores: cells,
       total,
       percent,
@@ -358,14 +440,18 @@ function reportCard(db: FixtureDb, child: SeedChild, termId: string) {
   const percents = rows.map((row) => row.percent);
   const overallPercent = percents.length ? one(percents.reduce((a, b) => a + b, 0) / percents.length) : null;
   const sorted = [...rows].sort((a, b) => b.percent - a.percent);
+  const highlight = (row: (typeof rows)[number] | undefined) =>
+    row
+      ? { courseId: row.course.id, title: row.course.title, short: row.course.short, colourKey: row.course.colourKey, percent: row.percent, position: row.position }
+      : null;
   const next = TERMS.find((candidate) => candidate.startDate > term.endDate && candidate.session === term.session) ?? (term.session === '2025 / 2026' ? TERMS[0] : null);
   const ackKey = `${child.id}|${termId}`;
   return {
     status,
     issuedAt: status === 'published' ? `${term.endDate}T12:00:00.000Z` : null,
     school: { name: school.name, logoUrl: null, address: school.address, phone: school.phone, email: school.email },
-    student: { name: child.name, admissionNumber: child.admissionNumber, class: child.className ? { id: `cl-${child.key}`, name: child.className } : null },
-    term: { id: term.id, name: term.name, session: term.session, startDate: term.startDate, endDate: term.endDate, isCurrent: term.isCurrent },
+    student: { name: child.name, admissionNumber: child.admissionNumber, class: { id: `cl-${child.key}`, name: child.className ?? '' } },
+    term: learnerTerm(term),
     session: term.session,
     nextTermStart: next?.startDate ?? null,
     columns,
@@ -376,8 +462,8 @@ function reportCard(db: FixtureDb, child: SeedChild, termId: string) {
       position: rows.length ? { rank: child.rank, of: child.of } : null,
       previousPosition: child.previousRank ? { rank: child.previousRank, of: child.of } : null,
     },
-    strongest: sorted[0] ? { course: sorted[0].course, percent: sorted[0].percent, position: sorted[0].position } : null,
-    weakest: sorted[sorted.length - 1] ? { course: sorted[sorted.length - 1].course, percent: sorted[sorted.length - 1].percent, position: sorted[sorted.length - 1].position } : null,
+    strongest: highlight(sorted[0]),
+    weakest: highlight(sorted[sorted.length - 1]),
     scale: GRADE_SCALE,
     passMark: PASS_MARK,
     attendance: { schoolDays: child.days, present: child.present, late: child.late, absent: child.absent, excused: child.leave },
@@ -393,17 +479,26 @@ function reportCard(db: FixtureDb, child: SeedChild, termId: string) {
  * @param txn - The transaction.
  * @returns The C6 row.
  */
-function historyRow(db: FixtureDb, txn: TxnRow) {
+function historyRow(db: FixtureDb, txn: TxnRow): PaymentHistoryRow {
   const child = db.children.find((entry) => entry.id === txn.childId);
   return {
     id: txn.id,
+    _id: txn.id,
     date: txn.date,
     child: { id: txn.childId, name: child?.name ?? '' },
-    items: txn.items.map(({ label, amount }) => ({ label, amount })),
+    items: txn.items.map(({ feeAssignmentId: fee, label, amount }) => ({ feeAssignmentId: fee, label, amount })),
     amount: txn.amount,
     method: txn.method,
+    methodKind: txn.method === 'bank_transfer' ? 'bank_transfer' : 'online',
     reference: txn.reference,
     status: txn.status,
+    receiptId: txn.receiptNumber ? `rc-${txn.id}` : null,
+    studentId: txn.childId,
+    internalReference: txn.reference,
+    totalAmount: txn.amount,
+    currency: 'NGN',
+    createdAt: txn.date,
+    ...(txn.method !== 'bank_transfer' ? { providerName: txn.method } : {}),
   };
 }
 
@@ -414,29 +509,49 @@ function historyRow(db: FixtureDb, txn: TxnRow) {
  * @param txn - The transaction.
  * @returns The C5 receipt.
  */
-function receiptOf(db: FixtureDb, txn: TxnRow) {
+function receiptOf(db: FixtureDb, txn: TxnRow): ParentReceipt {
   const child = db.children.find((entry) => entry.id === txn.childId) as SeedChild;
   const school = SCHOOLS[child.school];
   const term = TERMS.find((entry) => entry.id === txn.termId);
+  const id = `rc-${txn.id}`;
+  const online = txn.method !== 'bank_transfer';
+  const items = txn.items.map(({ feeAssignmentId: fee, label, amount }) => ({ feeAssignmentId: fee, label, category: FEE_CATALOG[fee.replace(`fa-${child.key}-`, '')]?.category ?? 'Fees', amount }));
   return {
-    id: `rc-${txn.id}`,
-    receiptNumber: txn.receiptNumber as string,
+    id,
+    _id: id,
+    schoolId: school.id,
+    parentId: db.profile.id,
+    studentId: child.id,
+    transactionId: txn.id,
     termId: txn.termId,
-    termName: term?.name ?? null,
-    session: term?.session ?? null,
-    child: { id: child.id, name: child.name, admissionNumber: child.admissionNumber, className: child.className },
-    school: { name: school.name, logoUrl: null, address: school.address },
-    items: txn.items.map(({ label, amount }) => ({ label, amount })),
-    total: txn.amount,
-    paidAt: txn.date,
-    method: txn.method,
-    reference: txn.reference,
+    receiptNumber: txn.receiptNumber as string,
+    feeItems: items.map((item) => ({ feeName: item.label, category: item.category, description: '', amount: item.amount })),
+    subtotal: txn.amount,
+    lateFee: 0,
+    discount: 0,
+    totalPaid: txn.amount,
     currency: 'NGN',
+    paymentMethod: online ? 'card' : 'bank_transfer',
+    paymentProvider: online ? txn.method : '',
+    transactionReference: txn.transferReference ?? txn.reference,
+    paymentDate: txn.date,
+    receiptPdfUrl: '',
+    verificationCode: '',
+    verificationQrUrl: '',
+    status: 'issued',
+    issuedAt: txn.date,
+    createdAt: txn.date,
+    updatedAt: txn.date,
+    school: { id: school.id, name: school.name, logo: '', address: school.address },
+    child: { id: child.id, name: child.name },
+    term: term ? { id: term.id, name: term.name, session: term.session } : null,
+    items,
+    downloadAllowed: db.receiptDownloads,
   };
 }
 
 /**
- * Pages a list the way the API does.
+ * Pages a list the way the notifications route does (`{ data, meta }`).
  *
  * @param items - The rows.
  * @param query - The query string (page, limit).
@@ -447,6 +562,20 @@ function page<T>(items: T[], query: URLSearchParams) {
   const current = Math.max(1, Number(query.get('page') ?? 1));
   const lastPage = Math.max(1, Math.ceil(items.length / limit));
   return { data: items.slice((current - 1) * limit, current * limit), meta: { total: items.length, page: current, lastPage, limit } };
+}
+
+/**
+ * Pages a list the way the payments routes do (`{ data, total, page, limit }`,
+ * no `meta`; the limit is capped at 100).
+ *
+ * @param items - The rows.
+ * @param query - The query string (page, limit).
+ * @returns One page with its numbers.
+ */
+function flatPage<T>(items: T[], query: URLSearchParams): { data: T[]; total: number; page: number; limit: number } {
+  const limit = Math.min(100, Math.max(1, Number(query.get('limit') ?? 20)));
+  const current = Math.max(1, Number(query.get('page') ?? 1));
+  return { data: items.slice((current - 1) * limit, current * limit), total: items.length, page: current, limit };
 }
 
 /**
@@ -473,7 +602,7 @@ function settingsView(db: FixtureDb) {
       address: profile.address,
     },
     children: [],
-    preferences: { notifications: {}, theme: 'system', preferredProvider: db.preferredProvider },
+    preferences: { notifications: {}, theme: 'system', preferredProvider: db.preferredProvider, guides: { tourCompletedAt: db.tourCompletedAt } },
     security: { twoFactorEnabled: false, emailOtpEnabled: false, lastPasswordChangedAt: '2026-06-02T10:00:00.000Z' },
   };
 }
@@ -622,9 +751,24 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       if (address !== undefined) db.profile.address = address;
       return raw({ success: true, message: 'Profile updated', profile: settingsView(db).profile });
     } },
+    { method: 'PATCH', pattern: '/parent/settings/payment-method', handler: (request) => {
+      const value = body(request).preferredProvider;
+      const allowed = ['paystack', 'opay', 'stripe', 'bank_transfer'];
+      if (value !== null && !allowed.includes(String(value))) {
+        return fail(400, 'VALIDATION_FAILED', 'Some fields need attention.', [{ field: 'preferredProvider', reason: 'must be one of the providers' }]);
+      }
+      db.preferredProvider = value as FixtureDb['preferredProvider'];
+      return raw({ success: true, message: 'Preferred payment method updated', preferredProvider: db.preferredProvider });
+    } },
     { method: 'PATCH', pattern: '/parent/settings/preferences', handler: (request) => {
-      db.preferredProvider = String(body(request).preferredProvider ?? db.preferredProvider);
-      return raw({ success: true, message: 'Preferences updated', preferredProvider: db.preferredProvider });
+      // Like the API: only `guides` is accepted here (forbidNonWhitelisted).
+      const input = body(request);
+      const extra = Object.keys(input).filter((key) => key !== 'guides');
+      if (extra.length) return fail(400, 'VALIDATION_FAILED', 'Some fields need attention.', extra.map((field) => ({ field, reason: `property ${field} should not exist` })));
+      const guides = (input.guides ?? {}) as { tourCompleted?: boolean };
+      if (guides.tourCompleted === true) db.tourCompletedAt = new Date().toISOString();
+      if (guides.tourCompleted === false) db.tourCompletedAt = null;
+      return raw({ success: true, message: 'Preferences updated', guides: { tourCompletedAt: db.tourCompletedAt } });
     } },
     { method: 'PATCH', pattern: '/parent/settings/password', handler: (request) =>
       body(request).currentPassword === 'wrong-password'
@@ -675,97 +819,107 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       const kid = child(request);
       if (kid instanceof Response) return kid;
       const summary = childSummary(db, kid);
-      const scores = kid.className ? subjectScores(kid) : [];
-      const lessons = lessonsFor(kid, FIXTURE_TODAY).map((lesson) => {
+      const inTerm = hasTerm(db);
+      const scores = kid.className && inTerm ? subjectScores(kid) : [];
+      const lessons = (inTerm ? lessonsFor(kid, FIXTURE_TODAY) : []).map((lesson) => {
         const nowTime = '10:30';
         const state = lesson.endTime <= nowTime ? 'done' : lesson.startTime <= nowTime ? 'now' : 'later';
-        return { ...lesson, state, minutesLeft: state === 'now' ? 30 : null };
+        return { ...lesson, state, minutesLeft: state === 'now' ? 30 : null } as const;
       });
       const fees = childFees(db, kid);
-      const feed = forChild(db, kid.id).slice(0, 5).map(notificationView);
+      const feed = forChild(db, kid.id).filter((row) => !row.isRead).slice(0, 5).map(feedItemView);
       const pendingLeave = (db.leave.get(kid.id) ?? []).find((row) => row.status === 'pending');
-      const attention = [];
+      const attention: ParentDashboard['attention'] = [];
       if (fees.outstanding > 0) attention.push({ kind: 'fees', title: 'First term fees part paid', meta: `₦${fees.outstanding.toLocaleString('en-NG')} outstanding · due 30 September`, target: { page: 'payments' } });
       if (summary.attendanceRate !== null && summary.attendanceRate < 92) attention.push({ kind: 'attendance', title: `${kid.first}'s attendance is slipping`, meta: `${kid.absent} days missed this term · ${summary.attendanceRate}% present`, target: { page: 'attendance' } });
       if (pendingLeave) attention.push({ kind: 'leave', title: 'Leave request awaiting the school', meta: 'Medical appointment · 24 September', target: { page: 'leave' } });
       if (kid.className && !db.acknowledgements.has(`${kid.id}|${TERMS[3].id}`)) attention.push({ kind: 'report', title: 'Term report is ready', meta: `${TERMS[3].name} ${TERMS[3].session} · sign to acknowledge`, target: { page: 'results', termId: TERMS[3].id } });
-      return ok({
+      const dashboard: ParentDashboard = {
         date: FIXTURE_TODAY,
         day: 'Friday',
         now: FIXTURE_NOW,
         timezone: 'Africa/Lagos',
         greeting: 'morning',
-        class: summary.class,
-        term: { id: TERMS[0].id, name: TERMS[0].name, session: TERMS[0].session, isCurrent: true },
-        weekNumber: 3,
-        schoolDay: { isSchoolDay: true, reason: null, holidayTitle: null, endsEarlyAt: null },
-        periods: PERIODS,
+        class: summary.class ?? { id: '', name: '' },
+        term: inTerm ? learnerTerm(TERMS[0]) : null,
+        weekNumber: inTerm ? 3 : null,
+        schoolDay: inTerm
+          ? { isSchoolDay: true, reason: null, holidayTitle: null, endsEarlyAt: null }
+          : { isSchoolDay: false, reason: 'no_term', holidayTitle: null, endsEarlyAt: null },
+        periods: inTerm ? [...PERIODS] : [],
         lessons,
         nowLessonId: lessons.find((lesson) => lesson.state === 'now')?.id ?? null,
         nextLessonId: lessons.find((lesson) => lesson.state === 'later')?.id ?? null,
         glance: {
-          average: summary.average,
-          grade: summary.grade,
-          position: summary.position,
-          movement: kid.previousRank && kid.rank ? kid.previousRank - kid.rank : null,
-          attendance: { rate: summary.attendanceRate, present: kid.present, schoolDays: kid.days },
+          average: inTerm ? summary.average : null,
+          grade: inTerm ? summary.averageGrade : null,
+          position: inTerm ? summary.position : null,
+          movement: inTerm && kid.previousRank && kid.rank ? kid.previousRank - kid.rank : null,
+          attendance: { rate: inTerm ? summary.attendanceRate : null, present: inTerm ? kid.present : 0, schoolDays: inTerm ? kid.days : 0 },
           unread: { count: 3, topRoom: { id: 'room-dm-class-teacher', name: TEACHERS[kid.school][kid.teacherIdx] } },
         },
-        subjectTotals: scores.map((row) => ({ courseId: row.courseId, title: row.title, short: row.short, percent: row.total, classAverage: row.classAverage, colourKey: row.key })),
+        subjectTotals: scores.map((row) => ({ courseId: row.courseId, title: row.title, short: row.short, percent: row.total, classAverage: row.classAverage, colourKey: row.colourKey })),
         passMark: PASS_MARK,
-        comingUp: kid.className
+        comingUp: kid.className && inTerm
           ? [
               { kind: 'assessment', id: 'as-1', title: 'Second CA', courseTitle: 'Advance Maths', date: '2026-09-25', daysAway: 7 },
-              { kind: 'event', id: 'ev-1', title: "Parents' evening", courseTitle: null, date: '2026-10-02', daysAway: 14 },
+              { kind: 'event', eventType: 'event', id: 'ev-1', title: "Parents' evening", courseTitle: null, date: '2026-10-02', daysAway: 14 },
             ]
           : [],
         feed,
         counts: { unreadNotifications: forChild(db, kid.id).filter((row) => !row.isRead).length, unreadMessages: 3 },
         attention,
-        fees: { outstanding: fees.outstanding, dueDate: '2026-09-30' },
-      });
+        fees: { outstanding: fees.outstanding, dueDate: fees.outstanding > 0 ? '2026-09-30' : null },
+      };
+      return ok(dashboard);
     } },
     { method: 'GET', pattern: '/parents/me/children/:childId/timetable', handler: (request) => {
       const kid = child(request);
       if (kid instanceof Response) return kid;
+      const inTerm = hasTerm(db);
       const start = mondayOf(request.query.get('weekStart') || FIXTURE_TODAY);
-      const end = addDays(start, 4);
+      const end = addDays(start, 6);
       const days = DAY_NAMES.map((day, i) => {
         const date = addDays(start, i);
         return { date, day, isToday: date === FIXTURE_TODAY, holiday: date === '2026-10-01' ? { title: 'Independence Day' } : null, endsEarlyAt: null, events: [] };
       });
-      const lessons = kid.className ? days.flatMap((day) => (day.holiday ? [] : lessonsFor(kid, day.date))) : [];
+      const lessons = kid.className && inTerm ? days.flatMap((day) => (day.holiday ? [] : lessonsFor(kid, day.date))) : [];
       const termStart = TERMS[0].startDate;
-      const weekNumber = start >= mondayOf(termStart) && start <= TERMS[0].endDate
+      const weekNumber = inTerm && start >= mondayOf(termStart) && start <= TERMS[0].endDate
         ? Math.floor((Date.parse(start) - Date.parse(mondayOf(termStart))) / (7 * 86_400_000)) + 1
         : null;
-      return ok({
+      const timetable: ChildTimetable = {
         timezone: 'Africa/Lagos',
         now: FIXTURE_NOW,
         today: FIXTURE_TODAY,
-        term: { id: TERMS[0].id, name: TERMS[0].name, startDate: TERMS[0].startDate, endDate: TERMS[0].endDate, totalWeeks: 15 },
+        term: inTerm ? learnerTerm(TERMS[0]) : null,
         week: { number: weekNumber, start, end, isCurrent: start === mondayOf(FIXTURE_TODAY), prevStart: addDays(start, -7), nextStart: addDays(start, 7), inTerm: weekNumber !== null },
         days,
-        periods: PERIODS,
-        periodsSource: 'school',
+        periods: inTerm ? [...PERIODS] : [],
+        periodsSource: inTerm ? 'school' : 'derived',
         lessons,
-        subjects: kid.className ? SUBJECTS.map(([key, title, short]) => ({ courseId: `co-${kid.school}-${key}`, title, short, colourKey: key })) : [],
-      });
+        subjects: kid.className && inTerm
+          ? SUBJECTS.map(([key, title, short], index) => ({ courseId: `co-${kid.school}-${key}`, title, short, colourKey: index, teacher: { id: `tc-${kid.school}-${key}`, name: TEACHERS[kid.school][index] } }))
+          : [],
+      };
+      return ok(timetable);
     } },
     { method: 'GET', pattern: '/parents/me/children/:childId/attendance', handler: (request) => {
       const kid = child(request);
       if (kid instanceof Response) return kid;
       const month = request.query.get('month');
-      const summary = {
-        term: { id: TERMS[0].id, name: TERMS[0].name, session: TERMS[0].session, startDate: TERMS[0].startDate, endDate: TERMS[0].endDate, isCurrent: true },
-        class: kid.className ? { id: `cl-${kid.key}`, name: kid.className } : null,
-        schoolDays: kid.days,
-        present: kid.present,
-        late: kid.late,
-        absent: kid.absent,
-        onLeave: kid.leave,
-        rate: rateOf(kid),
-        band: (rateOf(kid) ?? 100) >= 92 ? 'on_track' : 'watch',
+      const inTerm = hasTerm(db);
+      const rate = inTerm ? rateOf(kid) : null;
+      const summary: ChildAttendance = {
+        term: inTerm ? learnerTerm(TERMS[0]) : null,
+        class: { id: `cl-${kid.key}`, name: kid.className ?? '' },
+        schoolDays: inTerm ? kid.days : 0,
+        present: inTerm ? kid.present : 0,
+        late: inTerm ? kid.late : 0,
+        absent: inTerm ? kid.absent : 0,
+        onLeave: inTerm ? kid.leave : 0,
+        rate,
+        band: (rate ?? 100) >= 92 ? 'on_track' : 'watch',
       };
       if (!month) return ok(summary);
       if (!/^\d{4}-\d{2}$/.test(month)) return fail(400, 'VALIDATION_FAILED', 'month must be YYYY-MM', [{ field: 'month', reason: 'format' }]);
@@ -773,14 +927,19 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       const daysInMonth = new Date(Date.UTC(year, mon, 0)).getUTCDate();
       const days = Array.from({ length: daysInMonth }, (_, i) => {
         const date = `${month}-${String(i + 1).padStart(2, '0')}`;
-        return { date, status: dayStatus(kid, date) };
+        const weekday = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+        return { date, status: inTerm ? dayStatus(kid, date) : weekday === 0 || weekday === 6 ? 'weekend' : 'unmarked' } as const;
       });
       return ok({ ...summary, days });
     } },
     { method: 'GET', pattern: '/parents/me/children/:childId/report-card/terms', handler: (request) => {
       const kid = child(request);
       if (kid instanceof Response) return kid;
-      return ok(TERMS.map((term) => ({ id: term.id, name: term.name, session: term.session, status: term.status, isCurrent: term.isCurrent, endDate: term.endDate })));
+      // A school with no current term has no report terms (as the API answers for Hillview).
+      const terms: ReportTerm[] = hasTerm(db)
+        ? TERMS.map((term) => ({ id: term.id, name: term.name, session: term.session, status: term.status, isCurrent: term.isCurrent, startDate: term.startDate, endDate: term.endDate }))
+        : [];
+      return ok(terms);
     } },
     { method: 'GET', pattern: '/parents/me/children/:childId/report-card', handler: (request) => {
       const kid = child(request);
@@ -816,7 +975,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       db.counter += 1;
       const row: LeaveRow = {
         id: `68l-fixture-${db.counter}`,
-        type: String(input.type),
+        type: String(input.type) as LeaveType,
         startDate: String(input.startDate),
         endDate: String(input.endDate),
         days: schoolDaysBetween(String(input.startDate), String(input.endDate)),
@@ -824,6 +983,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
         status: 'pending',
         decidedBy: null,
         decidedAt: null,
+        declineReason: null,
         createdAt: new Date().toISOString(),
       };
       db.leave.set(kid.id, [row, ...(db.leave.get(kid.id) ?? [])]);
@@ -835,7 +995,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       const rows = db.leave.get(kid.id) ?? [];
       const row = rows.find((entry) => entry.id === request.params.leaveId);
       if (!row) return fail(404, 'NOT_FOUND', 'Leave request not found');
-      if (row.status !== 'pending') return fail(409, 'CONFLICT', 'Only a pending request can be changed.');
+      if (row.status !== 'pending') return fail(400, 'BAD_REQUEST', 'Only a pending request can be changed.');
       const input = { ...row, ...body(request) };
       const invalid = leaveError(input);
       if (invalid) return invalid;
@@ -848,7 +1008,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       const rows = db.leave.get(kid.id) ?? [];
       const row = rows.find((entry) => entry.id === request.params.leaveId);
       if (!row) return fail(404, 'NOT_FOUND', 'Leave request not found');
-      if (row.status !== 'pending') return fail(409, 'CONFLICT', 'Only a pending request can be withdrawn.');
+      if (row.status !== 'pending') return fail(400, 'BAD_REQUEST', 'Only a pending request can be withdrawn.');
       db.leave.set(kid.id, rows.filter((entry) => entry.id !== row.id));
       return ok({ id: row.id, deleted: true });
     } },
@@ -865,25 +1025,59 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       if (kid instanceof Response) return kid;
       const school = SCHOOLS[kid.school];
       const teachers = TEACHERS[kid.school];
-      const contacts = kid.className
+      /**
+       * One contact, with the older name fields the API keeps alongside.
+       *
+       * @param entry - The new fields.
+       * @returns The contact.
+       */
+      const contact = (entry: Pick<ChatContact, 'userId' | 'name' | 'role' | 'subtitle' | 'group' | 'phone'>): ChatContact => {
+        const [firstName, ...rest] = entry.name.split(' ');
+        return { ...entry, avatarUrl: null, userAvatar: null, firstName: entry.group === 'office' ? entry.name : firstName, lastName: entry.group === 'office' ? '' : rest.join(' ') };
+      };
+      // Teachers' numbers are not shared with parents (`phone: null`), as the API answers.
+      const contacts: ChatContact[] = kid.className
         ? [
-            { userId: `us-${kid.school}-ct`, name: teachers[kid.teacherIdx], role: 'teacher', avatarUrl: null, subtitle: `Class teacher · ${kid.className}`, group: 'class_teacher', phone: '0803 555 0110' },
-            ...SUBJECTS.slice(0, 4).map(([key, title], i) => ({ userId: `us-${kid.school}-${key}`, name: teachers[i], role: 'teacher', avatarUrl: null, subtitle: `${title} · teacher`, group: 'teacher', phone: i === 0 ? '0803 555 0112' : null })),
+            contact({ userId: `us-${kid.school}-ct`, name: teachers[kid.teacherIdx], role: 'teacher', subtitle: `Class teacher · ${kid.className}`, group: 'class_teacher', phone: null }),
+            ...SUBJECTS.slice(0, 4).map(([key, title], i) => contact({ userId: `us-${kid.school}-${key}`, name: teachers[i], role: 'teacher', subtitle: `${title} · teacher`, group: 'teacher', phone: null })),
           ]
         : [];
-      contacts.push({ userId: 'office', name: 'School office', role: 'school_admin', avatarUrl: null, subtitle: `School office · ${school.name}`, group: 'office', phone: null });
+      contacts.push(contact({ userId: 'office', name: 'School office', role: 'school_admin', subtitle: `School office · ${school.name}`, group: 'office', phone: null }));
       return ok(contacts);
     } },
     { method: 'POST', pattern: '/chat/office', handler: (request) => {
       const kid = child(request);
       if (kid instanceof Response) return kid;
-      return ok({ _id: `room-office-${kid.school}`, roomId: `room-office-${kid.school}`, name: 'School office', type: 'office', callPhone: null }, undefined, 201);
+      const id = `room-office-${kid.school}`;
+      const room: Schema<'ChatRoomViewDto'> = {
+        _id: id,
+        roomId: id,
+        name: 'School office',
+        type: 'office',
+        ownerRole: 'parent',
+        category: 'office',
+        description: null,
+        admins: [],
+        callPhone: null,
+        participants: [],
+        lastMessage: null,
+        unreadCount: 0,
+        subtitle: `School office · ${SCHOOLS[kid.school].short}`,
+      };
+      return ok(room, undefined, 201);
     } },
     { method: 'POST', pattern: '/chat/rooms', handler: (request) => {
       const kid = child(request);
       if (kid instanceof Response) return kid;
-      const other = String((body(request).participants as string[] | undefined)?.[0] ?? '');
-      return ok({ _id: `room-dm-${other}`, roomId: `room-dm-${other}`, type: 'one_to_one', callPhone: other.endsWith('-ct') ? '0803 555 0110' : null }, undefined, 201);
+      // Like the API: a direct message names both people, the caller included.
+      const participants = (body(request).participants as string[] | undefined) ?? [];
+      if (participants.length !== 2 || !participants.includes(db.profile.id)) {
+        return fail(400, 'BAD_REQUEST', 'A direct message needs exactly two participants, you and the teacher.');
+      }
+      const other = participants.find((id) => id !== db.profile.id) as string;
+      const now = new Date().toISOString();
+      const room: Schema<'ChatRoomResponseDto'> = { _id: `room-dm-${other}`, type: 'one_to_one', participants, createdAt: now, updatedAt: now, reused: false };
+      return ok(room, undefined, 201);
     } },
 
     // ── Notifications (B11) ───────────────────────────────────────────────
@@ -949,7 +1143,9 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
     { method: 'GET', pattern: '/payments/parent/bank-details', handler: (request) => {
       const kid = child(request);
       if (kid instanceof Response) return kid;
-      return ok(SCHOOLS[kid.school].bank);
+      const school = SCHOOLS[kid.school];
+      const details: BankDetails = { ...school.bank, school: { id: school.id, name: school.name } };
+      return ok(details);
     } },
     { method: 'POST', pattern: '/payments/parent/initialize', handler: (request) => {
       const kid = child(request);
@@ -957,12 +1153,33 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       const input = body(request) as { feeAssignmentIds?: string[]; amount?: number; provider?: string; idempotencyKey?: string };
       if (!input.idempotencyKey) return fail(400, 'VALIDATION_FAILED', 'idempotencyKey is required', [{ field: 'idempotencyKey', reason: 'required' }]);
       const existing = db.checkoutsByKey.get(input.idempotencyKey);
-      if (existing) {
-        const checkout = db.checkouts.get(existing) as NonNullable<ReturnType<typeof db.checkouts.get>>;
-        return ok({ reference: checkout.reference, checkoutUrl: checkout.checkoutUrl, allocations: checkout.allocations });
-      }
+      /**
+       * The C3 answer for one checkout.
+       *
+       * @param checkout - The stored checkout.
+       * @param replayed - Whether an earlier request with the same key made it.
+       * @returns The response body.
+       */
+      const answer = (checkout: NonNullable<ReturnType<typeof db.checkouts.get>>, replayed: boolean): CheckoutResult => ({
+        reference: checkout.reference,
+        checkoutUrl: checkout.checkoutUrl,
+        allocations: checkout.allocations,
+        status: 'pending',
+        replayed,
+        transactionId: `tx-${checkout.reference}`,
+        internalReference: checkout.reference,
+        amount: checkout.amount,
+        subtotal: checkout.amount,
+        lateFee: 0,
+        platformFee: 0,
+        schoolAmount: checkout.amount,
+        currency: 'NGN',
+        provider: checkout.provider,
+      });
+      if (existing) return ok(answer(db.checkouts.get(existing) as NonNullable<ReturnType<typeof db.checkouts.get>>, true));
       const items = feeItems(db, kid).filter((item) => input.feeAssignmentIds?.includes(item.id) && item.balance > 0);
-      if (!items.length || items.length !== (input.feeAssignmentIds?.length ?? 0)) return fail(400, 'BAD_REQUEST', 'A selected fee is already paid or not yours.');
+      if (!items.length || items.length !== (input.feeAssignmentIds?.length ?? 0)) return fail(409, 'CONFLICT', 'A selected fee is already paid or not yours.');
+      if (items.some((item) => item.pendingPayment)) return fail(409, 'CONFLICT', 'A payment for one of these fees is already in progress.');
       const total = items.reduce((sum, item) => sum + item.balance, 0);
       const amount = input.amount ?? total;
       if (amount > total) return fail(400, 'VALIDATION_FAILED', 'The amount is more than the balance.', [{ field: 'amount', reason: 'too large' }]);
@@ -985,7 +1202,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       const checkout = { reference, childId: kid.id, provider: (input.provider ?? 'paystack') as 'paystack', allocations, amount, checkoutUrl: `${origin}/payments/verify?reference=${reference}`, settled: false };
       db.checkouts.set(reference, checkout);
       db.checkoutsByKey.set(input.idempotencyKey, reference);
-      return ok({ reference, checkoutUrl: checkout.checkoutUrl, allocations });
+      return ok(answer(checkout, false), undefined, 201);
     } },
     { method: 'GET', pattern: '/payments/parent/verify/:reference', handler: (request) => {
       const txn = settle(db, request.params.reference);
@@ -995,7 +1212,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
         success: true,
         status: 'successful',
         transaction: { _id: txn.id, internalReference: txn.reference, totalAmount: txn.amount, status: 'successful', studentId: txn.childId },
-        receipt: { _id: receipt.id, receiptNumber: receipt.receiptNumber, totalPaid: receipt.total },
+        receipt: { _id: receipt.id, receiptNumber: receipt.receiptNumber, totalPaid: receipt.totalPaid },
       });
     } },
     { method: 'POST', pattern: '/payments/parent/bank-transfer', handler: (request) => {
@@ -1004,47 +1221,71 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       const input = body(request) as { feeAssignmentIds?: string[]; amount?: number; transferReference?: string; paidOn?: string };
       if (!input.transferReference?.trim()) return fail(400, 'VALIDATION_FAILED', 'Enter the transfer reference.', [{ field: 'transferReference', reason: 'required' }]);
       if (!input.paidOn) return fail(400, 'VALIDATION_FAILED', 'Enter the date you paid.', [{ field: 'paidOn', reason: 'required' }]);
-      const items = feeItems(db, kid).filter((item) => input.feeAssignmentIds?.includes(item.id));
+      // The screen defaults the date to the real today, so the check uses the real clock too.
+      if (input.paidOn.slice(0, 10) > isoDay(new Date())) return fail(400, 'BAD_REQUEST', 'The transfer date cannot be in the future.');
+      const items = feeItems(db, kid).filter((item) => input.feeAssignmentIds?.includes(item.id) && item.balance > 0);
+      if (!items.length || items.length !== (input.feeAssignmentIds?.length ?? 0)) return fail(409, 'CONFLICT', 'A selected fee is already paid or not yours.');
+      if (items.some((item) => item.pendingPayment)) return fail(409, 'CONFLICT', 'A payment for one of these fees is already in progress.');
+      // The C3 rules apply to a transfer too: in full, unless every fee allows part payment and the minimum is met.
+      const total = items.reduce((sum, item) => sum + item.balance, 0);
+      const amount = Number(input.amount ?? 0);
+      if (amount > total) return fail(400, 'BAD_REQUEST', 'The amount is more than what is owed.');
+      if (amount < total) {
+        if (items.some((item) => !item.allowPartial)) return fail(400, 'BAD_REQUEST', 'One of these fees must be paid in full.');
+        const minimum = Math.min(SCHOOLS[kid.school].minimumPartPayment, total);
+        if (amount < minimum) return fail(400, 'BAD_REQUEST', `The smallest part payment is ₦${minimum.toLocaleString('en-NG')}.00.`);
+      }
+      const allocations: { feeAssignmentId: string; amount: number }[] = [];
+      let left = amount;
+      for (const item of [...items].sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
+        if (left <= 0) break;
+        const take = Math.min(left, item.balance);
+        allocations.push({ feeAssignmentId: item.id, amount: take });
+        left -= take;
+      }
       db.counter += 1;
+      const reference = `TXN-2026-FX${String(db.counter).padStart(14, '0')}`;
       const txn: TxnRow = {
         id: `tx-bank-${db.counter}`,
         childId: kid.id,
-        date: `${input.paidOn}T12:00:00.000Z`,
-        items: items.map((item) => ({ feeAssignmentId: item.id, label: item.label, amount: item.balance })),
-        amount: Number(input.amount ?? 0),
+        date: `${input.paidOn.slice(0, 10)}T00:00:00.000Z`,
+        items: allocations.map((allocation) => ({ ...allocation, label: items.find((item) => item.id === allocation.feeAssignmentId)?.label ?? '' })),
+        amount,
         method: 'bank_transfer',
-        reference: input.transferReference.trim(),
+        reference,
+        transferReference: input.transferReference.trim(),
         receiptNumber: null,
         status: 'pending',
         termId: TERMS[0].id,
       };
       db.transactions.unshift(txn);
-      return ok({ id: txn.id, status: 'pending', reference: txn.reference }, undefined, 201);
+      const response: BankTransferResponse = {
+        success: true,
+        transfer: { id: txn.id, reference, status: 'pending', amount, transferReference: txn.transferReference as string, paidOn: txn.date, allocations },
+      };
+      return raw(response, 201);
     } },
+    // Family-wide (C5, C6): `childId` is a filter, not a child header; another family's child is a 404.
     { method: 'GET', pattern: '/payments/parent/history', handler: (request) => {
       const childId = request.query.get('childId');
-      if (childId) {
-        const kid = child(request);
-        if (kid instanceof Response) return kid;
-      }
+      if (childId && !db.children.some((entry) => entry.id === childId)) return fail(404, 'NOT_FOUND', 'That child is not linked to this account.');
       const termId = request.query.get('termId');
       const rows = db.transactions
         .filter((txn) => (!childId || txn.childId === childId) && (!termId || txn.termId === termId))
         .map((txn) => historyRow(db, txn));
-      const paged = page(rows, request.query);
-      return ok(paged.data, paged.meta);
+      return ok(flatPage(rows, request.query));
     } },
     { method: 'GET', pattern: '/payments/parent/receipts', handler: (request) => {
       const childId = request.query.get('childId');
-      if (childId) {
-        const kid = child(request);
-        if (kid instanceof Response) return kid;
-      }
+      if (childId && !db.children.some((entry) => entry.id === childId)) return fail(404, 'NOT_FOUND', 'That child is not linked to this account.');
       const termId = request.query.get('termId');
-      const receipts = db.transactions
-        .filter((txn) => txn.status === 'successful' && txn.receiptNumber && (!childId || txn.childId === childId) && (!termId || txn.termId === termId))
-        .map((txn) => receiptOf(db, txn));
-      return ok({ data: receipts, allowParentDownload: true });
+      const settled = db.transactions.filter((txn) => txn.status === 'successful' && txn.receiptNumber && (!childId || txn.childId === childId));
+      const receipts = settled.filter((txn) => !termId || txn.termId === termId).map((txn) => receiptOf(db, txn));
+      // The terms the (filtered) receipts are in, newest first.
+      const terms = TERMS.filter((term) => settled.some((txn) => txn.termId === term.id))
+        .sort((a, b) => b.startDate.localeCompare(a.startDate))
+        .map((term) => ({ id: term.id, name: term.name, session: term.session }));
+      return ok({ ...flatPage(receipts, request.query), terms });
     } },
   ];
 }

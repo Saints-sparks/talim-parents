@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import { renderPortal, requestsTo } from '../../test-utils/portal';
 import { userEvent } from '../../test-utils/render';
-import { CHILDREN } from '../../dev/fixtures/seed';
+import { CHILDREN, PARENT } from '../../dev/fixtures/seed';
 import { CHILD_HEADER } from '../../lib/apiClient';
 import type { ChatRoom } from '../../types/chat';
 
@@ -98,7 +98,8 @@ describe('Messages (fixtures)', () => {
     await user.click(await within(start).findByRole('button', { name: /Mr Saint Agbukor/ }));
     await waitFor(() => expect(location()).toBe('/messages?room=room-dm-us-sparks-ct'));
     const dm = requestsTo(fixtures, '/chat/rooms')[0];
-    expect(dm.body).toEqual({ type: 'one_to_one', participants: ['us-sparks-ct'] });
+    // Both people, the parent first: the API refuses a one-person direct message.
+    expect(dm.body).toEqual({ type: 'one_to_one', participants: [PARENT.id, 'us-sparks-ct'] });
     expect(dm.headers[CHILD_HEADER]).toBe(MUSA.id);
 
     await user.click(within(start).getByRole('button', { name: /School office/ }));

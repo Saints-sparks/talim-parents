@@ -3,6 +3,10 @@
  * seed, that the handlers read and change (leave requests, acknowledgements,
  * payments, read state). Dev and test only.
  */
+import type { LeaveRequest } from '../../types/portal/leave';
+import type { PreferredMethod } from '../../types/portal/payments';
+import type { Schema } from '../../types/apiContract';
+import type { PortalTarget } from '../../types/portal/common';
 import {
   CHILDREN,
   FEE_CATALOG,
@@ -25,21 +29,12 @@ export type FixtureScenario =
   /** No linked children yet. */
   | 'empty'
   /** One child the school has not placed in a class. */
-  | 'no-class';
+  | 'no-class'
+  /** One child whose school has no current term (like a second school before term starts). */
+  | 'no-term';
 
-/** A leave request row. */
-export interface LeaveRow {
-  id: string;
-  type: string;
-  startDate: string;
-  endDate: string;
-  days: number;
-  note: string | null;
-  status: 'pending' | 'approved' | 'declined';
-  decidedBy: { name: string } | null;
-  decidedAt: string | null;
-  createdAt: string;
-}
+/** A stored leave request, in the B9 row shape. */
+export type LeaveRow = LeaveRequest;
 
 /** A settled or pending payment. */
 export interface TxnRow {
@@ -53,6 +48,8 @@ export interface TxnRow {
   receiptNumber: string | null;
   status: 'successful' | 'pending' | 'failed';
   termId: string;
+  /** Bank transfers only: the bank's reference the parent gave. */
+  transferReference?: string;
 }
 
 /** A checkout started with `initialize`, waiting for verify. */
@@ -78,7 +75,7 @@ export interface NotificationRow {
   childId: string | null;
   schoolKey: string;
   senderName: string;
-  target: { page: string };
+  target: PortalTarget;
   actionLabel: string;
 }
 
@@ -95,9 +92,13 @@ export interface FixtureDb {
   checkoutsByKey: Map<string, string>;
   notifications: NotificationRow[];
   profile: typeof PARENT;
-  preferredProvider: string | null;
+  preferredProvider: PreferredMethod | null;
+  /** When the parent finished the tour (`preferences.guides.tourCompletedAt`). */
+  tourCompletedAt: string | null;
+  /** The school lets parents download receipts (C5 `downloadAllowed`). */
+  receiptDownloads: boolean;
   notificationPrefs: Record<string, boolean | string>;
-  chatPrivacy: { showOnlineStatus: boolean; readReceipts: boolean; messagePreview: boolean };
+  chatPrivacy: Schema<'ChatPreferencesResponseDto'>;
   sessions: { id: string; device: string | null; browser: string | null; os: string | null; ip: string | null; lastUsedAt: string; createdAt: string; current: boolean }[];
   counter: number;
 }
@@ -121,6 +122,7 @@ function childrenFor(scenario: FixtureScenario): SeedChild[] {
   if (scenario === 'empty') return [];
   if (scenario === 'single') return [{ ...CHILDREN[0] }];
   if (scenario === 'no-class') return [{ ...CHILDREN[0], className: null }];
+  if (scenario === 'no-term') return [{ ...CHILDREN[0] }];
   return CHILDREN.map((child) => ({ ...child }));
 }
 
@@ -197,12 +199,13 @@ export function createFixtureDb(scenario: FixtureScenario = 'family'): FixtureDb
     const teacher = TEACHERS[child.school][child.teacherIdx];
     leave.set(
       child.id,
-      LEAVE.map((row) => ({
+      LEAVE.map((row): LeaveRow => ({
         ...row,
         id: `${row.id}-${child.key}`,
         status: row.status,
         decidedBy: row.status === 'pending' ? null : { name: teacher },
         decidedAt: row.status === 'pending' ? null : row.createdAt,
+        declineReason: 'declineReason' in row ? row.declineReason : null,
       })),
     );
   }
@@ -219,13 +222,24 @@ export function createFixtureDb(scenario: FixtureScenario = 'family'): FixtureDb
     notifications: seedNotifications(children),
     profile: { ...PARENT },
     preferredProvider: 'paystack',
+    // Seen, so the tour does not cover the screens under test; a tour test clears it.
+    tourCompletedAt: '2026-09-01T08:00:00.000Z',
+    receiptDownloads: true,
     notificationPrefs: {
       pushEnabled: true, webPushEnabled: true, emailEnabled: true, messagesEnabled: true,
       announcementsEnabled: true, attendanceEnabled: true, feesEnabled: true, resultsEnabled: true,
       gradingEnabled: true, timetableEnabled: true, resourcesEnabled: true, leaveRequestsEnabled: true,
       securityEnabled: true, systemEnabled: true, quietHoursEnabled: false, quietHoursStart: '21:00', quietHoursEnd: '06:00',
     },
-    chatPrivacy: { showOnlineStatus: true, readReceipts: true, messagePreview: true },
+    chatPrivacy: {
+      userId: PARENT.id,
+      allowTeacherMessages: true,
+      readReceipts: true,
+      showOnlineStatus: true,
+      messagePreview: true,
+      messageNotifications: true,
+      schoolAnnouncements: true,
+    },
     sessions: [
       { id: 'sess-1', device: 'MacBook', browser: 'Chrome', os: 'macOS', ip: '102.89.1.10', lastUsedAt: `${FIXTURE_TODAY}T09:00:00.000Z`, createdAt: '2026-09-10T09:00:00.000Z', current: true },
       { id: 'sess-2', device: 'iPhone', browser: 'Safari', os: 'iOS', ip: '102.89.1.44', lastUsedAt: '2026-09-17T19:20:00.000Z', createdAt: '2026-09-01T08:00:00.000Z', current: false },
@@ -248,6 +262,8 @@ export function subjectScores(child: SeedChild, termShift = 0) {
     const ca2 = Math.min(20, Math.round(total * 0.19));
     return {
       key,
+      /** The course's colour: its index among the class's courses (B: `colourKey`). */
+      colourKey: index,
       courseId: `co-${child.school}-${key}`,
       title,
       short,

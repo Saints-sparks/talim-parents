@@ -1,33 +1,26 @@
 /**
- * B10 messages for parents. Hand-written; see `./common.ts` for how to swap
- * these for the generated contract.
+ * B10 messages for parents, as the generated contract describes them.
  */
-
-/** Which list a contact sits in. */
-export type ContactGroup = 'class_teacher' | 'teacher' | 'office';
+import type { Schema } from '../apiContract';
 
 /**
- * One entry of `GET /chat/contacts?childId=` (B10, the §26 shape): the child's
+ * One entry of `GET /chat/contacts?childId=` for a parent (B10): the child's
  * class teacher and course teachers, plus an office entry (`userId: 'office'`).
+ * `phone` is always null for teachers (their numbers are not shared).
  */
-export interface ChatContact {
-  userId: string;
-  name: string;
-  role: string;
-  avatarUrl: string | null;
-  /** "Mathematics · teacher", "School office · Easy Sparks". */
-  subtitle: string;
-  group: ContactGroup;
-  /** Only when the API gives one: Call is a `tel:` link, never an in-app call. */
-  phone: string | null;
-}
+export type ChatContact = Schema<'ParentChildContactDto'>;
 
-/** The fields of a chat room view (§27) this app reads when opening a thread. */
-export interface OpenedRoom {
-  _id?: string;
-  roomId?: string;
-  name?: string;
-  type?: string;
-  /** §27: the phone to call from this thread, when the API has one. */
-  callPhone?: string | null;
-}
+/** Which list a contact sits in. */
+export type ContactGroup = ChatContact['group'];
+
+/** `POST /chat/office` (B10): the parent's office room of the child's school, as a §27 view. */
+export type OfficeRoom = Schema<'ChatRoomViewDto'>;
+
+/**
+ * `POST /chat/rooms` for a direct message: the stored room, not a §27 view
+ * (no `callPhone` or `subtitle`). `reused` is true when the room existed.
+ */
+export type CreatedRoom = Schema<'ChatRoomResponseDto'>;
+
+/** Either answer: the fields this app reads when opening a thread. */
+export type OpenedRoom = Pick<CreatedRoom, '_id'> & Partial<Pick<OfficeRoom, 'roomId' | 'name' | 'callPhone'>>;

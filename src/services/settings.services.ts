@@ -50,6 +50,8 @@ export interface ParentSettings {
     language?: string;
     /** C7: the method offered first at checkout. */
     preferredProvider?: PreferredMethod | null;
+    /** The first-run tour: when it was finished, on the account (null until then). */
+    guides?: { tourCompletedAt: string | null };
   };
   security: {
     twoFactorEnabled: boolean;

@@ -1,23 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { drawReceipts, pdfMoney, receiptFileName, receiptLayout, type PdfDoc } from '../receiptPdf';
+import { drawReceipts, pdfMoney, receiptFileName, receiptLayout, receiptMethod, studentLookup, type PdfDoc } from '../receiptPdf';
 import type { ParentReceipt } from '../../types/portal/payments';
 
+/** A C5 receipt as `GET /payments/parent/receipts` returns it (a bank transfer). */
 const RECEIPT: ParentReceipt = {
   id: 'r1',
-  receiptNumber: 'RCP-2026-000118',
+  _id: 'r1',
+  schoolId: 's1',
+  parentId: 'p1',
+  studentId: 'c1',
+  transactionId: 't1',
   termId: 't1',
-  termName: 'First term',
-  session: '2026 / 2027',
-  child: { id: 'c1', name: 'Musa Adele', admissionNumber: 'TAL/2026/JS1/0148', className: 'Jss1 A' },
-  school: { name: 'Easy Sparks Education Center', logoUrl: null, address: '14 Oduduwa Crescent, Ikeja' },
+  receiptNumber: 'RCP-2026-000118',
+  feeItems: [],
+  subtotal: 116_000,
+  lateFee: 0,
+  discount: 0,
+  totalPaid: 116_000,
+  currency: 'NGN',
+  paymentMethod: 'bank_transfer',
+  paymentProvider: '',
+  transactionReference: 'FT123',
+  paymentDate: '2026-09-04T10:00:00.000Z',
+  receiptPdfUrl: '',
+  verificationCode: '',
+  verificationQrUrl: '',
+  status: 'issued',
+  issuedAt: '2026-09-04T10:00:00.000Z',
+  createdAt: '2026-09-04T10:00:00.000Z',
+  updatedAt: '2026-09-04T10:00:00.000Z',
+  school: { id: 's1', name: 'Easy Sparks Education Center', logo: '', address: '14 Oduduwa Crescent, Ikeja' },
+  child: { id: 'c1', name: 'Musa Adele' },
+  term: { id: 't1', name: 'First term', session: '2026 / 2027' },
   items: [
-    { label: 'Tuition', amount: 90_000 },
-    { label: 'Books and stationery', amount: 26_000 },
+    { feeAssignmentId: 'fa1', label: 'Tuition', category: 'Tuition fee', amount: 90_000 },
+    { feeAssignmentId: 'fa2', label: 'Books and stationery', category: 'Materials', amount: 26_000 },
   ],
-  total: 116_000,
-  paidAt: '2026-09-04T10:00:00.000Z',
-  method: 'bank_transfer',
-  reference: 'FT123',
+  downloadAllowed: true,
 };
 
 /**
@@ -45,13 +64,15 @@ function fakeDoc() {
 
 describe('receipt PDF builder', () => {
   it('lays out the school header, the details, the lines, the total and the amount in words', () => {
-    const page = receiptLayout(RECEIPT);
+    const page = receiptLayout(RECEIPT, { admissionNumber: 'TAL/2026/JS1/0148', className: 'Jss1 A' });
     expect(page.schoolName).toBe('Easy Sparks Education Center');
     expect(page.details).toEqual(
       expect.arrayContaining([
         ['Receipt no.', 'RCP-2026-000118'],
         ['Date paid', '4 September 2026'],
         ['Student', 'Musa Adele'],
+        ['Admission no.', 'TAL/2026/JS1/0148'],
+        ['Class', 'Jss1 A'],
         ['Term', 'First term, 2026 / 2027'],
         ['Paid with', 'Bank transfer'],
         ['Reference', 'FT123'],
@@ -63,6 +84,19 @@ describe('receipt PDF builder', () => {
     ]);
     expect(page.total).toBe('NGN 116,000.00');
     expect(page.words).toBe('One Hundred Sixteen Thousand Naira Only');
+  });
+
+  it('names the provider of an online payment, else the recorded method', () => {
+    expect(receiptMethod({ paymentProvider: 'paystack', paymentMethod: 'card' })).toBe('Paystack');
+    expect(receiptMethod({ paymentProvider: '', paymentMethod: 'pos' })).toBe('POS');
+    expect(receiptMethod({ paymentProvider: '', paymentMethod: 'cash' })).toBe('Cash');
+  });
+
+  it('takes the admission number and class from the children list, which the receipt lacks', () => {
+    const lookup = studentLookup([{ id: 'c1', admissionNumber: 'TAL/1', class: { id: 'k', name: 'Jss1 A' } }]);
+    expect(lookup('c1')).toEqual({ admissionNumber: 'TAL/1', className: 'Jss1 A' });
+    expect(lookup('other')).toBeUndefined();
+    expect(receiptLayout(RECEIPT).details.map(([label]) => label)).not.toContain('Admission no.');
   });
 
   it('writes money with the currency code, which the PDF fonts can print', () => {

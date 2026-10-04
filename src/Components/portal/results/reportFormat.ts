@@ -29,15 +29,16 @@ export function reportPhase(term: ReportTerm | undefined, report?: ReportCard): 
  * green, the next blue, the middle amber, the bottom (fail) red.
  *
  * @param grade - The letter.
- * @param scale - The school's scale, best first.
+ * @param scale - The school's scale, in any order.
  * @returns The pill tone.
  */
 export function gradeTone(grade: string | null | undefined, scale: readonly GradeBand[]): Tone {
-  const index = scale.findIndex((band) => band.grade === grade);
+  const sorted = [...scale].sort((a, b) => b.min - a.min);
+  const index = sorted.findIndex((band) => band.letter === grade);
   if (index < 0) return 'muted';
   if (index === 0) return 'success';
   if (index === 1) return 'info';
-  if (index === scale.length - 1) return 'danger';
+  if (index === sorted.length - 1) return 'danger';
   return 'warning';
 }
 
@@ -54,14 +55,14 @@ export function positionText(position: Position | null | undefined): string {
 /**
  * Each band's range, from its minimum to just under the band above.
  *
- * @param scale - The school's scale, best first.
- * @returns e.g. `[{ grade: 'A', range: '75 – 100%', label: 'Excellent' }]`.
+ * @param scale - The school's scale, in any order.
+ * @returns e.g. `[{ letter: 'A', range: '70 – 100%', remark: 'Excellent' }]`, best first.
  */
-export function scaleRanges(scale: readonly GradeBand[]): { grade: string; range: string; label: string }[] {
+export function scaleRanges(scale: readonly GradeBand[]): { letter: string; range: string; remark: string }[] {
   const sorted = [...scale].sort((a, b) => b.min - a.min);
   return sorted.map((band, index) => ({
-    grade: band.grade,
+    letter: band.letter,
     range: `${band.min} – ${index === 0 ? 100 : sorted[index - 1].min - 1}%`,
-    label: band.label ?? '',
+    remark: band.remark ?? '',
   }));
 }

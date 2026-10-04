@@ -3,6 +3,7 @@ import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../services/auth.services';
 import { useNotificationCounts } from '../../../hooks/portal/useNotificationFeed';
+import { useActiveChild } from '../../../hooks/useActiveChild';
 import { initialsOf, topBarDate } from '../../../lib/format';
 import { focusRing } from '../ui/styles';
 import { ChildSwitcher } from './ChildSwitcher';
@@ -15,15 +16,18 @@ export interface TopBarProps {
 
 /**
  * The top bar: the menu button (below 980px), the child switcher, today's
- * date, the bell with the unread count (from `/notifications/counts`, not the
- * feeds) and the parent's name, which opens Settings.
+ * date, the bell with the active child's unread count (from
+ * `/notifications/counts?childId=`, not the feeds) and the parent's name,
+ * which opens Settings.
  *
  * @param props - See {@link TopBarProps}.
  * @returns The header.
  */
 export function TopBar({ drawerOpen, onToggleDrawer }: TopBarProps) {
   const { user } = useAuth();
-  const counts = useNotificationCounts();
+  const { childId } = useActiveChild();
+  // The active child's unread count (B11 `?childId=`): the portal shows one child at a time.
+  const counts = useNotificationCounts(childId, Boolean(childId));
   const unread = counts.data?.unread ?? 0;
   const today = useMemo(() => topBarDate(), []);
   const parentName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Parent';

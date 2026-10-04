@@ -1,6 +1,7 @@
 import { useMutation, useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { getChatContacts, openOfficeRoom, openTeacherRoom } from '../../services/portal/messages';
 import { queryKeys, staleTimes } from '../../lib/queryKeys';
+import { useAuth } from '../../services/auth.services';
 import type { ChatContact, OpenedRoom } from '../../types/portal/messages';
 
 /**
@@ -27,8 +28,11 @@ export function useChatContacts(childId: string | undefined): UseQueryResult<Cha
  * @returns The mutation, taking the contact.
  */
 export function useOpenThread(childId: string | undefined) {
+  const { parentId } = useAuth();
   return useMutation<OpenedRoom, unknown, ChatContact>({
     mutationFn: (contact) =>
-      contact.group === 'office' ? openOfficeRoom(childId as string) : openTeacherRoom(childId as string, contact.userId),
+      contact.group === 'office'
+        ? openOfficeRoom(childId as string)
+        : openTeacherRoom(childId as string, parentId, contact.userId),
   });
 }

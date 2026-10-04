@@ -39,7 +39,7 @@ export function MethodsPanel({ childId, schoolName }: { childId: string; schoolN
           const channels =
             method.id === 'bank_transfer'
               ? bank.data
-                ? `${bank.data.name} · ${bank.data.number} · ${bank.data.bank}`
+                ? `${bank.data.accountName} · ${bank.data.accountNumber} · ${bank.data.bankName}`
                 : `Into ${schoolName}'s account`
               : method.channels;
           return (

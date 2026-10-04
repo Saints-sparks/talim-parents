@@ -1,19 +1,17 @@
 /**
  * B12 school contact, §34 sessions and password policy, §35 support tickets,
- * B13 profile. Hand-written; see `./common.ts` for how to swap these for the
- * generated contract.
+ * B13 profile and the chat privacy switches.
  */
+import type { Schema } from '../apiContract';
 
 /** `GET /parents/me/children/:childId/school` (B12, the §36 shape). */
-export interface SchoolContact {
-  name: string;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  officeHours: { start: string; end: string } | null;
-}
+export type SchoolContact = Schema<'SchoolContactDto'>;
 
-/** One active session (§34). */
+/**
+ * One active session (§34). BACKEND GAP: the OpenAPI `SessionDto` lists only
+ * `device, browser, os, ip`; the API also returns `id`, `lastUsedAt`,
+ * `createdAt` and `current`, which the Security tab needs.
+ */
 export interface AuthSession {
   id: string;
   device: string | null;
@@ -25,7 +23,10 @@ export interface AuthSession {
   current: boolean;
 }
 
-/** `GET /auth/password-policy` (§34, public). */
+/**
+ * `GET /auth/password-policy` (§34, public). BACKEND GAP: the OpenAPI
+ * `PasswordPolicyDto` is empty.
+ */
 export interface PasswordPolicy {
   minLength: number;
   maxLength?: number;
@@ -38,43 +39,20 @@ export interface PasswordPolicy {
   historyCount: number;
 }
 
-/** Where a support ticket's problem happened (§35, plus B12's `payments` and `results`). */
-export type SupportArea =
-  | 'payments'
-  | 'results'
-  | 'attendance'
-  | 'messages'
-  | 'signing_in'
-  | 'other';
-
 /** Body of `POST /support/tickets` (§35). */
-export interface SupportTicketPayload {
-  area: SupportArea;
-  /** 10–2000 characters. */
-  description: string;
-  context?: { path?: string; appVersion?: string; userAgent?: string };
-}
+export type SupportTicketPayload = Schema<'CreateSupportTicketDto'>;
+
+/** The problem areas the parents' Help tab offers (a subset of the API's). */
+export type SupportArea = Extract<SupportTicketPayload['area'], 'payments' | 'results' | 'attendance' | 'messages' | 'signing_in' | 'other'>;
 
 /** `POST /support/tickets` answers. */
-export interface SupportTicketResult {
-  reference: string;
-  createdAt: string;
-}
+export type SupportTicketResult = Schema<'SupportTicketCreatedDto'>;
 
 /**
  * Body of `PATCH /parent/settings/profile` (B13): `occupation` and `address`
  * are new. Email is never sent; the phone changes through the OTP routes.
  */
-export interface ParentProfilePayload {
-  fullName?: string;
-  occupation?: string;
-  address?: string;
-}
+export type ParentProfilePayload = Pick<Schema<'UpdateParentProfileDto'>, 'fullName' | 'occupation' | 'address'>;
 
-/** The chat privacy switches (`GET`/`PATCH /chat/preferences`, A16 and B10). */
-export interface ChatPrivacy {
-  showOnlineStatus: boolean;
-  readReceipts: boolean;
-  /** B10: when false, push text reads "New message". */
-  messagePreview: boolean;
-}
+/** The chat privacy switches of `GET`/`PATCH /chat/preferences` (A16, B10) the Privacy tab shows. */
+export type ChatPrivacy = Pick<Schema<'ChatPreferencesResponseDto'>, 'showOnlineStatus' | 'readReceipts' | 'messagePreview'>;

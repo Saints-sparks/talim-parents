@@ -25,7 +25,8 @@ export interface DueFeesPanelProps {
 /**
  * The Due fees tab: each fee with its status, what is already paid, the
  * breakdown on demand, "Pay now", and ticks to pay several together
- * ("Pay selected").
+ * ("Pay selected"). A fee a checkout or bank transfer already holds
+ * (`pendingPayment`) cannot be picked again: the server would refuse it (409).
  *
  * @param props - See {@link DueFeesPanelProps}.
  * @returns The panel.
@@ -34,7 +35,7 @@ export function DueFeesPanel({ firstName, items, onPay }: DueFeesPanelProps) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const chosen = useMemo(() => items.filter((item) => selected.has(item.id)), [items, selected]);
+  const chosen = useMemo(() => items.filter((item) => !item.pendingPayment && selected.has(item.id)), [items, selected]);
   const outstanding = useMemo(() => items.reduce((sum, item) => sum + item.balance, 0), [items]);
   const chosenTotal = useMemo(() => chosen.reduce((sum, item) => sum + item.balance, 0), [chosen]);
 
@@ -72,15 +73,23 @@ export function DueFeesPanel({ firstName, items, onPay }: DueFeesPanelProps) {
 
       <ul className="mt-4 flex flex-col gap-3">
         {items.map((item) => {
-          const on = selected.has(item.id);
+          const held = item.pendingPayment;
+          const on = !held && selected.has(item.id);
           const open = expanded === item.id;
           const status = STATUS[item.status];
           const breakdownId = `breakdown-${item.id}`;
           return (
             <li key={item.id} className="rounded-[18px] border border-tl-line-soft p-[18px]">
               <div className="flex flex-wrap items-start gap-3.5">
-                <label className={`-m-2.5 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl ${focusRing}`}>
-                  <input type="checkbox" className="peer sr-only" checked={on} onChange={() => toggle(item.id)} aria-label={`Select ${item.label}`} />
+                <label className={`-m-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${held ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${focusRing}`}>
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={on}
+                    disabled={held}
+                    onChange={() => toggle(item.id)}
+                    aria-label={held ? `${item.label}: a payment is pending` : `Select ${item.label}`}
+                  />
                   <span
                     aria-hidden="true"
                     className={`flex h-[22px] w-[22px] items-center justify-center rounded-[7px] border text-white peer-focus-visible:ring-2 peer-focus-visible:ring-tl-link ${
@@ -94,6 +103,7 @@ export function DueFeesPanel({ firstName, items, onPay }: DueFeesPanelProps) {
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span className="text-base font-extrabold text-tl-ink">{item.label}</span>
                     <Pill tone={status.tone}>{status.label}</Pill>
+                    {held ? <Pill tone="muted">Payment pending</Pill> : null}
                   </div>
                   <p className="mt-[5px] text-[13px] text-tl-muted">
                     {item.category}
@@ -102,7 +112,13 @@ export function DueFeesPanel({ firstName, items, onPay }: DueFeesPanelProps) {
                   <p className="mt-[3px] text-[13px] text-tl-faint">
                     {item.paid > 0 ? `${naira(item.paid)} of ${naira(item.amount)} already paid` : `Full amount ${naira(item.amount)}`}
                     {item.allowPartial ? '' : ' · must be paid in full'}
+                    {item.lateFee > 0 ? ` · includes ${naira(item.lateFee)} late fee` : ''}
                   </p>
+                  {held ? (
+                    <p className="mt-[3px] text-[13px] text-tl-muted">
+                      A checkout or bank transfer is waiting on this fee. It can be paid again only if that one fails or is rejected.
+                    </p>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <div className="whitespace-nowrap text-[19px] font-extrabold text-tl-ink">{naira(item.balance)}</div>
@@ -115,9 +131,11 @@ export function DueFeesPanel({ firstName, items, onPay }: DueFeesPanelProps) {
                     {open ? 'Hide breakdown' : 'View breakdown'}
                   </button>
                 ) : null}
-                <button type="button" className={`${primaryButton} !min-h-[44px] !rounded-xl !px-[18px] !py-2.5 !text-[13px]`} onClick={() => onPay([item])} aria-label={`Pay now: ${item.label}`}>
-                  Pay now
-                </button>
+                {held ? null : (
+                  <button type="button" className={`${primaryButton} !min-h-[44px] !rounded-xl !px-[18px] !py-2.5 !text-[13px]`} onClick={() => onPay([item])} aria-label={`Pay now: ${item.label}`}>
+                    Pay now
+                  </button>
+                )}
               </div>
               {open ? (
                 <ul id={breakdownId} className="mt-3.5 flex flex-col border-t border-tl-line-soft pt-3">

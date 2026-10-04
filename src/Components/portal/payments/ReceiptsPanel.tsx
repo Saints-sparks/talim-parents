@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParentReceipts } from '../../../hooks/portal/usePortalPayments';
+import { useActiveChild } from '../../../hooks/useActiveChild';
 import { naira, shortDate } from '../../../lib/format';
-import { downloadReceiptsPdf, receiptFileName } from '../../../lib/receiptPdf';
+import { downloadReceiptsPdf, receiptFileName, receiptMethod, studentLookup } from '../../../lib/receiptPdf';
 import { logger } from '../../../lib/logger';
 import { ErrorCard } from '../ui/primitives';
 import { ghostButton, rowButton } from '../ui/styles';
@@ -22,19 +23,19 @@ function toModalReceipt(receipt: ParentReceipt): { receipt: Receipt; school: Rec
       receiptNumber: receipt.receiptNumber,
       studentId: receipt.child.id,
       transactionId: '',
-      feeItems: receipt.items.map((item) => ({ feeName: item.label, category: item.category ?? '', description: '', amount: item.amount })),
-      subtotal: receipt.total,
-      lateFee: 0,
-      discount: 0,
-      totalPaid: receipt.total,
-      currency: receipt.currency ?? 'NGN',
-      paymentProvider: receipt.method,
-      transactionReference: receipt.reference ?? undefined,
-      paymentDate: receipt.paidAt,
-      status: 'issued',
-      issuedAt: receipt.paidAt,
+      feeItems: receipt.items.map((item) => ({ feeName: item.label, category: item.category, description: '', amount: item.amount })),
+      subtotal: receipt.subtotal,
+      lateFee: receipt.lateFee,
+      discount: receipt.discount,
+      totalPaid: receipt.totalPaid,
+      currency: receipt.currency || 'NGN',
+      paymentProvider: receiptMethod(receipt),
+      transactionReference: receipt.transactionReference || undefined,
+      paymentDate: receipt.paymentDate,
+      status: receipt.status,
+      issuedAt: receipt.issuedAt,
     },
-    school: { name: receipt.school.name, address: receipt.school.address ?? undefined },
+    school: { name: receipt.school?.name ?? 'School', address: receipt.school?.address || undefined },
   };
 }
 
@@ -50,20 +51,23 @@ export interface ReceiptsPanelProps {
 /**
  * The Receipts tab (C5): each receipt with what it covers, View (the kept
  * receipt dialog) and Download (a PDF built here with jspdf), plus one PDF of
- * the whole term. The school can turn parent downloads off.
+ * the whole term. The school can turn parent downloads off (`downloadAllowed`
+ * on each receipt; the download route answers 403 then).
  *
  * @param props - See {@link ReceiptsPanelProps}.
  * @returns The panel.
  */
 export function ReceiptsPanel({ childId, childName, termId, termLabel }: ReceiptsPanelProps) {
   const receipts = useParentReceipts(childId, termId);
+  const { children } = useActiveChild();
+  const studentOf = useMemo(() => studentLookup(children), [children]);
   const [viewing, setViewing] = useState<ParentReceipt | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const download = async (list: ParentReceipt[], key: string, filename: string): Promise<void> => {
     setBusy(key);
     try {
-      await downloadReceiptsPdf(list, filename);
+      await downloadReceiptsPdf(list, filename, studentOf);
     } catch (error) {
       logger.error('payments', 'Could not build the receipt PDF', error);
     } finally {
@@ -75,7 +79,7 @@ export function ReceiptsPanel({ childId, childName, termId, termLabel }: Receipt
   if (receipts.isError) return <div className="mt-5"><ErrorCard error={receipts.error} title="Receipts couldn't be loaded" onRetry={() => void receipts.refetch()} /></div>;
 
   const list = receipts.data.data;
-  const canDownload = receipts.data.allowParentDownload !== false;
+  const canDownload = list.every((receipt) => receipt.downloadAllowed);
   if (list.length === 0) {
     return <p className="mt-5 rounded-2xl border border-tl-line-soft bg-tl-subtle p-5 text-sm text-tl-muted">No receipts{termLabel ? ` for ${termLabel}` : ''} yet. Each payment produces one.</p>;
   }
@@ -118,14 +122,14 @@ export function ReceiptsPanel({ childId, childName, termId, termLabel }: Receipt
               <tr key={receipt.id} className="border-b border-tl-line-soft">
                 <td className="px-1.5 py-4 font-bold text-tl-link">{receipt.receiptNumber}</td>
                 <td className="px-1.5 py-4 pr-2.5 text-tl-muted">{receipt.items.map((item) => item.label).join(', ')}</td>
-                <td className="px-1.5 py-4 font-extrabold text-tl-ink">{naira(receipt.total)}</td>
-                <td className="px-1.5 py-4 text-tl-muted">{shortDate(receipt.paidAt)}</td>
+                <td className="px-1.5 py-4 font-extrabold text-tl-ink">{naira(receipt.totalPaid)}</td>
+                <td className="px-1.5 py-4 text-tl-muted">{shortDate(receipt.paymentDate)}</td>
                 <td className="px-1.5 py-4">
                   <div className="flex flex-wrap gap-2">
                     <button type="button" className={rowButton} onClick={() => setViewing(receipt)} aria-label={`View receipt ${receipt.receiptNumber}`}>
                       View
                     </button>
-                    {canDownload ? (
+                    {receipt.downloadAllowed ? (
                       <button
                         type="button"
                         className={rowButton}

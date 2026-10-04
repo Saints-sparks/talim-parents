@@ -96,7 +96,7 @@ describe('Settings (fixtures)', () => {
     const user = userEvent.setup();
     const { fixtures } = renderTab('payments');
     await user.click(await screen.findByRole('button', { name: 'OPay' }));
-    await waitFor(() => expect(requestsTo(fixtures, '/parent/settings/preferences')[0]?.body).toEqual({ preferredProvider: 'opay' }));
+    await waitFor(() => expect(requestsTo(fixtures, '/parent/settings/payment-method')[0]?.body).toEqual({ preferredProvider: 'opay' }));
     expect(screen.queryByText(/Add a card/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Download all receipts/ }));
     expect(await screen.findByRole('dialog', { name: 'Download receipts' })).toBeInTheDocument();

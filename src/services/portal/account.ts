@@ -8,6 +8,25 @@ import type {
   SupportTicketResult,
 } from '../../types/portal/school';
 import type { PreferredMethod } from '../../types/portal/payments';
+import type { Schema } from '../../types/apiContract';
+
+/**
+ * What `PATCH /parent/settings/payment-method` answers. BACKEND GAP: the
+ * route documents no response schema.
+ */
+export interface PreferredMethodResult {
+  message?: string;
+  preferredProvider: PreferredMethod | null;
+}
+
+/**
+ * What `PATCH /parent/settings/preferences` answers. BACKEND GAP: the route
+ * documents no response schema.
+ */
+export interface GuidesResult {
+  message?: string;
+  guides: { tourCompletedAt: string | null };
+}
 
 /**
  * The parent's own account (B13, C7, §34, §35, A16): not about a child, so
@@ -26,15 +45,30 @@ export function updateParentProfile(payload: ParentProfilePayload): Promise<{ me
 }
 
 /**
- * Saves the method offered first at checkout (C7, `ParentPreference.preferredProvider`).
- * CONTRACT GAP: C7 says "through `/parent/settings`"; the sub-route is assumed.
+ * Saves the method offered first at checkout (C7). `PATCH
+ * /parent/settings/preferences` refuses this field (400): it takes only the
+ * tour's `guides`.
  *
- * @param preferredProvider - The provider, or bank transfer.
- * @returns The acknowledgement.
+ * @param preferredProvider - The provider, or bank transfer; `null` clears the choice.
+ * @returns The stored choice.
  * @throws {ApiError} `VALIDATION_FAILED` for an unknown provider.
  */
-export function setPreferredMethod(preferredProvider: PreferredMethod): Promise<{ message?: string }> {
-  return api.patch<{ message?: string }>('/parent/settings/preferences', { preferredProvider });
+export function setPreferredMethod(preferredProvider: PreferredMethod | null): Promise<PreferredMethodResult> {
+  const body: Schema<'UpdatePreferredProviderDto'> = { preferredProvider };
+  return api.patch<PreferredMethodResult>('/parent/settings/payment-method', body);
+}
+
+/**
+ * Records that the parent finished (or wants to see again) the first-run tour,
+ * on the account rather than the device, so it is not shown again elsewhere.
+ *
+ * @param tourCompleted - True stamps `guides.tourCompletedAt` with now; false clears it.
+ * @returns The stored guides.
+ * @throws {ApiError} On any non-2xx.
+ */
+export function setTourCompleted(tourCompleted: boolean): Promise<GuidesResult> {
+  const body: Schema<'UpdateParentPreferencesDto'> = { guides: { tourCompleted } };
+  return api.patch<GuidesResult>('/parent/settings/preferences', body);
 }
 
 /**

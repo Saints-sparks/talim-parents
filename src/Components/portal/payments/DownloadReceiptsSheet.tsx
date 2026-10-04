@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { useReportTerms } from '../../../hooks/portal/useChildData';
 import { useParentReceipts } from '../../../hooks/portal/usePortalPayments';
-import { downloadReceiptsPdf, receiptFileName } from '../../../lib/receiptPdf';
+import { useActiveChild } from '../../../hooks/useActiveChild';
+import { downloadReceiptsPdf, receiptFileName, studentLookup } from '../../../lib/receiptPdf';
 import { firstNameOf } from '../../../lib/format';
 import { getErrorMessage } from '../../../lib/apiError';
 import { Sheet } from '../ui/Dialog';
@@ -18,15 +18,18 @@ export interface DownloadReceiptsSheetProps {
 /**
  * The design's "Download receipts" sheet: pick a session and a term, get one
  * PDF of every receipt issued for the child then (C5), built in the browser.
- * The term list is the child's terms (B5); CONTRACT GAP: there is no
- * per-child "terms with receipts" route, so a term may have none.
+ * The terms offered are the ones the child has receipts in (the receipts
+ * list's `terms`, newest first).
  *
  * @param props - See {@link DownloadReceiptsSheetProps}.
  * @returns The sheet.
  */
 export function DownloadReceiptsSheet({ open, onClose, child }: DownloadReceiptsSheetProps) {
-  const terms = useReportTerms(open ? child.id : undefined);
-  const sessions = useMemo(() => [...new Set((terms.data ?? []).map((term) => term.session ?? '—'))], [terms.data]);
+  // Every receipt of the child, once: its `terms` are the terms that have receipts.
+  const all = useParentReceipts(child.id, undefined, open);
+  const { children } = useActiveChild();
+  const studentOf = useMemo(() => studentLookup(children), [children]);
+  const sessions = useMemo(() => [...new Set((all.data?.terms ?? []).map((term) => term.session ?? '—'))], [all.data]);
   const [session, setSession] = useState<string | null>(null);
   const [termId, setTermId] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -37,15 +40,17 @@ export function DownloadReceiptsSheet({ open, onClose, child }: DownloadReceipts
     if (!open) return;
     setDone(false);
     setError(null);
-    const current = terms.data?.find((term) => term.isCurrent) ?? terms.data?.[0];
-    setSession(current?.session ?? null);
-    setTermId(current?.id ?? null);
-  }, [open, terms.data]);
+    // Newest first: the latest term with receipts.
+    const latest = all.data?.terms[0];
+    setSession(latest ? (latest.session ?? '—') : null);
+    setTermId(latest?.id ?? null);
+  }, [open, all.data]);
 
-  const termsOfSession = (terms.data ?? []).filter((term) => (term.session ?? '—') === session);
+  const termsOfSession = (all.data?.terms ?? []).filter((term) => (term.session ?? '—') === session);
   const term = termsOfSession.find((entry) => entry.id === termId) ?? null;
   const receipts = useParentReceipts(child.id, term?.id, open && Boolean(term));
   const firstName = firstNameOf(child.name);
+  const downloadsOff = Boolean(receipts.data?.data.some((receipt) => !receipt.downloadAllowed));
 
   const download = async (): Promise<void> => {
     if (!term || !receipts.data) return;
@@ -56,7 +61,7 @@ export function DownloadReceiptsSheet({ open, onClose, child }: DownloadReceipts
     setBusy(true);
     setError(null);
     try {
-      await downloadReceiptsPdf(receipts.data.data, receiptFileName(child.name, term.name, term.session));
+      await downloadReceiptsPdf(receipts.data.data, receiptFileName(child.name, term.name, term.session), studentOf);
       setDone(true);
     } catch (cause) {
       setError(getErrorMessage(cause, 'The PDF could not be made. Please try again.'));
@@ -85,7 +90,7 @@ export function DownloadReceiptsSheet({ open, onClose, child }: DownloadReceipts
             <button
               type="button"
               className={`${primaryButton} flex-1`}
-              disabled={!term || busy || receipts.isPending || receipts.data?.allowParentDownload === false}
+              disabled={!term || busy || receipts.isPending || downloadsOff}
               onClick={() => void download()}
             >
               {busy ? 'Preparing PDF…' : 'Download PDF'}
@@ -101,10 +106,14 @@ export function DownloadReceiptsSheet({ open, onClose, child }: DownloadReceipts
             {firstName} · {term?.name.toLowerCase()}, {term?.session}. The PDF has been saved to your downloads.
           </p>
         </div>
-      ) : terms.isPending ? (
+      ) : all.isPending ? (
         <div role="status" aria-label="Loading terms" className="h-24 animate-pulse rounded-2xl bg-tl-track" />
-      ) : terms.isError ? (
-        <p role="alert" className="text-sm font-semibold text-tl-danger">{getErrorMessage(terms.error, 'The terms could not be loaded.')}</p>
+      ) : all.isError ? (
+        <p role="alert" className="text-sm font-semibold text-tl-danger">{getErrorMessage(all.error, 'The terms could not be loaded.')}</p>
+      ) : sessions.length === 0 ? (
+        <p className="rounded-[14px] border border-tl-line-soft bg-tl-subtle p-3.5 text-[13px] leading-relaxed text-tl-muted">
+          No receipts have been issued for {firstName} yet. Each payment produces one.
+        </p>
       ) : (
         <>
           <fieldset>
@@ -131,7 +140,7 @@ export function DownloadReceiptsSheet({ open, onClose, child }: DownloadReceipts
             {term
               ? `One PDF containing every receipt issued to this account for ${firstName} in ${term.name.toLowerCase()}, ${term.session}.`
               : 'Choose a term.'}
-            {receipts.data?.allowParentDownload === false ? ' The school has turned receipt downloads off; ask the bursary for a printed copy.' : ''}
+            {downloadsOff ? ' The school has turned receipt downloads off; ask the bursary for a printed copy.' : ''}
           </p>
           {error ? (
             <p role="alert" className="text-sm font-semibold text-tl-danger">

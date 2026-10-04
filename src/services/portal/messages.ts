@@ -1,5 +1,6 @@
 import { api, buildQuery } from '../../lib/apiClient';
-import type { ChatContact, OpenedRoom } from '../../types/portal/messages';
+import type { Schema } from '../../types/apiContract';
+import type { ChatContact, CreatedRoom, OfficeRoom, OpenedRoom } from '../../types/portal/messages';
 
 /**
  * B10 for parents: who the parent can write to about one child, and opening
@@ -22,25 +23,30 @@ export function getChatContacts(childId: string): Promise<ChatContact[]> {
  * the child's school: one room per school and parent.
  *
  * @param childId - Student record id of a linked child.
- * @returns The office room.
+ * @returns The office room, as a §27 view.
  * @throws {ApiError} On any non-2xx.
  */
-export function openOfficeRoom(childId: string): Promise<OpenedRoom> {
+export function openOfficeRoom(childId: string): Promise<OfficeRoom> {
   // No body: the school comes from the child header, as for every child-scoped route.
-  return api.post<OpenedRoom>('/chat/office', undefined, { childId });
+  return api.post<OfficeRoom>('/chat/office', undefined, { childId });
 }
 
 /**
  * Opens (creating on first use) a one-to-one thread with one of the child's
  * teachers.
  *
+ * The API wants both people in `participants`, the caller first; it answers
+ * the stored room (`reused: true` when it already existed), not a §27 view.
+ *
  * @param childId - Student record id of a linked child.
+ * @param myUserId - The signed-in parent's user id.
  * @param teacherUserId - The teacher's user id, from {@link getChatContacts}.
  * @returns The room.
  * @throws {ApiError} `FORBIDDEN` when that teacher does not teach the child.
  */
-export function openTeacherRoom(childId: string, teacherUserId: string): Promise<OpenedRoom> {
-  return api.post<OpenedRoom>('/chat/rooms', { type: 'one_to_one', participants: [teacherUserId] }, { childId });
+export function openTeacherRoom(childId: string, myUserId: string, teacherUserId: string): Promise<CreatedRoom> {
+  const body: Schema<'CreateChatRoomDto'> = { type: 'one_to_one', participants: [myUserId, teacherUserId] };
+  return api.post<CreatedRoom>('/chat/rooms', body, { childId });
 }
 
 /**

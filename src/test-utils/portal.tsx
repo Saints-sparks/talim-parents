@@ -71,7 +71,6 @@ export function renderPortal(ui: ReactElement, options: RenderPortalOptions = {}
   window.localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
   window.localStorage.setItem(STORAGE_KEYS.parentId, PARENT.id);
   window.localStorage.setItem(`parent_onboarding_${PARENT.id}`, JSON.stringify({ completedSteps: ['parent-profile', 'select-ward'], setupDismissed: true }));
-  window.localStorage.setItem(`talim_tour_seen_${PARENT.id}`, '1');
   if (childId) window.localStorage.setItem(selectedChildStorageKey(PARENT.id), childId);
   if (signedOut) {
     window.localStorage.removeItem(STORAGE_KEYS.accessToken);

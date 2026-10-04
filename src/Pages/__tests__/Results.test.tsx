@@ -5,7 +5,7 @@ import { userEvent } from '../../test-utils/render';
 import { CHILDREN, TERMS } from '../../dev/fixtures/seed';
 import { CHILD_HEADER } from '../../lib/apiClient';
 import Results from '../Results';
-import { reportPhase, scaleRanges } from '../../Components/portal/results/reportFormat';
+import { gradeTone, reportPhase, scaleRanges } from '../../Components/portal/results/reportFormat';
 
 vi.setConfig({ testTimeout: 20_000 });
 const MUSA = CHILDREN[0];
@@ -66,22 +66,42 @@ describe('Results (fixtures)', () => {
     renderPortal(<Results />, { scenario: 'no-class' });
     expect(await screen.findByText('Musa is not in a class yet')).toBeInTheDocument();
   });
+
+  it('says there are no results yet when the school has no term (no report terms)', async () => {
+    const { fixtures } = renderPortal(<Results />, { scenario: 'no-term' });
+    expect(await screen.findByText('No results for Musa yet')).toBeInTheDocument();
+    expect(requestsTo(fixtures, '/report-card').map((r) => r.path)).toEqual([`/parents/me/children/${MUSA.id}/report-card/terms`]);
+  });
 });
 
 describe('report helpers', () => {
   it('names the phases: pending, live, published this term, archived', () => {
-    const term = { id: 't', name: 'First term', session: '2026 / 2027', status: 'none' as const, isCurrent: true };
+    const term = { id: 't', name: 'First term', session: '2026 / 2027', status: 'none' as const, isCurrent: true, startDate: '2026-09-01', endDate: '2026-12-15' };
     expect(reportPhase(term)).toBe('pending');
     expect(reportPhase({ ...term, status: 'partial' })).toBe('live');
     expect(reportPhase({ ...term, status: 'published' })).toBe('published');
     expect(reportPhase({ ...term, status: 'published', isCurrent: false })).toBe('archived');
   });
 
-  it('turns the school scale into ranges', () => {
-    expect(scaleRanges([{ grade: 'A', min: 70, label: 'Excellent' }, { grade: 'F', min: 0, label: 'Fail' }, { grade: 'B', min: 60 }])).toEqual([
-      { grade: 'A', range: '70 – 100%', label: 'Excellent' },
-      { grade: 'B', range: '60 – 69%', label: '' },
-      { grade: 'F', range: '0 – 59%', label: 'Fail' },
+  it('turns the school scale ({ letter, min, remark }) into ranges, best first', () => {
+    expect(scaleRanges([{ letter: 'A', min: 70, remark: 'Excellent' }, { letter: 'F', min: 0, remark: 'Fail' }, { letter: 'B', min: 60, remark: null }])).toEqual([
+      { letter: 'A', range: '70 – 100%', remark: 'Excellent' },
+      { letter: 'B', range: '60 – 69%', remark: '' },
+      { letter: 'F', range: '0 – 59%', remark: 'Fail' },
     ]);
+  });
+
+  it('tones a grade by its place on the scale, whatever order the API sends it in', () => {
+    const scale = [
+      { letter: 'F', min: 0, remark: 'Fail' },
+      { letter: 'A', min: 70, remark: 'Excellent' },
+      { letter: 'C', min: 50, remark: 'Good' },
+      { letter: 'B', min: 60, remark: 'Very good' },
+    ];
+    expect(gradeTone('A', scale)).toBe('success');
+    expect(gradeTone('B', scale)).toBe('info');
+    expect(gradeTone('C', scale)).toBe('warning');
+    expect(gradeTone('F', scale)).toBe('danger');
+    expect(gradeTone('Z', scale)).toBe('muted');
   });
 });

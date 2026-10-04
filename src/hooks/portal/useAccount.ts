@@ -8,6 +8,7 @@ import {
   revokeSession,
   sendSupportTicket,
   setPreferredMethod,
+  setTourCompleted,
   updateChatPrivacy,
   updateParentProfile,
 } from '../../services/portal/account';
@@ -16,6 +17,7 @@ import { queryKeys, staleTimes } from '../../lib/queryKeys';
 import type { NotificationPreferences, NotificationPreferencesPayload } from '../../types/notifications';
 import type { AuthSession, ChatPrivacy, ParentProfilePayload, PasswordPolicy, SupportTicketPayload } from '../../types/portal/school';
 import type { PreferredMethod } from '../../types/portal/payments';
+import type { ParentSettings } from '../../services/settings.services';
 
 /**
  * The parent's own account: profile, alerts, chat privacy, payment
@@ -55,6 +57,25 @@ export function useSetPreferredMethod() {
     mutationFn: (method: PreferredMethod) => setPreferredMethod(method),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.settings.parent(parentId || 'anon') });
+    },
+  });
+}
+
+/**
+ * Stamps the first-run tour as seen on the parent's account, and writes the
+ * stamp into the cached settings at once so the tour does not open twice.
+ *
+ * @returns The mutation (no arguments).
+ */
+export function useMarkTourSeen() {
+  const { parentId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => setTourCompleted(true),
+    onSuccess: (result) => {
+      queryClient.setQueryData<ParentSettings>(queryKeys.settings.parent(parentId || 'anon'), (previous) =>
+        previous ? { ...previous, preferences: { ...previous.preferences, guides: result.guides } } : previous,
+      );
     },
   });
 }

@@ -105,10 +105,17 @@ describe('Payments (fixtures)', () => {
     expect(requestsTo(fixtures, '/payments/parent/bank-transfer')[0].body).toEqual(
       expect.objectContaining({ childId: MUSA.id, amount: 62_000, transferReference: 'FT2626XYZ' }),
     );
-    // Nothing is marked paid: the balance stays until the bursary confirms.
+    // The answer's `transfer` carries the transaction reference the parent quotes to the bursary.
+    const reference = (await within(dialog).findByText(/^TXN-2026-/)).textContent as string;
+    // Nothing is marked paid: the balance stays until the bursary confirms, and the
+    // held fees cannot be paid again meanwhile (C4 holds, `pendingPayment`).
     await user.click(within(dialog).getByRole('button', { name: 'Done' }));
+    expect(await screen.findAllByText('Payment pending')).not.toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Pay all' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Pay now: Tuition/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Tuition: a payment is pending' })).toBeDisabled();
     await user.click(screen.getByRole('tab', { name: 'Payment history' }));
-    const row = (await screen.findByText('FT2626XYZ')).closest('tr') as HTMLElement;
+    const row = (await screen.findByText(reference)).closest('tr') as HTMLElement;
     expect(within(row).getByText('Pending')).toBeInTheDocument();
     expect(within(row).getByText('Waiting for the bursary')).toBeInTheDocument();
     expect(screen.getAllByText('₦62,000').length).toBeGreaterThan(0);
@@ -129,7 +136,9 @@ describe('Payments (fixtures)', () => {
     const group = await screen.findByRole('radiogroup', { name: 'Preferred payment method' });
     expect(await within(group).findByRole('radio', { name: /Paystack/ })).toHaveAttribute('aria-checked', 'true');
     await user.click(within(group).getByRole('radio', { name: /^Bank transfer/ }));
-    await waitFor(() => expect(requestsTo(fixtures, '/parent/settings/preferences')[0]?.body).toEqual({ preferredProvider: 'bank_transfer' }));
+    // C7 has its own route; `/parent/settings/preferences` would answer 400 for this field.
+    await waitFor(() => expect(requestsTo(fixtures, '/parent/settings/payment-method')[0]?.body).toEqual({ preferredProvider: 'bank_transfer' }));
+    expect(requestsTo(fixtures, '/parent/settings/preferences')).toHaveLength(0);
   });
 
   it('"Payment not showing?" opens the office thread', async () => {
