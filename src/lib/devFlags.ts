@@ -6,7 +6,8 @@
 
 /**
  * True when the app answers its API calls from `src/dev/fixtures` instead of
- * the network (`VITE_USE_FIXTURES=true` with `npm run dev`). The Part B and C
- * routes are being built in parallel; the fixtures stand in until they land.
+ * the network (`VITE_USE_FIXTURES=true` with `npm run dev`), in the shapes of
+ * the generated contract. Off, the app talks to `VITE_API_BASE_URL`; the
+ * fixtures also back the test suite (`src/test-utils/portal.tsx`).
  */
 export const FIXTURES_ON: boolean = import.meta.env.DEV && import.meta.env.VITE_USE_FIXTURES === 'true';

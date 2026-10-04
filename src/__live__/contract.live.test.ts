@@ -5,7 +5,8 @@
  *
  * Skipped unless `LIVE_API=1`. Read-only: it sends GETs only (plus the sign-in).
  *
- *   LIVE_API=1 VITE_API_BASE_URL=http://localhost:5056 npx vitest run src/__live__
+ *   VITE_API_BASE_URL=http://localhost:5056 npm run test:live
+ *   (or LIVE_API=1 VITE_API_BASE_URL=http://localhost:5056 npx vitest run src/__live__)
  *
  * `LIVE_API_EMAIL` and `LIVE_API_PASSWORD` choose the parent (default: the
  * e2e seed's parent). A failure lists each screen, child and JSON path that

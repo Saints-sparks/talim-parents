@@ -7,7 +7,7 @@
  * Skipped unless `LIVE_API=1`. Read-only: rendering sends GETs only (the
  * Messages screen is mounted without opening a thread).
  *
- *   LIVE_API=1 VITE_API_BASE_URL=http://localhost:5056 npx vitest run src/__live__
+ *   VITE_API_BASE_URL=http://localhost:5056 npm run test:live
  */
 import { type ReactElement, type ReactNode } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
