@@ -220,10 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const message = loginErrorMessage(err);
       setError(message);
       setLoading(false);
-      return {
-        kind: err instanceof ApiError && err.status === 401 ? 'invalid_credentials' : 'unknown',
-        message,
-      };
+      return { kind: loginFailureKind(err), message };
     }
   }, []);
 
@@ -272,6 +269,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/**
+ * Which refusal a failed sign-in was. A 403 `FORBIDDEN` from `/auth/login` is
+ * the API refusing another role's account for this app (`X-Talim-App:
+ * parents`), worded exactly as the client-side role gate words it, so it is
+ * the same access-denied outcome.
+ *
+ * @param err - Whatever the sign-in threw.
+ * @returns The outcome's kind.
+ */
+function loginFailureKind(err: unknown): 'invalid_credentials' | 'access_denied' | 'unknown' {
+  if (err instanceof ApiError && err.status === 401) return 'invalid_credentials';
+  if (err instanceof ApiError && err.status === 403 && err.code === 'FORBIDDEN') return 'access_denied';
+  return 'unknown';
 }
 
 /**

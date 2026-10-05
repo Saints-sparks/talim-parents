@@ -1,6 +1,7 @@
 import { API_BASE_URL } from './config';
 import { ApiError } from './apiError';
 import { sessionStore } from './session';
+import type { operations } from '../types/api';
 
 /** Request options accepted by the client (a superset of `fetch`'s). */
 export interface RequestConfig extends RequestInit {
@@ -42,6 +43,23 @@ interface Envelope<T> {
  * `childId` in the request config and {@link ApiClient} writes the header.
  */
 export const CHILD_HEADER = 'X-Talim-Child';
+
+/** The apps the API tells apart by `X-Talim-App` (from the generated contract). */
+export type TalimApp = NonNullable<
+  NonNullable<operations['AuthenticationController_refreshToken']['parameters']['header']>['X-Talim-App']
+>;
+
+/** The request header that names the calling app to the API. */
+export const TALIM_APP_HEADER = 'X-Talim-App';
+
+/**
+ * This app's name for the API, sent on every request {@link ApiClient} makes
+ * (the uploads too). With it the API keeps the parent's refresh token in the
+ * parents' own `refreshToken_parents` cookie (a child signing in to the
+ * students portal in the same browser no longer replaces it) and refuses any
+ * other role's sign-in with 403.
+ */
+export const TALIM_APP: TalimApp = 'parents';
 
 /**
  * A stand-in for the network, used only by the dev fixtures
@@ -202,21 +220,24 @@ class ApiClient {
   }
 
   /**
-   * Adds credentials, the bearer token unless the call opted out, and the
-   * `X-Talim-Child` header for a child-scoped request. This is the one place
-   * the child header is written.
+   * Adds credentials, `X-Talim-App` (on every request, public or not, so every
+   * auth call reads and writes the parents' own refresh cookie), the bearer
+   * token unless the call opted out, and the `X-Talim-Child` header for a
+   * child-scoped request. This is the one place both headers are written.
    *
    * @param config - The request options.
    * @returns The options to hand to `fetch`.
    */
   private withAuth(config: RequestConfig): RequestConfig {
-    const next: RequestConfig = { ...config, credentials: 'include' };
+    const headers: Record<string, string> = {
+      ...(config.headers as Record<string, string> | undefined),
+      [TALIM_APP_HEADER]: TALIM_APP,
+    };
+    const next: RequestConfig = { ...config, credentials: 'include', headers };
     if (config.skipAuth) return next;
-    const headers: Record<string, string> = { ...(config.headers as Record<string, string> | undefined) };
     const token = sessionStore.getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
     if (config.childId) headers[CHILD_HEADER] = config.childId;
-    next.headers = headers;
     return next;
   }
 
@@ -351,8 +372,8 @@ class ApiClient {
    *
    * `fetch` cannot report upload progress, and a parent on a slow connection
    * sending a photo or a voice note needs to see one. This keeps the rest of
-   * the contract: the same base URL, the same bearer token, the same
-   * `ApiError` on failure — so callers never special-case uploads.
+   * the contract: the same base URL, the same bearer token and `X-Talim-App`,
+   * the same `ApiError` on failure — so callers never special-case uploads.
    *
    * There is no token refresh here: an upload that 401s is re-attempted by
    * the caller rather than silently replayed, because replaying a large body
@@ -375,6 +396,7 @@ class ApiClient {
       request.open('POST', this.buildUrl(url), true);
       request.withCredentials = true;
 
+      request.setRequestHeader(TALIM_APP_HEADER, TALIM_APP);
       const token = sessionStore.getToken();
       if (token) request.setRequestHeader('Authorization', `Bearer ${token}`);
       // Content-Type is deliberately unset: the browser has to add the
