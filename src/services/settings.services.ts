@@ -7,7 +7,7 @@ import type {
   VerifyPhoneOtpPayload,
 } from '../types/apiPayloads';
 
-import type { PreferredMethod } from '../types/portal/payments';
+import type { Schema } from '../types/apiContract';
 
 export type {
   ChangePasswordPayload,
@@ -24,41 +24,11 @@ export type {
  * address another parent's settings.
  */
 
-/** What `GET /parent/settings` returns. */
-export interface ParentSettings {
-  profile: {
-    id: string;
-    fullName: string;
-    firstName?: string;
-    lastName?: string;
-    email: string;
-    phoneNumber?: string;
-    avatar?: string;
-    role: string;
-    isEmailVerified: boolean;
-    isPhoneVerified: boolean;
-    /** B13: stored on the parent and editable. */
-    occupation?: string | null;
-    /** B13: stored on the parent and editable. */
-    address?: string | null;
-  };
-  children: LinkedChild[];
-  preferences: {
-    /** The parent-settings switches. Delivery follows `/notifications/preferences`, not these. */
-    notifications: Record<string, boolean>;
-    theme: ThemePreference;
-    language?: string;
-    /** C7: the method offered first at checkout. */
-    preferredProvider?: PreferredMethod | null;
-    /** The first-run tour: when it was finished, on the account (null until then). */
-    guides?: { tourCompletedAt: string | null };
-  };
-  security: {
-    twoFactorEnabled: boolean;
-    emailOtpEnabled: boolean;
-    lastPasswordChangedAt: string | null;
-  };
-}
+/**
+ * What `GET /parent/settings` returns.
+ * HAND-WRITTEN `children` ({@link LinkedChild}): the generated child's `userId` and `classId` are open objects.
+ */
+export type ParentSettings = Omit<Schema<'ParentSettingsResponseDto'>, 'children'> & { children: LinkedChild[] };
 
 /** The themes the API accepts. */
 export type ThemePreference = ThemePayload['theme'];
@@ -158,7 +128,10 @@ export function updateThemePreference(payload: ThemePayload): Promise<SettingsAc
   return api.patch<SettingsAck & { theme?: ThemePreference }>('/parent/settings/theme', payload);
 }
 
-/** One child, as the settings page lists them. */
+/**
+ * One child, as the settings page lists them.
+ * HAND-WRITTEN (not `ParentSettingsChildDto`): the generated `userId` and `classId` are open objects; this names what the page reads.
+ */
 export interface LinkedChild {
   id: string;
   fullName: string;

@@ -7,37 +7,17 @@ import type { Schema } from '../apiContract';
 /** `GET /parents/me/children/:childId/school` (B12, the §36 shape). */
 export type SchoolContact = Schema<'SchoolContactDto'>;
 
-/**
- * One active session (§34). BACKEND GAP: the OpenAPI `SessionDto` lists only
- * `device, browser, os, ip`; the API also returns `id`, `lastUsedAt`,
- * `createdAt` and `current`, which the Security tab needs.
- */
-export interface AuthSession {
-  id: string;
-  device: string | null;
-  browser: string | null;
-  os: string | null;
-  ip: string | null;
-  lastUsedAt: string;
-  createdAt: string;
-  current: boolean;
-}
+/** One active session (§34), `current` marking this browser's. */
+export type AuthSession = Schema<'SessionDto'>;
 
-/**
- * `GET /auth/password-policy` (§34, public). BACKEND GAP: the OpenAPI
- * `PasswordPolicyDto` is empty.
- */
-export interface PasswordPolicy {
-  minLength: number;
-  maxLength?: number;
-  requireUppercase: boolean;
-  requireLowercase: boolean;
-  requireNumber: boolean;
-  requireSymbol: boolean;
-  /** The characters the symbol rule accepts. */
-  symbols?: string;
-  historyCount: number;
-}
+/** `DELETE /auth/sessions/:id` (§34). */
+export type RevokeSessionResult = Schema<'RevokeSessionDto'>;
+
+/** `POST /auth/sessions/revoke-others` (§34). */
+export type RevokeOthersResult = Schema<'RevokeOthersDto'>;
+
+/** `GET /auth/password-policy` (§34, public). */
+export type PasswordPolicy = Schema<'PasswordPolicyDto'>;
 
 /** Body of `POST /support/tickets` (§35). */
 export type SupportTicketPayload = Schema<'CreateSupportTicketDto'>;

@@ -8,7 +8,7 @@ const WARD: ChildSummary = {
   name: 'Amara Okafor',
   admissionNumber: null,
   class: { id: 'k1', name: 'JSS 1A' },
-  school: { id: 's1', name: 'Easy Sparks' },
+  school: { id: 's1', name: 'Easy Sparks', city: null },
   attendanceRate: null,
   average: null,
   averageGrade: null,

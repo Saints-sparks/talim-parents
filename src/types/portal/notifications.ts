@@ -8,7 +8,7 @@
  */
 import type { Schema } from '../apiContract';
 import type { RawNotification } from '../notifications';
-import type { PortalTarget, SchoolRef } from './common';
+import type { NotificationSchool, PortalTarget } from './common';
 
 /** `GET /notifications/counts?childId=` (§30, B11): every category is present. */
 export type NotificationCounts = Schema<'InboxCountsDto'>;
@@ -21,14 +21,14 @@ export type CategoryCount = Schema<'InboxCountDto'>;
 
 /**
  * One notification as `GET /notifications` returns it: the stored row
- * (`_id`, `metadata.target`…), plus `isRead`, `senderName` and `school`.
- * BACKEND GAP: the list documents no response schema; the dashboard's
- * `FeedItemDto` (top-level `id`, `target`, `actionLabel`) is a different
- * shape, and `normalizeNotification` reads both.
+ * (`_id`, `metadata.target`…), plus `isRead`, `senderName` and `school`. The
+ * dashboard's `FeedItemDto` (top-level `id`, `target`, `actionLabel`) is a
+ * different shape, and `normalizeNotification` reads both.
+ * HAND-WRITTEN (not `NotificationItemDto`): the normaliser also reads announcements and older payloads (`content`, `body`, `read`, `sender`…).
  */
 export interface RawPortalNotification extends RawNotification {
   /** A11: lists carry the school the item came from. */
-  school?: SchoolRef | null;
+  school?: NotificationSchool | null;
   metadata?: {
     childId?: string;
     target?: PortalTarget;

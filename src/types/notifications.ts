@@ -15,7 +15,7 @@
  * `"notification:<id>"` or `"announcement:<id>"`.
  */
 
-import type { PortalTarget, SchoolRef } from './portal/common';
+import type { NotificationSchool, PortalTarget } from './portal/common';
 
 /** Which backend a notification came from. */
 export type NotificationSourceKind = 'notification' | 'announcement';
@@ -84,7 +84,7 @@ export interface AppNotification {
   /** The child it is about (B11 `metadata.childId`), when one applies. */
   childId: string | null;
   /** The school it came from (A11). */
-  school: SchoolRef | null;
+  school: NotificationSchool | null;
 }
 
 /**

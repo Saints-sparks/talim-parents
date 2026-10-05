@@ -16,7 +16,7 @@ function kid(id: string, overrides: Partial<ChildSummary> = {}): ChildSummary {
     name: `Child ${id}`,
     admissionNumber: null,
     class: { id: `k-${id}`, name: 'JSS 1' },
-    school: { id: 'sparks', name: 'Easy Sparks' },
+    school: { id: 'sparks', name: 'Easy Sparks', city: null },
     attendanceRate: null,
     average: null,
     averageGrade: null,
@@ -54,7 +54,7 @@ describe('resolveActiveChild', () => {
 
 describe('groupBySchool', () => {
   it('groups children by school, keeping the order schools and children first appear', () => {
-    const bright = { id: 'bright', name: 'Brightgate' };
+    const bright = { id: 'bright', name: 'Brightgate', city: null };
     const groups = groupBySchool([AMARA, kid('z', { school: bright }), BOLA, kid('y', { school: bright })]);
     expect(groups.map((group) => group.school.name)).toEqual(['Easy Sparks', 'Brightgate']);
     expect(groups[0].children.map((child) => child.id)).toEqual(['aaa', 'bbb']);

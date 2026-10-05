@@ -4,15 +4,11 @@
  */
 import type { Schema } from '../apiContract';
 
-/**
- * One subject row: a score per column, `null` in a column not published yet.
- * BACKEND GAP: the OpenAPI DTO types `scores` as `number[] | null`, but the
- * API sends `null` items for unpublished columns (`[17, null, null]`).
- */
-export type ReportRow = Omit<Schema<'ReportRowDto'>, 'scores'> & { scores: (number | null)[] | null };
+/** One subject row: a score per column, `null` in a column not published yet (`[17, null, null]`). */
+export type ReportRow = Schema<'ReportRowDto'>;
 
 /** `GET /parents/me/children/:childId/report-card?termId=` (B5). */
-export type ReportCard = Omit<Schema<'ReportCardDto'>, 'rows'> & { rows: ReportRow[] };
+export type ReportCard = Schema<'ReportCardDto'>;
 
 /** Whether a term's results exist yet (B5). */
 export type ReportStatus = ReportCard['status'];

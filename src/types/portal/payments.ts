@@ -5,38 +5,29 @@
  * Money is in naira. The server allocates a payment by due date and is the
  * only authority on what was paid: the client never reports a payment as
  * done until verify (or the bursary, for a bank transfer) says so.
- *
- * BACKEND GAP fields (returned by the API, checked live by the contract test,
- * missing from its OpenAPI document) are added with intersections, so the
- * rest of each shape still comes from the generated DTO.
  */
 import type { Schema } from '../apiContract';
 import type { PaymentProviderName } from '../payments';
-import type { TermLabel } from './common';
 
 /**
  * One fee assignment on a child's bill (C2). `amount` includes the late fee
- * once it applies; `pendingPayment` means a checkout or bank transfer holds it.
- * BACKEND GAP: `lateFee` (the late fee inside `amount`) is not in the OpenAPI DTO.
+ * once it applies (`lateFee` is that part); `pendingPayment` means a checkout
+ * or bank transfer holds it.
  */
-export type FeeItem = Schema<'FamilyFeeItemDto'> & { lateFee: number };
+export type FeeItem = Schema<'FamilyFeeItemDto'>;
 
 /** One fee item's state (C2). */
 export type FeeItemStatus = FeeItem['status'];
 
 /**
- * One child's bill in the family fees (C2). BACKEND GAP: `minimumPartPayment`
- * (naira, the school's minimum; 0 when it sets none) and `term` (the bill's
- * term, null when the school has no current term) are not in the OpenAPI DTO.
+ * One child's bill in the family fees (C2): `minimumPartPayment` is naira,
+ * the school's minimum (0 when it sets none); `term` is the bill's term, null
+ * when the school has no current term.
  */
-export type ChildFees = Omit<Schema<'FamilyChildFeesDto'>, 'items'> & {
-  items: FeeItem[];
-  minimumPartPayment: number;
-  term: TermLabel | null;
-};
+export type ChildFees = Schema<'FamilyChildFeesDto'>;
 
 /** `GET /payments/parent/fees?termId=` (C2): every linked child, one call. */
-export type FamilyFees = Omit<Schema<'FamilyFeesResponseDto'>, 'children'> & { children: ChildFees[] };
+export type FamilyFees = Schema<'FamilyFeesResponseDto'>;
 
 type InitializeBody = Schema<'InitializePaymentDto'>;
 
@@ -83,20 +74,15 @@ export type HistoryPage = Schema<'ParentHistoryResponseDto'>;
 
 /**
  * One receipt with its school header and lines (C5). `downloadAllowed` false
- * means the school does not let parents download it. BACKEND GAP: `term`
- * carries `session`, which the OpenAPI `TermRefDto` lacks.
+ * means the school does not let parents download it; `term` carries its session.
  */
-export type ParentReceipt = Omit<Schema<'ParentReceiptDto'>, 'term'> & { term: TermLabel | null };
+export type ParentReceipt = Schema<'ParentReceiptDto'>;
 
 /**
- * `GET /payments/parent/receipts?termId=&childId=` (C5). BACKEND GAP: `terms`
- * (the terms the children have receipts in, newest first) is not in the
- * OpenAPI DTO.
+ * `GET /payments/parent/receipts?termId=&childId=` (C5), with `terms`: the
+ * terms the children have receipts in, newest first.
  */
-export type ReceiptList = Omit<Schema<'ParentReceiptListResponseDto'>, 'data'> & {
-  data: ParentReceipt[];
-  terms: TermLabel[];
-};
+export type ReceiptList = Schema<'ParentReceiptListResponseDto'>;
 
 /** C7: the preferred method, `PATCH /parent/settings/payment-method`. */
 export type PreferredMethod = NonNullable<Schema<'UpdatePreferredProviderDto'>['preferredProvider']>;

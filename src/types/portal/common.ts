@@ -3,37 +3,23 @@
  * (`src/types/api.d.ts`, refreshed with `npm run types:api`).
  *
  * Every alias below is a `Schema<'…Dto'>` from `../apiContract`, so a backend
- * change fails `npm run typecheck` instead of reaching a screen. The few
- * interfaces left hand-written are marked `BACKEND GAP`: the API returns them
- * (checked against the running API by `src/__live__/contract.live.test.ts`),
- * but its OpenAPI document does not describe them yet.
+ * change fails `npm run typecheck` instead of reaching a screen. A type is
+ * written by hand only where the generated one is looser than what the app
+ * must handle, and says why ("HAND-WRITTEN: …").
  */
 import type { Schema } from '../apiContract';
 
 /** A term as the learner-view routes return it (B1, B2, B5, B6). */
 export type LearnerTerm = Schema<'LearnerTermDto'>;
 
-/**
- * The term on a bill (C2) or a receipt (C5), and each of the receipts' terms.
- * BACKEND GAP: the API adds `session` (and the bill's `term`), but the
- * OpenAPI `TermRefDto` has only `id` and `name`.
- */
-export interface TermLabel {
-  id: string;
-  name: string;
-  /** "2026/2027". */
-  session: string | null;
-}
+/** The term on a bill (C2) or a receipt (C5), and each of the receipts' terms, with its session ("2026/2027"). */
+export type TermLabel = Schema<'SessionTermRefDto'>;
 
-/**
- * A school, as the children list carries it (B13: `city` is the school's
- * state). BACKEND GAP: `GET /parents/me/children` documents no response.
- */
-export interface SchoolRef {
-  id: string;
-  name: string;
-  city?: string | null;
-}
+/** A school, as the children list carries it (B13: `city` is the school's state). */
+export type SchoolRef = Schema<'ChildCardSchoolDto'>;
+
+/** The school a notification came from (A11: lists span every child's school). */
+export type NotificationSchool = Schema<'NotificationSchoolDto'>;
 
 /** A class reference. */
 export type ClassRef = Schema<'IdNameDto'>;
@@ -48,12 +34,7 @@ export type GradeBand = Schema<'GradeBandDto'>;
 export type Relationship = Schema<'LinkChildDto'>['relationship'];
 
 /** Pagination `meta` of `GET /notifications`, kept by the API client's strict unwrap. */
-export interface PageMeta {
-  total: number;
-  page: number;
-  lastPage: number;
-  limit: number;
-}
+export type PageMeta = Schema<'NotificationPageMetaDto'>;
 
 /** A paginated list with `meta` (`GET /notifications`). */
 export interface Paginated<T> {

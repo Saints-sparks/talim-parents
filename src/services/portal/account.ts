@@ -4,29 +4,19 @@ import type {
   ChatPrivacy,
   ParentProfilePayload,
   PasswordPolicy,
+  RevokeOthersResult,
+  RevokeSessionResult,
   SupportTicketPayload,
   SupportTicketResult,
 } from '../../types/portal/school';
 import type { PreferredMethod } from '../../types/portal/payments';
 import type { Schema } from '../../types/apiContract';
 
-/**
- * What `PATCH /parent/settings/payment-method` answers. BACKEND GAP: the
- * route documents no response schema.
- */
-export interface PreferredMethodResult {
-  message?: string;
-  preferredProvider: PreferredMethod | null;
-}
+/** What `PATCH /parent/settings/payment-method` answers. */
+export type PreferredMethodResult = Schema<'PreferredProviderUpdatedDto'>;
 
-/**
- * What `PATCH /parent/settings/preferences` answers. BACKEND GAP: the route
- * documents no response schema.
- */
-export interface GuidesResult {
-  message?: string;
-  guides: { tourCompletedAt: string | null };
-}
+/** What `PATCH /parent/settings/preferences` answers. */
+export type GuidesResult = Schema<'ParentPreferencesUpdatedDto'>;
 
 /**
  * The parent's own account (B13, C7, §34, §35, A16): not about a child, so
@@ -109,8 +99,8 @@ export function getSessions(): Promise<AuthSession[]> {
  * @returns Whether it was this device's own session.
  * @throws {ApiError} `NOT_FOUND` for another user's session.
  */
-export function revokeSession(id: string): Promise<{ id: string; revoked: true; current: boolean }> {
-  return api.delete<{ id: string; revoked: true; current: boolean }>(`/auth/sessions/${encodeURIComponent(id)}`);
+export function revokeSession(id: string): Promise<RevokeSessionResult> {
+  return api.delete<RevokeSessionResult>(`/auth/sessions/${encodeURIComponent(id)}`);
 }
 
 /**
@@ -119,8 +109,8 @@ export function revokeSession(id: string): Promise<{ id: string; revoked: true; 
  * @returns How many sessions were revoked.
  * @throws {ApiError} On any non-2xx.
  */
-export function revokeOtherSessions(): Promise<{ revoked: number }> {
-  return api.post<{ revoked: number }>('/auth/sessions/revoke-others', {});
+export function revokeOtherSessions(): Promise<RevokeOthersResult> {
+  return api.post<RevokeOthersResult>('/auth/sessions/revoke-others', {});
 }
 
 /**
