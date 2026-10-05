@@ -500,7 +500,7 @@ function historyRow(db: FixtureDb, txn: TxnRow): PaymentHistoryRow {
     createdAt: txn.date,
     ...(txn.method !== 'bank_transfer' ? { providerName: txn.method } : {}),
     ...(txn.method === 'bank_transfer' && txn.transferReference
-      ? { bankTransfer: { transferReference: txn.transferReference, rejectionReason: txn.rejectionReason ?? '' } }
+      ? { bankTransfer: { transferReference: txn.transferReference, paidOn: txn.date, proofUrl: '', rejectionReason: txn.rejectionReason ?? '' } }
       : {}),
   };
 }

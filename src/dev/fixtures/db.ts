@@ -6,7 +6,6 @@
 import type { LeaveRequest } from '../../types/portal/leave';
 import type { PreferredMethod } from '../../types/portal/payments';
 import type { Schema } from '../../types/apiContract';
-import type { PortalTarget } from '../../types/portal/common';
 import {
   CHILDREN,
   FEE_CATALOG,
@@ -70,14 +69,14 @@ export interface NotificationRow {
   _id: string;
   title: string;
   message: string;
-  category: string;
+  category: Schema<'FeedItemDto'>['category'];
   type: string;
   createdAt: string;
   isRead: boolean;
   childId: string | null;
   schoolKey: string;
   senderName: string;
-  target: PortalTarget;
+  target: Schema<'NotificationTargetDto'>;
   actionLabel: string;
 }
 

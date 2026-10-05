@@ -62,26 +62,9 @@ export interface Paginated<T> {
 }
 
 /**
- * Where a notification, an attention item or a deep link leads (§30 targets).
- * The API types `target` as an open object (`FeedItemDto.target`); this is
- * the subset the app routes on, checked at read time.
+ * Where a notification, an attention item or a deep link leads (§30 targets):
+ * the API's `NotificationTargetDto`. HAND-WRITTEN wider `page`: notifications
+ * stored before the API fixed its page list, and raw `metadata.target`, may
+ * name others ('dashboard', 'notifications'), which `pathForTarget` still routes.
  */
-export interface PortalTarget {
-  page:
-    | 'dashboard'
-    | 'attendance'
-    | 'timetable'
-    | 'results'
-    | 'grading'
-    | 'leave'
-    | 'messages'
-    | 'notifications'
-    | 'payments'
-    | 'announcements'
-    | 'resources'
-    | 'settings';
-  roomId?: string;
-  termId?: string;
-  date?: string;
-  [key: string]: unknown;
-}
+export type PortalTarget = Omit<Schema<'NotificationTargetDto'>, 'page'> & { page: string };

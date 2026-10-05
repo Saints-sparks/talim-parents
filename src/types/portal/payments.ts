@@ -69,21 +69,17 @@ export type BankTransferResult = Schema<'SubmittedBankTransferDto'>;
 export type PaymentMethodName = PaymentProviderName | 'bank_transfer' | 'cash' | 'other';
 
 /**
- * One row of `GET /payments/parent/history?childId=&termId=` (C6).
- * BACKEND GAP: a bank transfer row also carries the stored `bankTransfer`
- * (the bank's reference, and the bursary's reason when it rejected it,
- * which `RejectBankTransferDto` says is "shown to the parent"); the OpenAPI
- * row does not list it.
+ * One row of `GET /payments/parent/history?childId=&termId=` (C6). A bank
+ * transfer row carries the stored `bankTransfer`: the bank's reference, and
+ * the bursary's reason when it rejected it.
  */
-export type PaymentHistoryRow = Schema<'ParentHistoryRowDto'> & {
-  bankTransfer?: { transferReference?: string; rejectionReason?: string } | null;
-};
+export type PaymentHistoryRow = Schema<'ParentHistoryRowDto'>;
 
 /** A transaction's state in the history (C6). */
 export type HistoryStatus = PaymentHistoryRow['status'];
 
 /** C6 page: `{ data, total, page, limit }` (no `meta`). */
-export type HistoryPage = Omit<Schema<'ParentHistoryResponseDto'>, 'data'> & { data: PaymentHistoryRow[] };
+export type HistoryPage = Schema<'ParentHistoryResponseDto'>;
 
 /**
  * One receipt with its school header and lines (C5). `downloadAllowed` false
