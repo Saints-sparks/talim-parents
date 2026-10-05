@@ -127,8 +127,8 @@ export function ChildrenPanel() {
       <LinkChildSheet
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
-        onLinked={(child) => {
-          active.select(child.id);
+        onLinked={(childId) => {
+          active.select(childId);
         }}
       />
     </div>
@@ -142,10 +142,10 @@ export function ChildrenPanel() {
  * @param props - State and callbacks.
  * @param props.open - Whether the sheet is open.
  * @param props.onClose - Closes it.
- * @param props.onLinked - Called with the new child.
+ * @param props.onLinked - Called with the new child's id.
  * @returns The sheet.
  */
-export function LinkChildSheet({ open, onClose, onLinked }: { open: boolean; onClose: () => void; onLinked: (child: ChildSummary) => void }) {
+export function LinkChildSheet({ open, onClose, onLinked }: { open: boolean; onClose: () => void; onLinked: (childId: string) => void }) {
   const queryClient = useQueryClient();
   const [code, setCode] = useState('');
   const [relationship, setRelationship] = useState<Relationship | null>(null);
@@ -157,7 +157,7 @@ export function LinkChildSheet({ open, onClose, onLinked }: { open: boolean; onC
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.children.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
-      onLinked(result.child);
+      onLinked(result.child?.id ?? result.childId);
     },
   });
 
@@ -199,14 +199,17 @@ export function LinkChildSheet({ open, onClose, onLinked }: { open: boolean; onC
       open={open}
       onClose={close}
       eyebrowText="My children"
-      title={link.isSuccess ? `${link.data.child.name} added` : 'Add a child'}
+      title={link.isSuccess ? `${link.data.child?.name ?? 'Your child'} added` : 'Add a child'}
       subtitle={link.isSuccess ? undefined : 'Enter the student link code from the school office. It works for a child at any school.'}
       initialFocus={codeRef}
     >
       {link.isSuccess ? (
         <div role="status" className="flex flex-col gap-4">
           <p className="text-sm leading-relaxed text-tl-muted">
-            {link.data.child.name} at {link.data.child.school.name} is now linked to your account. You are viewing them now; switch children from the name at the top.
+            {link.data.child
+              ? `${link.data.child.name} at ${link.data.child.school.name} is now linked to your account.`
+              : 'Your child is now linked to your account.'}{' '}
+            You are viewing them now; switch children from the name at the top.
           </p>
           <button type="button" className={primaryButton} onClick={close}>
             Done

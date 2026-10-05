@@ -33,7 +33,8 @@ export type ChildSummary = Pick<
 export type LinkChildPayload = Schema<'LinkChildDto'>;
 
 /**
- * What `POST /parents/me/children/link` answers: the link, plus `child`, the card.
- * HAND-WRITTEN non-null `child` (the DTO allows null when the card cannot be built): the link sheet reads it unguarded; keep until it handles null.
+ * What `POST /parents/me/children/link` answers: the link (`childId`, school,
+ * relationship), plus `child`, the card, which is null when the server could
+ * not build it. The link sheet copes with both.
  */
-export type LinkChildResult = Omit<Schema<'LinkedChildResponseDto'>, 'child'> & { child: ChildSummary };
+export type LinkChildResult = Omit<Schema<'LinkedChildResponseDto'>, 'child'> & { child: ChildSummary | null };
