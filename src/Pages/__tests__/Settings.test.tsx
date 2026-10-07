@@ -6,6 +6,8 @@ import { CHILD_HEADER } from '../../lib/apiClient';
 import { CHILDREN } from '../../dev/fixtures/seed';
 import Settings from '../Settings';
 import { relationshipLine } from '../../Components/portal/settings/relationships';
+import { APP_VERSION } from '../../lib/appVersion';
+import packageJson from '../../../package.json';
 
 vi.setConfig({ testTimeout: 20_000 });
 const MUSA = CHILDREN[0];
@@ -142,10 +144,13 @@ describe('Settings (fixtures)', () => {
     expect(requestsTo(fixtures, '/support/tickets')).toHaveLength(0);
   });
 
-  it('About: version and the privacy policy', async () => {
+  it('About: "Version 1.5.0" from package.json, and the privacy policy', async () => {
     const user = userEvent.setup();
     renderTab('about');
     expect(await screen.findByText('Talim Parents Web')).toBeInTheDocument();
+    expect(APP_VERSION).toBe(packageJson.version);
+    expect(APP_VERSION).toBe('1.5.0');
+    expect(screen.getByText('Version 1.5.0')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Privacy Policy/ }));
     expect(await screen.findByRole('dialog', { name: 'Privacy Policy' })).toBeInTheDocument();
   });

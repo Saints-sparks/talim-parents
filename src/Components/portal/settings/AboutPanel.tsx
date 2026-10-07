@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { APP_PLATFORM, APP_VERSION } from '../../../lib/appVersion';
 import { SUPPORT_EMAIL } from '../../../lib/support';
 import { Sheet } from '../ui/Dialog';
 import { primaryButton } from '../ui/styles';
@@ -37,7 +38,8 @@ const TERMS: Section[] = [
 ];
 
 /**
- * The About tab: version, platform, and the privacy policy and terms.
+ * The About tab: the app and its version ("Version 1.5.0", read from
+ * `package.json`), and the privacy policy and terms.
  *
  * @returns The panel.
  */
@@ -46,8 +48,7 @@ export function AboutPanel() {
   const sections = doc === 'privacy' ? PRIVACY : TERMS;
   return (
     <div className="mt-[18px]">
-      <ValueRow label="App version" value="1.0.0" />
-      <ValueRow label="Platform" value="Talim Parents Web" />
+      <ValueRow label={APP_PLATFORM} value={`Version ${APP_VERSION}`} />
       <LinkRow label="Privacy Policy" description="How your data is handled." onOpen={() => setDoc('privacy')} />
       <LinkRow label="Terms of Service" description="The rules for using the portal." onOpen={() => setDoc('terms')} />
       <Sheet
