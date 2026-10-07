@@ -5,6 +5,7 @@ import { userEvent } from '../../test-utils/render';
 import { CHILD_HEADER } from '../../lib/apiClient';
 import { CHILDREN } from '../../dev/fixtures/seed';
 import Settings from '../Settings';
+import Notifications from '../Notifications';
 
 vi.mock('../../services/chat.services', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../services/chat.services')>()),
@@ -194,5 +195,35 @@ describe('New ticket (fixtures)', () => {
       attachments: [{ url: 'https://files.test/invoice.pdf', name: 'invoice.pdf', mimeType: 'application/pdf', size: 3 }],
     });
     await waitFor(() => expect(location()).toMatch(/^\/settings\?tab=help&ticket=tk-new-\d+$/));
+  });
+});
+
+describe('Support notifications (fixtures)', () => {
+  it('files a ticket reply under the Support filter, and its button opens the ticket', async () => {
+    const user = userEvent.setup();
+    const { location } = renderPortal(<Notifications />, {
+      path: '/notifications',
+      route: '/notifications',
+      prepare: (db) => {
+        db.notifications.unshift({
+          _id: '69n000000000000000000999',
+          title: 'Talim support replied to TS-4K7QM',
+          message: 'Could you send the payment reference?',
+          category: 'support' as never,
+          type: 'support_ticket_reply',
+          createdAt: new Date().toISOString(),
+          isRead: false,
+          childId: null,
+          schoolKey: 'sparks',
+          senderName: 'Talim',
+          target: { page: 'support', ticketId: 'tk-waiting' } as never,
+          actionLabel: null as never,
+        });
+      },
+    });
+    await user.click(await screen.findByRole('button', { name: /^Support/ }));
+    await user.click((await screen.findAllByText('Talim support replied to TS-4K7QM'))[0]);
+    await user.click(await screen.findByRole('button', { name: 'Open ticket' }));
+    await waitFor(() => expect(location()).toBe('/settings?tab=help&ticket=tk-waiting'));
   });
 });

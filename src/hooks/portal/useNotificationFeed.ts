@@ -25,8 +25,8 @@ import type {
   RawPortalNotification,
 } from '../../types/portal/notifications';
 
-/** The parent's notification filters (design: All, Unread, Payments, Results, Attendance, School, Leave). */
-export type NotificationFilterKey = 'all' | 'unread' | 'payments' | 'results' | 'attendance' | 'school' | 'leave';
+/** The parent's notification filters (design: All, Unread, Payments, Results, Attendance, School, Leave; v1.5 adds Support). */
+export type NotificationFilterKey = 'all' | 'unread' | 'payments' | 'results' | 'attendance' | 'school' | 'leave' | 'support';
 
 /** Each filter, its label, and the API category it reads (B11 category map). */
 export const NOTIFICATION_FILTERS: readonly { key: NotificationFilterKey; label: string; category?: PortalNotificationCategory }[] = [
@@ -37,6 +37,7 @@ export const NOTIFICATION_FILTERS: readonly { key: NotificationFilterKey; label:
   { key: 'attendance', label: 'Attendance', category: 'attendance' },
   { key: 'school', label: 'School', category: 'announcement' },
   { key: 'leave', label: 'Leave', category: 'leave' },
+  { key: 'support', label: 'Support', category: 'support' },
 ];
 
 /** The page size of the feed. */

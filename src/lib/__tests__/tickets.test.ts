@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError, messageForStatus } from '../apiError';
+import { pathForTarget } from '../portalTargets';
 import {
   TICKET_AREA_LABELS,
   TICKET_CLOSED_MESSAGE,
@@ -122,8 +123,10 @@ describe('thread and list words', () => {
 });
 
 describe('deep link', () => {
-  it('opens My tickets under Settings → Help, with or without a ticket', () => {
-    expect(supportHref('tk-waiting')).toBe('/settings?tab=help&ticket=tk-waiting');
+  it('routes a support notification to the ticket under Settings → Help', () => {
+    expect(pathForTarget({ page: 'support', ticketId: 'tk-waiting' })).toBe('/settings?tab=help&ticket=tk-waiting');
+    expect(pathForTarget({ page: 'support', ticketId: 'a b' })).toBe('/settings?tab=help&ticket=a%20b');
+    expect(pathForTarget({ page: 'support' })).toBe('/settings?tab=help');
     expect(supportHref(null)).toBe('/settings?tab=help');
     expect(parseTicketParam(' tk-1 ')).toBe('tk-1');
     expect(parseTicketParam('')).toBeNull();

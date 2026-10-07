@@ -133,6 +133,7 @@ export type NotificationCategoryKey =
   | 'messages'
   | 'resources'
   | 'account'
+  | 'support'
   | 'other';
 
 /** A related item shown under a notification (a child, a class, a link). */

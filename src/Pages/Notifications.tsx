@@ -26,6 +26,7 @@ const CATEGORY_TAG: Record<string, string> = {
   resources: 'Resources',
   messages: 'Messages',
   account: 'Account',
+  support: 'Support',
   other: 'Notice',
 };
 
@@ -38,6 +39,7 @@ const ACTION_FOR: Record<string, string> = {
   leave: 'Open Leave requests',
   messages: 'Open Messages',
   timetable: 'Open Timetable',
+  support: 'Open ticket',
 };
 
 /**

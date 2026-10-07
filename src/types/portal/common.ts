@@ -47,5 +47,7 @@ export interface Paginated<T> {
  * the API's `NotificationTargetDto`. HAND-WRITTEN wider `page`: notifications
  * stored before the API fixed its page list, and raw `metadata.target`, may
  * name others ('dashboard', 'notifications'), which `pathForTarget` still routes.
+ * NOT IN CONTRACT yet: v1.5's support target `{ page: 'support', ticketId }`
+ * (§1 Notifications); the generated DTO has no `ticketId`, so it is added here.
  */
-export type PortalTarget = Omit<Schema<'NotificationTargetDto'>, 'page'> & { page: string };
+export type PortalTarget = Omit<Schema<'NotificationTargetDto'>, 'page'> & { page: string; ticketId?: string };

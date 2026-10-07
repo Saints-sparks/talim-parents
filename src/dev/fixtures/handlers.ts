@@ -1085,7 +1085,7 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
     { method: 'GET', pattern: '/notifications/counts', handler: (request) => {
       const rows = forChild(db, request.query.get('childId'));
       const byCategory: Record<string, { all: number; unread: number }> = {};
-      for (const category of ['announcement', 'attendance', 'academics', 'grading', 'resources', 'messages', 'account', 'payments', 'leave', 'other']) {
+      for (const category of ['announcement', 'attendance', 'academics', 'grading', 'resources', 'messages', 'account', 'payments', 'leave', 'support', 'other']) {
         byCategory[category] = { all: 0, unread: 0 };
       }
       for (const row of rows) {

@@ -1,9 +1,11 @@
 import type { PortalTarget } from '../types/portal/common';
 import { buildQuery } from './apiClient';
+import { supportHref } from './tickets';
 
 /**
  * The app path a §30 target, an attention item or a notification leads to.
- * Unknown pages fall back to the dashboard rather than a dead link.
+ * Unknown pages fall back to the dashboard rather than a dead link. A v1.5
+ * support target opens the ticket's thread under Settings → Help.
  *
  * @param target - Where the producer said to go.
  * @returns A path with its query.
@@ -30,6 +32,8 @@ export function pathForTarget(target: PortalTarget | null | undefined): string {
       return '/payments';
     case 'settings':
       return '/settings';
+    case 'support':
+      return supportHref(target.ticketId);
     default:
       return '/dashboard';
   }

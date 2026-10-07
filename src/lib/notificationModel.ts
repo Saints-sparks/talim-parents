@@ -44,7 +44,11 @@ const TYPE_CATEGORIES: Readonly<Record<string, NotificationCategoryKey>> = {
   app_update: 'other',
 };
 
-/** `NotificationCategory` in the API, for items whose type is not in the map. */
+/**
+ * `NotificationCategory` in the API, for items whose type is not in the map.
+ * `support` (replies and status changes on the parent's tickets) is v1.5's
+ * (§1), NOT IN CONTRACT yet in the generated enum.
+ */
 const SERVER_CATEGORIES: ReadonlySet<string> = new Set([
   'announcement',
   'attendance',
@@ -55,6 +59,7 @@ const SERVER_CATEGORIES: ReadonlySet<string> = new Set([
   'account',
   'payments',
   'leave',
+  'support',
   'other',
 ]);
 

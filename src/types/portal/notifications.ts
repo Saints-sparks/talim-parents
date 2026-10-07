@@ -10,10 +10,16 @@ import type { Schema } from '../apiContract';
 import type { RawNotification } from '../notifications';
 import type { NotificationSchool, PortalTarget } from './common';
 
-/** `GET /notifications/counts?childId=` (§30, B11): every category is present. */
-export type NotificationCounts = Schema<'InboxCountsDto'>;
+/**
+ * `GET /notifications/counts?childId=` (§30, B11): every category is present.
+ * NOT IN CONTRACT yet: v1.5's `support` count (§1), missing from the generated
+ * `InboxCountsByCategoryDto`, so it is optional here.
+ */
+export type NotificationCounts = Omit<Schema<'InboxCountsDto'>, 'byCategory'> & {
+  byCategory: Schema<'InboxCountsDto'>['byCategory'] & { support?: CategoryCount };
+};
 
-/** The categories the parent filters map onto (B11). */
+/** The categories the parent filters map onto (B11, and v1.5's `support`). */
 export type PortalNotificationCategory = keyof NotificationCounts['byCategory'];
 
 /** One category's numbers in {@link NotificationCounts}. */
