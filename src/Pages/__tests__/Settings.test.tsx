@@ -126,7 +126,7 @@ describe('Settings (fixtures)', () => {
     expect(await screen.findByRole('dialog', { name: 'Password changed' })).toBeInTheDocument();
   });
 
-  it("Help: contacts the active child's school (tel: only) and reports a problem to support", async () => {
+  it("Help: contacts the active child's school (tel: only), and lists My tickets instead of Report a problem", async () => {
     const user = userEvent.setup();
     const { fixtures } = renderTab('help');
     await user.click(await screen.findByRole('button', { name: /Contact the school office/ }));
@@ -136,13 +136,10 @@ describe('Settings (fixtures)', () => {
     expect(requestsTo(fixtures, '/school')[0].headers[CHILD_HEADER]).toBe(MUSA.id);
     await user.click(within(contact).getByRole('button', { name: 'Close' }));
 
-    await user.click(screen.getByRole('button', { name: /Report a problem/ }));
-    const report = await screen.findByRole('dialog', { name: 'Tell Talim what is not working' });
-    await user.click(within(report).getByRole('button', { name: 'Results' }));
-    await user.type(within(report).getByLabelText('What went wrong'), 'The report card will not load.');
-    await user.click(within(report).getByRole('button', { name: 'Send to Talim support' }));
-    expect(await screen.findByRole('dialog', { name: 'Report sent' })).toBeInTheDocument();
-    expect(requestsTo(fixtures, '/support/tickets')[0].body).toEqual(expect.objectContaining({ area: 'results', description: 'The report card will not load.' }));
+    expect(screen.queryByRole('button', { name: /Report a problem/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('list', { name: 'My tickets' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New ticket' })).toBeInTheDocument();
+    expect(requestsTo(fixtures, '/support/tickets')).toHaveLength(0);
   });
 
   it('About: version and the privacy policy', async () => {

@@ -69,9 +69,16 @@ export default function Settings() {
   const Panel = PANELS[tab];
   const parentName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Parent';
 
+  /**
+   * Opens a tab and records it in `?tab=` (no history entry).
+   *
+   * @param next - The tab.
+   */
   const choose = (next: SettingsTab): void => {
     const nextParams = new URLSearchParams(params);
     nextParams.set('tab', next);
+    // A ticket thread belongs to Help; leaving the tab closes it.
+    nextParams.delete('ticket');
     setParams(nextParams, { replace: true });
   };
 

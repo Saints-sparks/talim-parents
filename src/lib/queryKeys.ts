@@ -194,6 +194,25 @@ export const queryKeys = {
      */
     passwordPolicy: () => ['settings', 'password-policy'] as const,
   },
+  /** The v1.5 tickets the parent raised (Settings → Help → My tickets). */
+  support: {
+    all: ['support'] as const,
+    /**
+     * `GET /tickets/mine`, every loaded page.
+     *
+     * @param parentId - The signed-in parent.
+     * @returns The cache key.
+     */
+    mine: (parentId: string) => ['support', parentId, 'mine'] as const,
+    /**
+     * `GET /tickets/:id`.
+     *
+     * @param parentId - The signed-in parent.
+     * @param ticketId - The ticket.
+     * @returns The cache key.
+     */
+    ticket: (parentId: string, ticketId: string) => ['support', parentId, 'ticket', ticketId] as const,
+  },
 } as const;
 
 /** Stale times (ms) by how often the data actually changes. */

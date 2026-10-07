@@ -1,6 +1,6 @@
 /**
- * B12 school contact, §34 sessions and password policy, §35 support tickets,
- * B13 profile and the chat privacy switches.
+ * B12 school contact, §34 sessions and password policy, B13 profile and the
+ * chat privacy switches. (v1.5 support tickets are in `../v15.ts`.)
  */
 import type { Schema } from '../apiContract';
 
@@ -18,15 +18,6 @@ export type RevokeOthersResult = Schema<'RevokeOthersDto'>;
 
 /** `GET /auth/password-policy` (§34, public). */
 export type PasswordPolicy = Schema<'PasswordPolicyDto'>;
-
-/** Body of `POST /support/tickets` (§35). */
-export type SupportTicketPayload = Schema<'CreateSupportTicketDto'>;
-
-/** The problem areas the parents' Help tab offers (a subset of the API's). */
-export type SupportArea = Extract<SupportTicketPayload['area'], 'payments' | 'results' | 'attendance' | 'messages' | 'signing_in' | 'other'>;
-
-/** `POST /support/tickets` answers. */
-export type SupportTicketResult = Schema<'SupportTicketCreatedDto'>;
 
 /**
  * Body of `PATCH /parent/settings/profile` (B13): `occupation` and `address`

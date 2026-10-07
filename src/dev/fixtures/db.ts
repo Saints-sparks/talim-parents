@@ -18,6 +18,8 @@ import {
   TERMS,
   type SeedChild,
 } from './seed';
+import type { Ticket } from '../../types/v15';
+import { seedTickets } from './tickets';
 
 /** Which family the fixtures serve. */
 export type FixtureScenario =
@@ -103,6 +105,8 @@ export interface FixtureDb {
   notificationPrefs: Record<string, boolean | string>;
   chatPrivacy: Schema<'ChatPreferencesResponseDto'>;
   sessions: { id: string; device: string | null; browser: string | null; os: string | null; ip: string | null; lastUsedAt: string; createdAt: string; current: boolean }[];
+  /** The parent's v1.5 support tickets (`./tickets.ts`). */
+  tickets: Ticket[];
   counter: number;
 }
 
@@ -248,6 +252,7 @@ export function createFixtureDb(scenario: FixtureScenario = 'family'): FixtureDb
       { id: 'sess-1', device: 'MacBook', browser: 'Chrome', os: 'macOS', ip: '102.89.1.10', lastUsedAt: `${FIXTURE_TODAY}T09:00:00.000Z`, createdAt: '2026-09-10T09:00:00.000Z', current: true },
       { id: 'sess-2', device: 'iPhone', browser: 'Safari', os: 'iOS', ip: '102.89.1.44', lastUsedAt: '2026-09-17T19:20:00.000Z', createdAt: '2026-09-01T08:00:00.000Z', current: false },
     ],
+    tickets: seedTickets(children),
     counter: 900,
   };
 }

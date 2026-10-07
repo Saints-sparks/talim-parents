@@ -6,8 +6,6 @@ import type {
   PasswordPolicy,
   RevokeOthersResult,
   RevokeSessionResult,
-  SupportTicketPayload,
-  SupportTicketResult,
 } from '../../types/portal/school';
 import type { PreferredMethod } from '../../types/portal/payments';
 import type { Schema } from '../../types/apiContract';
@@ -121,17 +119,6 @@ export function revokeOtherSessions(): Promise<RevokeOthersResult> {
  */
 export function getPasswordPolicy(): Promise<PasswordPolicy> {
   return api.get<PasswordPolicy>('/auth/password-policy', { skipAuth: true });
-}
-
-/**
- * Sends a problem report to Talim support, not the school (§35).
- *
- * @param payload - Area, description and context.
- * @returns The ticket reference.
- * @throws {ApiError} `VALIDATION_FAILED` for a description under 10 characters.
- */
-export function sendSupportTicket(payload: SupportTicketPayload): Promise<SupportTicketResult> {
-  return api.post<SupportTicketResult>('/support/tickets', payload);
 }
 
 /**

@@ -1,35 +1,48 @@
-import { useId, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useActiveChild } from '../../../hooks/useActiveChild';
 import { useChildSchool } from '../../../hooks/portal/useChildData';
-import { useSupportTicket } from '../../../hooks/portal/useAccount';
-import { useParentSettings } from '../../../hooks/useParentSettings';
-import { getErrorMessage } from '../../../lib/apiError';
+import { parseTicketParam } from '../../../lib/tickets';
 import { useTour } from '../tour/TourProvider';
 import { Sheet, SheetRow } from '../ui/Dialog';
 import { ErrorCard } from '../ui/primitives';
-import { chip, fieldControl, fieldError, fieldLabel, ghostButton, primaryButton, rowButton, statBox } from '../ui/styles';
+import { rowButton, statBox } from '../ui/styles';
 import { LinkRow } from './rows';
-import type { SupportArea } from '../../../types/portal/school';
+import { SupportSection } from './support/SupportSection';
 
 /**
- * The Help tab: replay the tour, contact the active child's school (B12), and
- * report a problem to Talim support (§35).
+ * The Help tab: replay the tour, contact the active child's school (B12),
+ * and My tickets (v1.5 tickets to the child's school or Talim support, which
+ * replaced "Report a problem"). The open ticket follows `?ticket=`, so a
+ * support notification opens its thread and closing it drops the parameter.
  *
  * @returns The panel.
  */
 export function HelpPanel() {
   const { openTour } = useTour();
+  const [params, setParams] = useSearchParams();
   const [contactOpen, setContactOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
+  const ticketId = parseTicketParam(params.get('ticket'));
+
+  /**
+   * Opens a ticket's thread, or closes it, in the URL (no history entry).
+   *
+   * @param id - The ticket, or null to close the thread.
+   */
+  const showTicket = (id: string | null): void => {
+    const next = new URLSearchParams(params);
+    next.set('tab', 'help');
+    if (id) next.set('ticket', id);
+    else next.delete('ticket');
+    setParams(next, { replace: true });
+  };
+
   return (
     <div className="mt-[18px]">
       <LinkRow label="Getting started for parents" description="A six step walk through of the whole portal." onOpen={openTour} />
       <LinkRow label="Contact the school office" description="Call, email, visit or message." onOpen={() => setContactOpen(true)} />
-      <LinkRow label="Report a problem" description="Send a fault straight to Talim support." onOpen={() => setReportOpen(true)} />
       <ContactSchoolSheet open={contactOpen} onClose={() => setContactOpen(false)} />
-      <ReportProblemSheet open={reportOpen} onClose={() => setReportOpen(false)} />
+      <SupportSection openTicketId={ticketId} onOpenTicket={showTicket} />
     </div>
   );
 }
@@ -93,132 +106,6 @@ export function ContactSchoolSheet({ open, onClose }: { open: boolean; onClose: 
           <p className={`${statBox} text-[13px] leading-relaxed text-tl-muted`}>For anything about a single child, messaging the class teacher is usually faster than the office.</p>
         </>
       ) : null}
-    </Sheet>
-  );
-}
-
-/** The areas a parent can report a problem in (§35 with B12's payments and results). */
-const AREAS: { value: SupportArea; label: string }[] = [
-  { value: 'payments', label: 'Payments' },
-  { value: 'results', label: 'Results' },
-  { value: 'attendance', label: 'Attendance' },
-  { value: 'messages', label: 'Messages' },
-  { value: 'signing_in', label: 'Signing in' },
-  { value: 'other', label: 'Something else' },
-];
-
-/**
- * Sends a problem report to Talim support (§35), not the school: the area,
- * what went wrong (10 to 2000 characters) and the page it came from.
- *
- * @param props - State.
- * @param props.open - Whether the sheet is open.
- * @param props.onClose - Closes it.
- * @returns The sheet.
- */
-export function ReportProblemSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const settings = useParentSettings();
-  const send = useSupportTicket();
-  const [area, setArea] = useState<SupportArea>('payments');
-  const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const textId = useId();
-  const textRef = useRef<HTMLTextAreaElement>(null);
-  const email = settings.data?.profile.email;
-
-  const close = (): void => {
-    setText('');
-    setError(null);
-    send.reset();
-    onClose();
-  };
-
-  const submit = (): void => {
-    if (text.trim().length < 10) {
-      setError('Tell us a little more: at least 10 characters.');
-      textRef.current?.focus();
-      return;
-    }
-    setError(null);
-    send.mutate({
-      area,
-      description: text.trim().slice(0, 2000),
-      context: { path: window.location.pathname.slice(0, 300), appVersion: '1.0.0', userAgent: navigator.userAgent.slice(0, 500) },
-    });
-  };
-
-  return (
-    <Sheet
-      open={open}
-      onClose={close}
-      eyebrowText="Report a problem"
-      title={send.isSuccess ? 'Report sent' : 'Tell Talim what is not working'}
-      subtitle={send.isSuccess ? undefined : 'This goes to the Talim support team, not to your school. Include what you were doing when it happened.'}
-      initialFocus={textRef}
-      footer={
-        send.isSuccess ? (
-          <button type="button" className={`${primaryButton} flex-1`} onClick={close}>
-            Done
-          </button>
-        ) : (
-          <>
-            <button type="button" className={ghostButton} onClick={close}>
-              Cancel
-            </button>
-            <button type="button" className={`${primaryButton} flex-1`} disabled={send.isPending || !text.trim()} onClick={submit}>
-              {send.isPending ? 'Sending…' : 'Send to Talim support'}
-            </button>
-          </>
-        )
-      }
-    >
-      {send.isSuccess ? (
-        <div role="status" className="flex flex-col gap-3">
-          <CheckCircle2 className="h-10 w-10 text-tl-success" aria-hidden="true" />
-          <p className="text-sm leading-relaxed text-tl-muted">Talim support has your report and will reply{email ? ` to ${email}` : ''} within one working day.</p>
-          <div className={statBox}>
-            <div className="text-xs font-extrabold uppercase tracking-[0.05em] text-tl-faint">Reference</div>
-            <div className="mt-1 text-base font-extrabold text-tl-ink">{send.data.reference}</div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <fieldset>
-            <legend className="mb-2.5 text-[13px] font-extrabold text-tl-muted">Where did it happen?</legend>
-            <div className="flex flex-wrap gap-2">
-              {AREAS.map((option) => (
-                <button key={option.value} type="button" aria-pressed={area === option.value} className={chip(area === option.value)} onClick={() => setArea(option.value)}>
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <div>
-            <label htmlFor={textId} className={fieldLabel}>
-              What went wrong
-            </label>
-            <textarea
-              ref={textRef}
-              id={textId}
-              className={`${fieldControl} min-h-[120px] resize-y py-3 leading-relaxed`}
-              maxLength={2000}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder="e.g. I paid the exam fee on Paystack but the receipt has not appeared."
-              aria-invalid={Boolean(error) || undefined}
-            />
-            {error ? <p className={fieldError}>{error}</p> : null}
-          </div>
-          <p className="text-[13px] leading-relaxed text-tl-muted">
-            We will reply{email ? ` to ${email}` : ' by email'}. Your child&apos;s records are not shared with support unless you ask us to look at them.
-          </p>
-          {send.isError ? (
-            <p role="alert" className={fieldError}>
-              {getErrorMessage(send.error, 'Your report could not be sent.')}
-            </p>
-          ) : null}
-        </>
-      )}
     </Sheet>
   );
 }

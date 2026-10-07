@@ -6,7 +6,6 @@ import {
   getSessions,
   revokeOtherSessions,
   revokeSession,
-  sendSupportTicket,
   setPreferredMethod,
   setTourCompleted,
   updateChatPrivacy,
@@ -15,13 +14,14 @@ import {
 import { getNotificationPreferences, updateNotificationPreferences } from '../../services/notification.services';
 import { queryKeys, staleTimes } from '../../lib/queryKeys';
 import type { NotificationPreferences, NotificationPreferencesPayload } from '../../types/notifications';
-import type { AuthSession, ChatPrivacy, ParentProfilePayload, PasswordPolicy, SupportTicketPayload } from '../../types/portal/school';
+import type { AuthSession, ChatPrivacy, ParentProfilePayload, PasswordPolicy } from '../../types/portal/school';
 import type { PreferredMethod } from '../../types/portal/payments';
 import type { ParentSettings } from '../../services/settings.services';
 
 /**
  * The parent's own account: profile, alerts, chat privacy, payment
- * preference, sessions and support. None of it is about one child.
+ * preference and sessions. None of it is about one child. Support tickets
+ * live in `useTickets.ts`.
  */
 
 /**
@@ -211,11 +211,3 @@ export function usePasswordPolicy(enabled = true): UseQueryResult<PasswordPolicy
   });
 }
 
-/**
- * Sends a problem report to Talim support (§35).
- *
- * @returns The mutation.
- */
-export function useSupportTicket() {
-  return useMutation({ mutationFn: (payload: SupportTicketPayload) => sendSupportTicket(payload) });
-}

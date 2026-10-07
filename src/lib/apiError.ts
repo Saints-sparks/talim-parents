@@ -50,11 +50,14 @@ const KNOWN_CODES = new Set<ApiErrorCode>([
 
 /**
  * Fallback user-facing message per HTTP status, for servers that send none.
+ * Exported so a screen can tell the server's own words from this fallback
+ * (the support tickets explain a 409 in their own words when the server
+ * sends none).
  *
  * @param status - The HTTP status code.
  * @returns A sentence safe to show a parent.
  */
-function messageForStatus(status: number): string {
+export function messageForStatus(status: number): string {
   if (status === 401) return 'Sign in to continue.';
   if (status === 403) return "You don't have access to this.";
   if (status === 404) return "We couldn't find that.";

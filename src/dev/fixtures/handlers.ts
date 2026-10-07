@@ -28,6 +28,7 @@ import type {
 import type { ReportCard, ReportTerm } from '../../types/portal/reportCard';
 import { feeAssignmentId, subjectScores, type FixtureDb, type LeaveRow, type TxnRow } from './db';
 import { fail, ok, raw, type FixtureRequest, type FixtureRoute } from './router';
+import { ticketRoutes } from './tickets';
 import {
   FEE_CATALOG,
   FIXTURE_NOW,
@@ -794,12 +795,9 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
       db.chatPrivacy = { ...db.chatPrivacy, ...body(request) } as FixtureDb['chatPrivacy'];
       return ok(db.chatPrivacy);
     } },
-    { method: 'POST', pattern: '/support/tickets', handler: (request) => {
-      const description = String(body(request).description ?? '');
-      if (description.trim().length < 10) return fail(400, 'VALIDATION_FAILED', 'Tell us a little more (at least 10 characters).', [{ field: 'description', reason: 'too short' }]);
-      db.counter += 1;
-      return ok({ reference: `TS-${String(41200 + db.counter).slice(-5)}`, createdAt: new Date().toISOString() }, undefined, 201);
-    } },
+
+    // ── Support tickets (v1.5 §1) ─────────────────────────────────────────
+    ...ticketRoutes(db),
 
     // ── Children (B13, A11) ───────────────────────────────────────────────
     { method: 'GET', pattern: '/parents/me/children', handler: () => ok(db.children.map((entry) => childSummary(db, entry))) },
