@@ -21,7 +21,7 @@ import type { Attachment, CreateTicketPayload, MyTicketsQuery, PostTicketMessage
 /**
  * One page of the parent's tickets, most recent activity first.
  *
- * @param query - Status filter, page and page size.
+ * @param query - Statuses (any of them; sent comma-separated), page and page size.
  * @returns The page and its `meta` (every child's tickets, each with its `unread` count).
  * @throws {ApiError} On any non-2xx.
  */

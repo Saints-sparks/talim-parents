@@ -246,10 +246,11 @@ export function ticketRoutes(db: FixtureDb): FixtureRoute[] {
 
   return [
     { method: 'GET', pattern: '/tickets/mine', handler: (request) => {
-      const status = request.query.get('status') as TicketStatus | null;
+      // `status` is a comma-separated list, as the API takes it.
+      const statuses = (request.query.get('status') ?? '').split(',').filter(Boolean) as TicketStatus[];
       const page = Math.max(1, Number(request.query.get('page') ?? 1));
       const limit = Math.max(1, Number(request.query.get('limit') ?? 20));
-      const rows = db.tickets.filter((ticket) => !status || ticket.status === status).sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
+      const rows = db.tickets.filter((ticket) => !statuses.length || statuses.includes(ticket.status)).sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
       return ok(rows.slice((page - 1) * limit, page * limit).map((ticket) => summaryOf(copy(ticket))), {
         total: rows.length, page, limit, lastPage: Math.max(1, Math.ceil(rows.length / limit)),
       });

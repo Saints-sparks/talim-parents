@@ -531,15 +531,18 @@ export const api = {
 
 /**
  * Serialises a params object into a query string, dropping `undefined`, `null`
- * and empty values so the API never receives `?term=undefined`.
+ * and empty values (empty lists too) so the API never receives `?term=undefined`.
+ * A list (e.g. the tickets' `status`) goes as one comma-separated parameter
+ * (`status=open,closed`).
  *
  * @param params - The query parameters.
  * @returns A string starting with "?", or "" when nothing is left.
  */
-export function buildQuery(params: Record<string, string | number | boolean | undefined | null> = {}): string {
+export function buildQuery(params: Record<string, string | number | boolean | readonly string[] | undefined | null> = {}): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') search.set(key, String(value));
+    const part = Array.isArray(value) ? value.join(',') : value === undefined || value === null ? '' : String(value);
+    if (part !== '') search.set(key, part);
   }
   const query = search.toString();
   return query ? `?${query}` : '';
