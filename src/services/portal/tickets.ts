@@ -1,7 +1,7 @@
 import { api, buildQuery } from '../../lib/apiClient';
 import { FIXTURES_ON } from '../../lib/devFlags';
 import { uploadChatAttachment } from '../chat.services';
-import type { Attachment, CreateTicketPayload, MyTicketsQuery, PostTicketMessagePayload, Ticket, TicketPage } from '../../types/v15';
+import type { Attachment, CreateTicketPayload, MyTicketsQuery, PostTicketMessagePayload, Ticket, TicketPage } from '../../types/tickets';
 
 /**
  * The requester's side of the v1.5 ticket system
@@ -22,20 +22,18 @@ import type { Attachment, CreateTicketPayload, MyTicketsQuery, PostTicketMessage
  * One page of the parent's tickets, most recent activity first.
  *
  * @param query - Status filter, page and page size.
- * @returns The page and its `meta`.
+ * @returns The page and its `meta` (every child's tickets, each with its `unread` count).
  * @throws {ApiError} On any non-2xx.
  */
-export async function getMyTickets(query: MyTicketsQuery = {}): Promise<TicketPage> {
-  const body = await api.get<TicketPage | TicketPage['data']>(`/tickets/mine${buildQuery({ status: query.status, page: query.page ?? 1, limit: query.limit ?? 20 })}`);
-  if (Array.isArray(body)) return { data: body, meta: { total: body.length, page: 1, lastPage: 1, limit: body.length } };
-  return body;
+export function getMyTickets(query: MyTicketsQuery = {}): Promise<TicketPage> {
+  return api.get<TicketPage>(`/tickets/mine${buildQuery({ status: query.status, page: query.page ?? 1, limit: query.limit ?? 20 })}`);
 }
 
 /**
  * One of the parent's tickets with its thread (internal notes already removed by the API).
  *
  * @param id - The ticket.
- * @returns The ticket.
+ * @returns The ticket. The server marks it read for the parent.
  * @throws {ApiError} 404 when it is not the parent's ticket.
  */
 export function getTicket(id: string): Promise<Ticket> {
@@ -58,33 +56,33 @@ export function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
  *
  * @param id - The ticket.
  * @param payload - The text and files.
- * @returns The API's answer.
- * @throws {ApiError} 409 when the ticket is closed or holds 500 messages.
+ * @returns The ticket after the reply (as `GET /tickets/:id` reads it).
+ * @throws {ApiError} 409 with `reasonCode` `TICKET_CLOSED`, `REOPEN_WINDOW_PASSED` or `MESSAGE_CAP`.
  */
-export function replyToTicket(id: string, payload: PostTicketMessagePayload): Promise<unknown> {
-  return api.post<unknown>(`/tickets/${encodeURIComponent(id)}/messages`, payload);
+export function replyToTicket(id: string, payload: PostTicketMessagePayload): Promise<Ticket> {
+  return api.post<Ticket>(`/tickets/${encodeURIComponent(id)}/messages`, payload);
 }
 
 /**
  * Reopens a resolved ticket.
  *
  * @param id - The ticket.
- * @returns The API's answer.
- * @throws {ApiError} 409 more than 7 days after it was resolved.
+ * @returns The reopened ticket.
+ * @throws {ApiError} 409 `REOPEN_WINDOW_PASSED` more than 7 days after it was resolved, `INVALID_TRANSITION` when it is not resolved.
  */
-export function reopenTicket(id: string): Promise<unknown> {
-  return api.post<unknown>(`/tickets/${encodeURIComponent(id)}/reopen`);
+export function reopenTicket(id: string): Promise<Ticket> {
+  return api.post<Ticket>(`/tickets/${encodeURIComponent(id)}/reopen`);
 }
 
 /**
  * Closes the parent's own ticket.
  *
  * @param id - The ticket.
- * @returns The API's answer.
+ * @returns The closed ticket.
  * @throws {ApiError} On any non-2xx.
  */
-export function closeTicket(id: string): Promise<unknown> {
-  return api.post<unknown>(`/tickets/${encodeURIComponent(id)}/close`);
+export function closeTicket(id: string): Promise<Ticket> {
+  return api.post<Ticket>(`/tickets/${encodeURIComponent(id)}/close`);
 }
 
 /**

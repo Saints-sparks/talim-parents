@@ -18,7 +18,7 @@ import {
   ticketErrorMessage,
   type TicketAction,
 } from '../../../../lib/tickets';
-import { TICKET_BODY_MAX, type Ticket } from '../../../../types/v15';
+import { TICKET_BODY_MAX, type Ticket } from '../../../../types/tickets';
 import { Sheet } from '../../ui/Dialog';
 import { ErrorCard, Pill } from '../../ui/primitives';
 import { dangerGhostButton, fieldControl, fieldError, fieldLabel, focusRing, ghostButton, primaryButton, rowButton, statBox } from '../../ui/styles';
@@ -165,7 +165,7 @@ function ThreadBody({ ticket, onNewTicket }: { ticket: Ticket; onNewTicket: () =
 
       <ol aria-label="Messages" className="flex flex-col gap-3">
         {messages.map((entry) => {
-          const author = authorLabel(entry.author, ticket.requester.userId, parentId);
+          const author = authorLabel(entry.author, ticket.requester.id, parentId);
           return (
             <li key={entry.id} className={`rounded-2xl border p-3.5 ${author.role ? 'border-tl-line bg-tl-surface' : 'border-tl-line-soft bg-tl-subtle'}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">

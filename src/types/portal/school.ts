@@ -1,6 +1,6 @@
 /**
  * B12 school contact, §34 sessions and password policy, B13 profile and the
- * chat privacy switches. (v1.5 support tickets are in `../v15.ts`.)
+ * chat privacy switches. (v1.5 support tickets are in `../tickets.ts`.)
  */
 import type { Schema } from '../apiContract';
 

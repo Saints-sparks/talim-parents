@@ -40,14 +40,14 @@ async function openThread(ticketId: string) {
 }
 
 describe('My tickets list (fixtures)', () => {
-  it("lists the parent's tickets with the child, status chips, unread dot and last activity, in one call", async () => {
+  it("lists the parent's tickets with the child, status chips, the 'N new' badge and last activity, in one call", async () => {
     const { fixtures } = renderHelp();
     const list = await screen.findByRole('list', { name: 'My tickets' });
     const rows = within(list).getAllByRole('button');
     expect(rows).toHaveLength(4);
-    expect(rows[0]).toHaveTextContent('New reply.');
+    expect(rows[0]).toHaveTextContent('1 new');
     expect(rows[0]).toHaveTextContent('Report card shows the wrong class');
-    expect(rows[0]).toHaveTextContent('Musa Adele · CMP-2026-0311 · My school (Easy Sparks Education Center) · Updated 2 hours ago');
+    expect(rows[0]).toHaveTextContent('Musa Adele · TCKT-20260311 · My school (Easy Sparks Education Center) · Updated 2 hours ago');
     expect(rows[0]).toHaveTextContent('Open');
     expect(rows[1]).toHaveTextContent('Waiting on you');
     expect(rows[1]).toHaveTextContent('TS-4K7QM · Talim support · Updated yesterday');
@@ -107,12 +107,12 @@ describe('Ticket thread (fixtures)', () => {
   it("shows the 409 when the server says the window has passed", async () => {
     const user = userEvent.setup();
     const { dialog, fixtures } = await openThread('tk-resolved');
-    // The server's clock has moved on: it now answers 409 without a message.
+    // The server's clock has moved on: it now answers 409 REOPEN_WINDOW_PASSED.
     const stored = fixtures.db.tickets.find((ticket) => ticket.id === 'tk-resolved');
     if (stored) stored.resolvedAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
     await user.click(within(dialog).getByRole('button', { name: 'Reopen' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      "This ticket was resolved more than 7 days ago, so it can't be reopened. Raise a new ticket and mention CMP-2026-0287.",
+      "This ticket was resolved more than 7 days ago, so it can't be reopened. Raise a new ticket and mention TCKT-20260287.",
     );
   });
 
@@ -193,6 +193,7 @@ describe('New ticket (fixtures)', () => {
       body: 'The invoice shows the hostel fee twice.',
       childId: ZAINAB.id,
       attachments: [{ url: 'https://files.test/invoice.pdf', name: 'invoice.pdf', mimeType: 'application/pdf', size: 3 }],
+      context: { path: `${window.location.pathname}${window.location.search}`, appVersion: '1.5.0', userAgent: navigator.userAgent },
     });
     await waitFor(() => expect(location()).toMatch(/^\/settings\?tab=help&ticket=tk-new-\d+$/));
   });

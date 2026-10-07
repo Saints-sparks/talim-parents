@@ -18,9 +18,15 @@ import {
   reopenDeadline,
   reopenExpiredMessage,
   supportHref,
+  ticketContext,
   ticketErrorMessage,
+  unreadLabel,
   validateNewTicket,
+  TICKET_CHANGED_MESSAGE,
+  TICKET_INVALID_TRANSITION_MESSAGE,
 } from '../tickets';
+import { clearUnreadInPages } from '../../hooks/portal/useTickets';
+import type { TicketPage, TicketSummary } from '../../types/tickets';
 
 const NOW = new Date('2026-10-07T12:00:00.000Z');
 const DAY = 24 * 60 * 60 * 1000;
@@ -103,6 +109,44 @@ describe('409 words', () => {
     expect(ticketErrorMessage(bare, { ...ticket, status: 'closed' }, 'reply')).toBe(TICKET_CLOSED_MESSAGE);
     const full = { status: 'open' as const, reference: 'TS-1', messages: new Array(500).fill({}) };
     expect(ticketErrorMessage(bare, full, 'reply')).toBe(TICKET_MESSAGE_CAP_MESSAGE);
+  });
+});
+
+describe('409 reasons, unread and context', () => {
+  const ticket = { status: 'resolved' as const, reference: 'TS-1', messages: [] };
+  const reason = (code: string) =>
+    ApiError.fromResponse(new Response(null, { status: 409 }), { code, message: 'Server words.', error: { code: 'CONFLICT', message: 'Server words.' } });
+
+  it("maps the API's reason (top-level code) to its words", () => {
+    expect(reason('TICKET_CLOSED').reasonCode).toBe('TICKET_CLOSED');
+    expect(ticketErrorMessage(reason('TICKET_CLOSED'), ticket, 'reply')).toBe(TICKET_CLOSED_MESSAGE);
+    expect(ticketErrorMessage(reason('REOPEN_WINDOW_PASSED'), ticket, 'reply')).toBe(reopenExpiredMessage('TS-1'));
+    expect(ticketErrorMessage(reason('MESSAGE_CAP'), ticket, 'reply')).toBe(TICKET_MESSAGE_CAP_MESSAGE);
+    expect(ticketErrorMessage(reason('INVALID_TRANSITION'), ticket, 'reopen')).toBe(TICKET_INVALID_TRANSITION_MESSAGE);
+    expect(ticketErrorMessage(reason('TICKET_CHANGED'), ticket, 'close')).toBe(TICKET_CHANGED_MESSAGE);
+    expect(ticketErrorMessage(reason('SOMETHING_NEW'), ticket, 'close')).toBe('Server words.');
+  });
+
+  it("reads the server's count as an 'N new' badge, and clears it in the cached list once opened", () => {
+    expect(unreadLabel({ unread: 0 })).toBeNull();
+    expect(unreadLabel({ unread: 2 })).toBe('2 new');
+    const row = (id: string, unread: number) => ({ id, unread }) as TicketSummary;
+    const page: TicketPage = { data: [row('a', 2), row('b', 0)], meta: { total: 2, page: 1, lastPage: 1, limit: 20 } };
+    const data = { pages: [page], pageParams: [1] };
+    const read = clearUnreadInPages(data, 'a');
+    expect(read?.pages[0].data.map((item) => item.unread)).toEqual([0, 0]);
+    expect(clearUnreadInPages(read, 'a')).toBe(read);
+  });
+
+  it('reads the window from reopenableUntil when the detail has it', () => {
+    const day = 864e5;
+    expect(canReopen({ status: 'resolved', resolvedAt: new Date(NOW.getTime() - 9 * day).toISOString(), reopenableUntil: new Date(NOW.getTime() + day).toISOString() }, NOW)).toBe(true);
+    expect(canReopen({ status: 'resolved', resolvedAt: new Date(NOW.getTime() - day).toISOString(), reopenableUntil: new Date(NOW.getTime() - 1).toISOString() }, NOW)).toBe(false);
+  });
+
+  it('sends where the parent was as context, cut to the lengths the API takes', () => {
+    expect(ticketContext('1.5.0', { path: '/settings?tab=help', userAgent: 'z'.repeat(700) })).toEqual({ path: '/settings?tab=help', appVersion: '1.5.0', userAgent: 'z'.repeat(500) });
+    expect(ticketContext('1.5.0', { path: null, userAgent: null })).toEqual({ appVersion: '1.5.0' });
   });
 });
 

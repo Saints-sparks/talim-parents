@@ -5,7 +5,7 @@ import { closeTicket, createTicket, getMyTickets, getTicket, reopenTicket, reply
 import { useAttachmentUpload } from '../../Components/chat-kit/useAttachmentUpload';
 import { queryKeys, staleTimes } from '../../lib/queryKeys';
 import { toTicketAttachment } from '../../lib/tickets';
-import type { Attachment, CreateTicketPayload, PostTicketMessagePayload, Ticket, TicketPage } from '../../types/v15';
+import type { Attachment, CreateTicketPayload, PostTicketMessagePayload, Ticket, TicketPage } from '../../types/tickets';
 
 /**
  * Support tickets (v1.5 §1) for Settings → Help → My tickets: the parent's
@@ -35,16 +35,34 @@ export function useMyTickets(): UseInfiniteQueryResult<InfiniteData<TicketPage, 
 }
 
 /**
- * One ticket with its thread.
+ * The cached list pages with one ticket's `unread` set to 0.
+ *
+ * @param data - The cached pages, if any.
+ * @param ticketId - The ticket just opened.
+ * @returns New pages when that ticket had unread messages, else the same data.
+ */
+export function clearUnreadInPages(data: InfiniteData<TicketPage, number> | undefined, ticketId: string): InfiniteData<TicketPage, number> | undefined {
+  if (!data || !data.pages.some((page) => page.data.some((row) => row.id === ticketId && row.unread > 0))) return data;
+  return { ...data, pages: data.pages.map((page) => ({ ...page, data: page.data.map((row) => (row.id === ticketId ? { ...row, unread: 0 } : row)) })) };
+}
+
+/**
+ * One ticket with its thread. Opening it marks it read on the server, so its
+ * row in the cached list loses its "new" badge at once.
  *
  * @param ticketId - The ticket, or `null` while none is open.
  * @returns The query.
  */
 export function useTicket(ticketId: string | null): UseQueryResult<Ticket> {
   const { parentId, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.support.ticket(parentId || 'anon', ticketId ?? ''),
-    queryFn: () => getTicket(ticketId as string),
+    queryFn: async () => {
+      const ticket = await getTicket(ticketId as string);
+      queryClient.setQueriesData<InfiniteData<TicketPage, number>>({ queryKey: queryKeys.support.mine(parentId || 'anon') }, (data) => clearUnreadInPages(data, ticket.id));
+      return ticket;
+    },
     enabled: Boolean(parentId && isAuthenticated && ticketId),
     staleTime: staleTimes.live,
   });

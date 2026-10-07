@@ -2,17 +2,19 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useActiveChild } from '../../../../hooks/useActiveChild';
 import { useCreateTicket, useTicketUploads } from '../../../../hooks/portal/useTickets';
 import { getErrorMessage } from '../../../../lib/apiError';
+import { APP_VERSION } from '../../../../lib/appVersion';
 import {
   NEW_TICKET_FIELDS,
   TICKET_AREA_LABELS,
   allowedDesks,
   areasFor,
   deskLabel,
+  ticketContext,
   validateNewTicket,
   type NewTicketErrors,
   type NewTicketField,
 } from '../../../../lib/tickets';
-import { TICKET_BODY_MAX, TICKET_SUBJECT_MAX, type Ticket, type TicketArea, type TicketDesk } from '../../../../types/v15';
+import { TICKET_BODY_MAX, TICKET_SUBJECT_MAX, type Ticket, type TicketArea, type TicketDesk } from '../../../../types/tickets';
 import { Sheet } from '../../ui/Dialog';
 import { chip, fieldControl, fieldError, fieldLabel, ghostButton, primaryButton } from '../../ui/styles';
 import { TicketFilePicker } from './TicketFilePicker';
@@ -99,6 +101,7 @@ export function NewTicketSheet({ open, onClose, onCreated }: NewTicketSheetProps
         body: body.trim(),
         childId,
         ...(attachments.length ? { attachments } : {}),
+        context: ticketContext(APP_VERSION),
       });
       onCreated(ticket);
     } catch (error) {

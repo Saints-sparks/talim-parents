@@ -18,7 +18,7 @@ import {
   TERMS,
   type SeedChild,
 } from './seed';
-import type { Ticket } from '../../types/v15';
+import type { Ticket } from '../../types/tickets';
 import { seedTickets } from './tickets';
 
 /** Which family the fixtures serve. */

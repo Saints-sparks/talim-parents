@@ -2,8 +2,8 @@ import { useId, useMemo, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useActiveChild } from '../../../../hooks/useActiveChild';
 import { useMyTickets } from '../../../../hooks/portal/useTickets';
-import { TICKET_STATUS_META, deskLabel, relativeTime } from '../../../../lib/tickets';
-import type { TicketSummary } from '../../../../types/v15';
+import { TICKET_STATUS_META, deskLabel, relativeTime, unreadLabel } from '../../../../lib/tickets';
+import type { TicketSummary } from '../../../../types/tickets';
 import type { ChildSummary } from '../../../../types/portal/children';
 import { ErrorCard, Pill } from '../../ui/primitives';
 import { focusRing, primaryButton, rowButton } from '../../ui/styles';
@@ -21,7 +21,9 @@ export interface SupportSectionProps {
 /**
  * Settings → Help → My tickets (v1.5 §1): a "New ticket" button and the
  * parent's tickets about any child, most recent activity first, each with its
- * status chip, the child's name, the desk, the reference, an unread dot when
+ * status chip, the child's name, the desk, the reference, an "N new" badge
+ * for replies since the parent last opened it (`unread`; opening clears it on
+ * the server) when
  * someone has written since, and when it last changed. One
  * `GET /tickets/mine` per page ("Load more"); the children's names come from
  * the already-loaded children list, never a call per row.
@@ -103,7 +105,7 @@ export function SupportSection({ openTicketId, onOpenTicket }: SupportSectionPro
 }
 
 /**
- * One ticket in the list as one 44px+ button: subject, unread dot, the
+ * One ticket in the list as one 44px+ button: subject, "N new" badge, the
  * child, reference, desk, last activity and the status chip.
  *
  * @param props - The ticket, its child and what opening it does.
@@ -116,18 +118,17 @@ export function SupportSection({ openTicketId, onOpenTicket }: SupportSectionPro
 function TicketRow({ ticket, child, now, onOpen }: { ticket: TicketSummary; child?: ChildSummary; now: Date; onOpen: () => void }) {
   const status = TICKET_STATUS_META[ticket.status] ?? TICKET_STATUS_META.open;
   const updated = relativeTime(ticket.lastActivityAt, now);
-  const meta = [child?.name, ticket.reference, deskLabel(ticket.desk, child?.school.name), updated ? `Updated ${updated}` : null].filter(Boolean).join(' · ');
+  const fresh = unreadLabel(ticket);
+  const meta = [ticket.child?.name ?? child?.name, ticket.reference, deskLabel(ticket.desk, ticket.school?.name ?? child?.school.name), updated ? `Updated ${updated}` : null]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <button type="button" onClick={onOpen} className={`flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-tl-line bg-tl-surface px-3.5 py-3 text-left hover:bg-tl-subtle ${focusRing}`}>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          {ticket.unread ? (
-            <>
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-tl-brand" aria-hidden="true" />
-              <span className="sr-only">New reply. </span>
-            </>
-          ) : null}
+          {fresh ? <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-tl-brand" aria-hidden="true" /> : null}
           <span className="truncate text-[15px] font-extrabold text-tl-ink">{ticket.subject}</span>
+          {fresh ? <Pill tone="accent">{fresh}</Pill> : null}
         </span>
         <span className="mt-0.5 block text-[13px] text-tl-muted">{meta}</span>
       </span>
