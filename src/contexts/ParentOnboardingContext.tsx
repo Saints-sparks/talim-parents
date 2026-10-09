@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../services/auth.services';
 import { getChildren } from '../services/portal/children';
@@ -123,9 +123,13 @@ export function ParentOnboardingProvider({ children }: { children: ReactNode }) 
 
   const [state, setState] = useState<PersistedState>(DEFAULT_STATE);
   const [isHydrated, setIsHydrated] = useState(false);
+  // Whose checklist `state` holds. Children's effects run before this provider's, so on a fresh
+  // load a page visit (OnboardingRouteTracker) can write before the stored checklist is read.
+  const hydratedFor = useRef<string | null>(null);
 
   useEffect(() => {
     setState(parentId ? loadState(parentId) : DEFAULT_STATE);
+    hydratedFor.current = parentId || null;
     setIsHydrated(true);
   }, [parentId]);
 
@@ -140,7 +144,11 @@ export function ParentOnboardingProvider({ children }: { children: ReactNode }) 
   const updatePersistedState = useCallback(
     (updater: (current: PersistedState) => PersistedState) => {
       setState((current) => {
-        const next = updater(current);
+        // Before this parent's checklist has been read, build on what is stored, never on the empty
+        // default: otherwise opening /attendance (or any tracked page) on a fresh load overwrote the
+        // stored progress with that one step and sent the parent back to onboarding.
+        const base = parentId && hydratedFor.current !== parentId ? loadState(parentId) : current;
+        const next = updater(base);
         saveState(parentId, next);
         return next;
       });
