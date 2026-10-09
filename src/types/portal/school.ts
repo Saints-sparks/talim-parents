@@ -19,20 +19,15 @@ export type RevokeOthersResult = Schema<'RevokeOthersDto'>;
 /** `GET /auth/password-policy` (§34, public). */
 export type PasswordPolicy = Schema<'PasswordPolicyDto'>;
 
-// TODO-switch to generated: `RequestBody<'/auth/account/deletion'>` once `npm run types:api` has the endpoint.
 /** `POST /auth/account/deletion` body (v1.5): the account's password and an optional reason (at most 500 characters). */
-export interface AccountDeletionBody {
-  password: string;
-  reason?: string;
-}
+export type AccountDeletionBody = Schema<'RequestAccountDeletionDto'>;
 
-// TODO-switch to generated: the endpoint's 200 response once `npm run types:api` has it.
-/** `POST /auth/account/deletion` 200: the deletion is scheduled for `scheduledFor` (`requestedAt` + 30 days). */
-export interface AccountDeletionScheduled {
-  status: 'scheduled';
-  requestedAt: string;
-  scheduledFor: string;
-}
+/**
+ * `GET`/`POST /auth/account/deletion` 200 (`AccountDeletionStatusDto`). After a
+ * successful request `status` is `scheduled`, with `requestedAt` and
+ * `scheduledFor` (`requestedAt` + 30 days); `none` carries neither.
+ */
+export type AccountDeletionScheduled = Schema<'AccountDeletionStatusDto'>;
 
 /**
  * Body of `PATCH /parent/settings/profile` (B13): `occupation` and `address`

@@ -1,4 +1,5 @@
 import type { ChangePasswordPayload } from '../services/settings.services';
+import type { Schema } from './apiContract';
 
 /** How a sign-in attempt ended. Pages branch on `kind`, never on the message. */
 export type LoginOutcome =
@@ -68,14 +69,12 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
 }
 
-/** Body of `POST /auth/login`. */
-export interface LoginResponse {
-  access_token?: string;
-  refresh_token?: string;
-  // TODO-switch to generated: `POST /auth/login`'s response once `npm run types:api` has it.
-  /** True when this sign-in cancelled a scheduled account deletion. */
-  deletionCancelled?: boolean;
-}
+/**
+ * Body of `POST /auth/login` (and `/auth/refresh`), read defensively: every
+ * field optional. `deletionCancelled` is present, and true, only when this
+ * sign-in cancelled a scheduled account deletion.
+ */
+export type LoginResponse = Partial<Schema<'AccessTokenResponseDto'>>;
 
 /** Body of `POST /auth/introspect`. */
 export interface IntrospectResponse {

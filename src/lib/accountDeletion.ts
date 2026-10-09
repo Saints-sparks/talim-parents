@@ -36,11 +36,48 @@ export function deletionScheduledMessage(scheduledFor: string | null | undefined
 /**
  * The sign-in URL to land on after a deletion request, carrying the date.
  *
- * @param scheduledFor - `scheduledFor` from the 200 response (ISO).
+ * @param scheduledFor - `scheduledFor` from the 200 response (ISO). The
+ *   contract marks it optional (it is sent with `status: 'scheduled'` only);
+ *   without it the URL is the plain sign-in route.
  * @returns e.g. `/?deletionScheduledFor=2026-11-08T10%3A00%3A00.000Z`.
  */
-export function deletionScheduledRoute(scheduledFor: string): string {
+export function deletionScheduledRoute(scheduledFor: string | undefined): string {
+  if (!scheduledFor) return '/';
   return `/?${new URLSearchParams({ [DELETION_NOTICE_PARAM]: scheduledFor }).toString()}`;
+}
+
+/** Where the scheduled date waits for the sign-in page (one read, then gone). */
+const PENDING_NOTICE_KEY = 'talim_parent_deletion_notice';
+
+/**
+ * Keeps the scheduled date for the sign-in page. Signing out sends the portal's
+ * route guard to sign-in before the page that asked for the deletion can
+ * navigate there with the date in the URL, so the date travels this way too.
+ *
+ * @param scheduledFor - When the account will be erased (ISO date-time).
+ * @returns Nothing; a browser that blocks storage keeps only the URL route.
+ */
+export function rememberDeletionNotice(scheduledFor: string): void {
+  try {
+    window.sessionStorage.setItem(PENDING_NOTICE_KEY, scheduledFor);
+  } catch {
+    /* storage blocked: the URL still carries the date when it wins */
+  }
+}
+
+/**
+ * Takes the remembered scheduled date (once) as the sign-in notice.
+ *
+ * @returns The notice, or null when nothing (or nothing readable) was remembered.
+ */
+export function takeRememberedDeletionNotice(): string | null {
+  try {
+    const value = window.sessionStorage.getItem(PENDING_NOTICE_KEY);
+    window.sessionStorage.removeItem(PENDING_NOTICE_KEY);
+    return value ? deletionNoticeFromSearch(`?${new URLSearchParams({ [DELETION_NOTICE_PARAM]: value }).toString()}`) : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
