@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { Fragment, useId, useMemo, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useActiveChild } from '../../../../hooks/useActiveChild';
 import { useMyTickets } from '../../../../hooks/portal/useTickets';
@@ -119,9 +119,9 @@ function TicketRow({ ticket, child, now, onOpen }: { ticket: TicketSummary; chil
   const status = TICKET_STATUS_META[ticket.status] ?? TICKET_STATUS_META.open;
   const updated = relativeTime(ticket.lastActivityAt, now);
   const fresh = unreadLabel(ticket);
-  const meta = [ticket.child?.name ?? child?.name, ticket.reference, deskLabel(ticket.desk, ticket.school?.name ?? child?.school.name), updated ? `Updated ${updated}` : null]
-    .filter(Boolean)
-    .join(' · ');
+  const meta = [ticket.child?.name ?? child?.name, ticket.reference, deskLabel(ticket.desk, ticket.school?.name ?? child?.school.name), updated ? `Updated ${updated}` : null].filter(
+    (part): part is string => Boolean(part),
+  );
   return (
     <button type="button" onClick={onOpen} className={`flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-tl-line bg-tl-surface px-3.5 py-3 text-left hover:bg-tl-subtle ${focusRing}`}>
       <span className="min-w-0 flex-1">
@@ -130,7 +130,15 @@ function TicketRow({ ticket, child, now, onOpen }: { ticket: TicketSummary; chil
           <span className="truncate text-[15px] font-extrabold text-tl-ink">{ticket.subject}</span>
           {fresh ? <Pill tone="accent">{fresh}</Pill> : null}
         </span>
-        <span className="mt-0.5 block text-[13px] text-tl-muted">{meta}</span>
+        <span className="mt-0.5 block text-[13px] text-tl-muted">
+          {/* The reference stays on one line (it would break at its hyphen on a phone). */}
+          {meta.map((part, index) => (
+            <Fragment key={index}>
+              {index ? ' · ' : ''}
+              {part === ticket.reference ? <span className="whitespace-nowrap">{part}</span> : part}
+            </Fragment>
+          ))}
+        </span>
       </span>
       <Pill tone={status.tone}>{status.label}</Pill>
       <ChevronRight className="h-5 w-5 shrink-0 text-tl-faint" aria-hidden="true" />

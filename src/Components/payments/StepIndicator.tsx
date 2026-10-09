@@ -16,7 +16,7 @@ export const TOTAL_STEPS = STEP_LABELS.length;
  */
 export function StepIndicator({ step }: { step: number }) {
   return (
-    <nav aria-label="Payment progress" className="mb-8 overflow-x-auto pb-1">
+    <nav aria-label="Payment progress" className="relative mb-8 overflow-x-auto pb-1">
       <ol className="flex min-w-[320px] items-center gap-0">
         {STEP_LABELS.map((label, index) => {
           const number = index + 1;

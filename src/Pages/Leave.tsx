@@ -112,7 +112,7 @@ function ChildLeave({ child }: { child: ChildSummary }) {
     <div className="flex flex-col gap-[18px]">
       <PageHeader title="Leave requests" subtitle={`Tell the school in advance when ${firstName} will be away.`} />
 
-      <div className="grid items-start gap-4 min-[980px]:grid-cols-[minmax(300px,420px)_1fr]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 min-[980px]:grid-cols-[minmax(300px,420px)_minmax(0,1fr)]">
         <section className={card} aria-labelledby="leave-form-title">
           <h2 id="leave-form-title" ref={titleRef} tabIndex={-1} className={`${cardTitle} focus:outline-none`}>
             {editing ? 'Edit request' : 'New request'}

@@ -105,7 +105,7 @@ export function ReceiptsPanel({ childId, childName, termId, termLabel }: Receipt
           <p className="text-[13px] text-tl-faint">The school issues printed receipts; downloads are turned off.</p>
         )}
       </div>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[700px] text-left text-sm">
           <caption className="sr-only">Receipts</caption>
           <thead>

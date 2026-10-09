@@ -56,6 +56,8 @@ function ChildResults({ child }: { child: ChildSummary }) {
   // With one subject scored the API names it both strongest and weakest; it is not "needs attention" then.
   const weakest = data?.weakest && data.weakest.courseId !== data.strongest?.courseId ? data.weakest : null;
   const phase = reportPhase(selected, data);
+  // Only subjects with a published score count towards the average.
+  const scoredSubjects = data?.rows.filter((row) => row.percent !== null).length ?? 0;
   const note = PHASE_NOTE[phase];
   const signed = Boolean(data?.acknowledgedAt);
   const periodLabel = selected ? `${selected.name.toLowerCase()}, ${selected.session ?? ''}` : '';
@@ -163,7 +165,7 @@ function ChildResults({ child }: { child: ChildSummary }) {
             </p>
           ) : null}
           <div data-print-hide="1" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3.5">
-            <SummaryTile label="Term average" value={percent(data.overall.percent)} pill={data.overall.grade ?? '—'} tone={gradeTone(data.overall.grade, data.scale)} note={`Across all ${data.rows.length} subjects`} />
+            <SummaryTile label="Term average" value={percent(data.overall.percent)} pill={data.overall.grade ?? '—'} tone={gradeTone(data.overall.grade, data.scale)} note={`Across ${scoredSubjects} subject${scoredSubjects === 1 ? '' : 's'}`} />
             <SummaryTile
               label="Class position"
               value={data.overall.position ? ordinal(data.overall.position.rank) : '—'}

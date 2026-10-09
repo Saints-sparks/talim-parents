@@ -87,7 +87,7 @@ function ChildTimetableScreen({ child }: { child: ChildSummary }) {
             <p className="rounded-2xl border border-tl-line-soft bg-tl-surface p-4 text-sm text-tl-muted">This week is outside the term, so no lessons are timetabled.</p>
           ) : null}
 
-          <section className={`${cardFrame} overflow-x-auto p-[clamp(14px,2vw,20px)]`} aria-label={`${firstName}'s week`}>
+          <section className={`${cardFrame} relative overflow-x-auto p-[clamp(14px,2vw,20px)]`} aria-label={`${firstName}'s week`}>
             <table className="w-full min-w-[820px] table-fixed border-separate border-spacing-2">
               <caption className="sr-only">
                 Lessons for the week of {dayMonth(data.week.start)}

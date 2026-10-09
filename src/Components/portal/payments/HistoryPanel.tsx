@@ -53,7 +53,7 @@ export function HistoryPanel({ childId }: { childId: string }) {
 
   return (
     <div className="mt-1.5">
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <caption className="sr-only">Payment history</caption>
           <thead>

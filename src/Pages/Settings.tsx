@@ -94,7 +94,7 @@ export default function Settings() {
   return (
     <div className="flex flex-col gap-[18px]">
       <PageHeader title="Account & settings" subtitle={`${parentName} · parent account`} />
-      <div className="grid items-start gap-4 min-[760px]:grid-cols-[minmax(210px,280px)_1fr]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 min-[760px]:grid-cols-[minmax(210px,280px)_minmax(0,1fr)]">
         <div role="tablist" aria-label="Settings" aria-orientation="vertical" className="rounded-[22px] border border-tl-line bg-tl-surface p-2.5">
           {TABS.map((key, index) => {
             const on = tab === key;

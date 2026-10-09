@@ -175,7 +175,7 @@ function MessagesSidebar({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
                   <span className="truncate text-[15px] font-bold text-tl-ink">{room.displayName}</span>
-                  <span className="shrink-0 text-xs text-tl-faint">{formatRoomTime(room)}</span>
+                  <span className={`shrink-0 text-xs ${selectedRoomId === room.roomId ? 'text-tl-muted' : 'text-tl-faint'}`}>{formatRoomTime(room)}</span>
                 </span>
                 <span className="mt-1 flex items-center justify-between gap-2">
                   <span className="truncate text-[13px] text-tl-muted">{getPreview(room)}</span>

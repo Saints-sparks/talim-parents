@@ -146,7 +146,7 @@ export function ReceiptModal({
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
               Fee breakdown
             </p>
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full min-w-[480px] text-sm">
                 <thead className="bg-[#003366] text-white dark:bg-blue-900">
                   <tr>

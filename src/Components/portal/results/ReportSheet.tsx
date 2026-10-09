@@ -56,7 +56,7 @@ export function ReportSheet({ report, parentName }: ReportSheetProps) {
         ))}
       </dl>
 
-      <div className="mt-[22px] overflow-x-auto">
+      <div className="relative mt-[22px] overflow-x-auto">
         <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-0 text-sm">
           <caption className="sr-only">Scores by subject, {termLabel}</caption>
           <colgroup>

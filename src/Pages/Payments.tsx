@@ -137,7 +137,7 @@ function ChildPayments({ child }: { child: ChildSummary }) {
           </div>
 
           <section className={`${cardFrame} px-[clamp(18px,2.4vw,24px)] pb-[clamp(18px,2.4vw,26px)] pt-[clamp(14px,2vw,22px)]`}>
-            <div role="tablist" aria-label="Payments" className="flex gap-[clamp(14px,2.4vw,28px)] overflow-x-auto border-b border-tl-line-soft">
+            <div role="tablist" aria-label="Payments" className="relative flex gap-[clamp(14px,2.4vw,28px)] overflow-x-auto border-b border-tl-line-soft">
               {TABS.map((entry, index) => {
                 const on = tab === entry.key;
                 const badge = entry.key === 'due' ? summary.due.length : 0;

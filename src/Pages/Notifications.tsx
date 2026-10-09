@@ -140,7 +140,7 @@ export default function Notifications() {
               >
                 {entry.label}
                 {unread > 0 && entry.key !== 'all' ? (
-                  <span className="text-xs font-extrabold opacity-80" aria-label={`${unread} unread`}>
+                  <span className="text-xs font-extrabold" aria-label={`${unread} unread`}>
                     {unread}
                   </span>
                 ) : null}
@@ -190,7 +190,7 @@ export default function Notifications() {
       ) : null}
 
       {feed.items.length > 0 ? (
-        <div className="grid items-start gap-4 min-[980px]:grid-cols-[1fr_minmax(260px,380px)]">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 min-[980px]:grid-cols-[minmax(0,1fr)_minmax(260px,380px)]">
           <section className={cardFrame} aria-label="Notification list">
             <ul>
               {feed.items.map((item, index) => {
@@ -214,7 +214,7 @@ export default function Notifications() {
                           <span className="mt-1 block text-xs font-bold text-tl-faint">{childNames.get(item.childId)}</span>
                         ) : null}
                       </span>
-                      <span className="whitespace-nowrap text-[13px] text-tl-faint">{relativeDay(item.createdAt)}</span>
+                      <span className={`whitespace-nowrap text-[13px] ${on ? 'text-tl-muted' : 'text-tl-faint'}`}>{relativeDay(item.createdAt)}</span>
                     </button>
                   </li>
                 );
