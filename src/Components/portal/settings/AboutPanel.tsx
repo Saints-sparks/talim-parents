@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { APP_PLATFORM, APP_VERSION } from '../../../lib/appVersion';
-import { SUPPORT_EMAIL } from '../../../lib/support';
+import { PRIVACY_POLICY_URL, SUPPORT_EMAIL, SUPPORT_URL, TERMS_OF_SERVICE_URL } from '../../../lib/support';
 import { Sheet } from '../ui/Dialog';
-import { primaryButton } from '../ui/styles';
+import { primaryButton, textLink } from '../ui/styles';
 import { LinkRow, ValueRow } from './rows';
 
 /** One section of a legal page. */
@@ -39,7 +39,8 @@ const TERMS: Section[] = [
 
 /**
  * The About tab: the app and its version ("Version 1.5.0", read from
- * `package.json`), and the privacy policy and terms.
+ * `package.json`), the privacy policy and terms (in-app, each linking its
+ * full page on www.mytalim.com), and Talim's support page.
  *
  * @returns The panel.
  */
@@ -51,6 +52,7 @@ export function AboutPanel() {
       <ValueRow label={APP_PLATFORM} value={`Version ${APP_VERSION}`} />
       <LinkRow label="Privacy Policy" description="How your data is handled." onOpen={() => setDoc('privacy')} />
       <LinkRow label="Terms of Service" description="The rules for using the portal." onOpen={() => setDoc('terms')} />
+      <LinkRow label="Support" description="Guides and how to reach Talim." href={SUPPORT_URL} />
       <Sheet
         open={doc !== null}
         onClose={() => setDoc(null)}
@@ -58,9 +60,15 @@ export function AboutPanel() {
         title={doc === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
         subtitle="Version 1.0"
         footer={
-          <button type="button" className={`${primaryButton} flex-1`} onClick={() => setDoc(null)}>
-            Close
-          </button>
+          <>
+            <a href={doc === 'privacy' ? PRIVACY_POLICY_URL : TERMS_OF_SERVICE_URL} target="_blank" rel="noopener noreferrer" className={textLink}>
+              Read the full policy
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+            <button type="button" className={`${primaryButton} flex-1`} onClick={() => setDoc(null)}>
+              Close
+            </button>
+          </>
         }
       >
         {sections.map((section) => (

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.svg';
 import ModernLoader from '../../Components/ModernLoader';
 import {
@@ -16,6 +16,8 @@ import {
 } from '../../Components/auth/signin-ui';
 import { useAuth } from '../../services/auth.services';
 import { SUPPORT_EMAIL } from '../../lib/support';
+import { toast } from '../../Components/CustomToast';
+import { DELETION_CANCELLED_MESSAGE, deletionNoticeFromSearch } from '../../lib/accountDeletion';
 import { PARENT_PANEL, failureOf, type Failure } from './signInCopy';
 
 /**
@@ -32,12 +34,16 @@ export function ParentIllustration() {
  * (`Components/auth/signin-ui`, ported from Teachers): the "Parents" pill,
  * email and password, "Forgot password?", and the navy panel from `lg`.
  * A visitor who is already signed in goes straight on; an account still on
- * the school's temporary password goes to `/set-password` first.
+ * the school's temporary password goes to `/set-password` first. After a
+ * deletion request (`/?deletionScheduledFor=<ISO>`) it says when the account
+ * will be deleted; a sign-in that cancelled the deletion says so in a toast.
  *
  * @returns The sign-in screen.
  */
 export default function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const deletionNotice = useMemo(() => deletionNoticeFromSearch(location.search), [location.search]);
   const { login, loading, authToken, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,6 +75,7 @@ export default function SignIn() {
 
     const outcome = await login(email.trim(), password);
     if (outcome.kind === 'success') {
+      if (outcome.deletionCancelled) toast.success(DELETION_CANCELLED_MESSAGE);
       navigate(outcome.mustChangePassword ? '/set-password' : '/dashboard');
       return;
     }
@@ -83,6 +90,12 @@ export default function SignIn() {
       <ModernLoader visible={loading} />
       <SignInLogoHeader appName="Parents" logo={<img src={logo} alt="" className="h-10 w-10" />} />
       <SignInHeading title="Welcome back" subtitle="Sign in to track your child's learning journey." />
+
+      {deletionNotice && !failure ? (
+        <SignInErrorBanner tone="neutral" title="Account deletion scheduled" className="mt-6">
+          {deletionNotice}
+        </SignInErrorBanner>
+      ) : null}
 
       {failure ? (
         <SignInErrorBanner id="signin-alert" tone={failure.tone} title={failure.title} icon={failure.tone === 'danger' ? 'shield' : 'alert'} className="mt-6">

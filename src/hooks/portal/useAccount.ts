@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/auth.services';
+import { deletionScheduledRoute } from '../../lib/accountDeletion';
 import {
+  requestAccountDeletion,
   getChatPrivacy,
   getPasswordPolicy,
   getSessions,
@@ -14,13 +17,20 @@ import {
 import { getNotificationPreferences, updateNotificationPreferences } from '../../services/notification.services';
 import { queryKeys, staleTimes } from '../../lib/queryKeys';
 import type { NotificationPreferences, NotificationPreferencesPayload } from '../../types/notifications';
-import type { AuthSession, ChatPrivacy, ParentProfilePayload, PasswordPolicy } from '../../types/portal/school';
+import type {
+  AccountDeletionBody,
+  AccountDeletionScheduled,
+  AuthSession,
+  ChatPrivacy,
+  ParentProfilePayload,
+  PasswordPolicy,
+} from '../../types/portal/school';
 import type { PreferredMethod } from '../../types/portal/payments';
 import type { ParentSettings } from '../../services/settings.services';
 
 /**
  * The parent's own account: profile, alerts, chat privacy, payment
- * preference and sessions. None of it is about one child. Support tickets
+ * preference, sessions and deleting the account. None of it is about one child. Support tickets
  * live in `useTickets.ts`.
  */
 
@@ -211,3 +221,24 @@ export function usePasswordPolicy(enabled = true): UseQueryResult<PasswordPolicy
   });
 }
 
+/**
+ * Asks for the parent's account to be deleted (`POST /auth/account/deletion`).
+ * On success the server has already ended every session, so this signs out
+ * here through `useAuth().logout({ sessionEnded: true })` (tokens and storage
+ * cleared; the query cache empties with the session, see `QueryProvider`)
+ * and goes to sign-in carrying the scheduled date. The mutation stays
+ * pending until then.
+ *
+ * @returns The mutation; `mutate` takes `{ password, reason? }` and fails with the `ApiError`.
+ */
+export function useRequestAccountDeletion() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  return useMutation<AccountDeletionScheduled, unknown, AccountDeletionBody>({
+    mutationFn: (body) => requestAccountDeletion(body),
+    onSuccess: async ({ scheduledFor }) => {
+      await logout({ sessionEnded: true });
+      navigate(deletionScheduledRoute(scheduledFor), { replace: true });
+    },
+  });
+}

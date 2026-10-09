@@ -22,6 +22,9 @@ export const rowButton = `inline-flex min-h-[44px] items-center justify-center w
 /** The red outlined button ("Delete", "Sign out"). */
 export const dangerGhostButton = `inline-flex min-h-[44px] items-center justify-center whitespace-nowrap rounded-xl border border-tl-danger/30 px-3.5 py-2 text-[13px] font-bold text-tl-danger transition-colors hover:bg-tl-danger-bg disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`;
 
+/** The red filled button that confirms a destructive action (Delete account). White on `tl-danger` (light) and the dark surface on it (dark) are both AA. */
+export const dangerButton = `inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-[14px] bg-tl-danger px-5 py-3 text-sm font-bold text-tl-surface transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`;
+
 /** A text link with an arrow ("Full week →"). */
 export const textLink = `inline-flex min-h-[44px] items-center whitespace-nowrap rounded-md text-sm font-bold text-tl-link hover:underline ${focusRing}`;
 

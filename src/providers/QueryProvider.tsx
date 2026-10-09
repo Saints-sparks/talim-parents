@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '../lib/apiError';
+import { useAuth } from '../services/auth.services';
 
 /** How many times a failed query is retried before the error reaches the UI. */
 const MAX_RETRIES = 2;
@@ -47,8 +48,25 @@ export function createQueryClient(): QueryClient {
 }
 
 /**
+ * Empties the cache when the session ends (a sign-out, a forced sign-out or
+ * an account deletion), so one parent's data never shows to whoever signs in
+ * next on this browser.
+ *
+ * @param client - The app's QueryClient.
+ * @param signedIn - Whether there is a session now.
+ */
+export function useClearCacheOnSignOut(client: QueryClient, signedIn: boolean): void {
+  const wasSignedIn = useRef(signedIn);
+  useEffect(() => {
+    if (wasSignedIn.current && !signedIn) client.clear();
+    wasSignedIn.current = signedIn;
+  }, [client, signedIn]);
+}
+
+/**
  * Wraps the app in a single QueryClient. The client is created in state so a
- * re-render never throws the cache away.
+ * re-render never throws the cache away; it is emptied on sign-out
+ * ({@link useClearCacheOnSignOut}). Sits inside `AuthProvider`.
  *
  * @param props - Standard children.
  * @param props.children - The application tree.
@@ -56,5 +74,7 @@ export function createQueryClient(): QueryClient {
  */
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [client] = useState(createQueryClient);
+  const { authToken } = useAuth();
+  useClearCacheOnSignOut(client, Boolean(authToken));
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }

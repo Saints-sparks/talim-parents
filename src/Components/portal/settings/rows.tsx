@@ -30,22 +30,38 @@ export function ToggleRow({ label, description, checked, onChange, disabled }: {
 }
 
 /**
- * A settings row that opens something (the design's `linkRow`).
+ * A settings row that opens something (the design's `linkRow`): a button, or
+ * with `href` a link to an external page opened in a new tab.
  *
  * @param props - Label, description and action.
  * @param props.label - What it opens.
  * @param props.description - A line under it.
- * @param props.onOpen - Opens it.
- * @returns The row, as a button.
+ * @param props.onOpen - Opens it (a button row).
+ * @param props.href - The external page (a link row).
+ * @returns The row, as a button or a link.
  */
-export function LinkRow({ label, description, onOpen }: { label: string; description: string; onOpen: () => void }) {
-  return (
-    <button type="button" onClick={onOpen} className={`flex min-h-[44px] w-full items-center gap-4 border-t border-tl-line-soft py-4 text-left hover:bg-tl-subtle ${focusRing}`}>
+export function LinkRow({ label, description, onOpen, href }: { label: string; description: string; onOpen?: () => void; href?: string }) {
+  const className = `flex min-h-[44px] w-full items-center gap-4 border-t border-tl-line-soft py-4 text-left hover:bg-tl-subtle ${focusRing}`;
+  const content = (
+    <>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-bold text-tl-ink">{label}</span>
         <span className="mt-[3px] block text-sm text-tl-muted">{description}</span>
+        {href ? <span className="sr-only"> (opens in a new tab)</span> : null}
       </span>
       <ChevronRight className="h-5 w-5 shrink-0 text-tl-faint" aria-hidden="true" />
+    </>
+  );
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {content}
+      </a>
+    );
+  }
+  return (
+    <button type="button" onClick={onOpen} className={className}>
+      {content}
     </button>
   );
 }

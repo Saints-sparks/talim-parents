@@ -22,6 +22,7 @@ import type {
   IntrospectResponse,
   LoginOutcome,
   LoginResponse,
+  LogoutOptions,
 } from '../types/auth';
 
 /**
@@ -107,18 +108,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return startWebPushSync(syncParentId);
   }, [syncParentId]);
 
-  const logout = useCallback(async (): Promise<void> => {
+  const logout = useCallback(async (options?: LogoutOptions): Promise<void> => {
     setLoading(true);
     const currentParentId = parentId;
     const token = authToken;
+    // After an account deletion the server has already ended every session:
+    // drop the browser's push subscription locally and make no more calls.
+    const sessionEnded = options?.sessionEnded === true;
 
     try {
       // While the token is still valid: this browser stops receiving pushes.
       await Promise.race([
-        unsubscribeWebPushOnLogout(currentParentId, token),
+        unsubscribeWebPushOnLogout(currentParentId, sessionEnded ? null : token),
         new Promise((resolve) => setTimeout(resolve, PUSH_UNSUBSCRIBE_TIMEOUT_MS)),
       ]);
-      if (token) await api.post('/auth/logout', {});
+      if (token && !sessionEnded) await api.post('/auth/logout', {});
     } catch (err) {
       // A local sign-out must succeed even when the server cannot be reached.
       logger.warn('auth', 'Server logout failed; signing out locally', err);
@@ -215,7 +219,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthToken(tokens.access_token);
       setUser(userData);
       setLoading(false);
-      return { kind: 'success', mustChangePassword: userData.mustChangePassword === true };
+      return {
+        kind: 'success',
+        mustChangePassword: userData.mustChangePassword === true,
+        ...(tokens.deletionCancelled ? { deletionCancelled: true } : {}),
+      };
     } catch (err) {
       const message = loginErrorMessage(err);
       setError(message);

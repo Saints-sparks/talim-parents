@@ -9,11 +9,13 @@ import { Sheet } from '../ui/Dialog';
 import { ErrorCard, Pill } from '../ui/primitives';
 import { dangerGhostButton, fieldControl, fieldError, fieldLabel, ghostButton, primaryButton } from '../ui/styles';
 import { LinkRow } from './rows';
+import { DangerZone, DeleteAccountSheet } from './DeleteAccountSheet';
 
 /**
  * The Security tab: change password (checked against the server's policy)
  * and the devices signed in, with sign out per device and for every other
- * device (§34). There is no two-step sign-in switch.
+ * device (§34), then the Danger zone with Delete account (v1.5). There is no
+ * two-step sign-in switch.
  *
  * @returns The panel.
  */
@@ -22,6 +24,7 @@ export function SecurityPanel() {
   const revoke = useRevokeSessions();
   const { logout } = useAuth();
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const others = sessions.data?.filter((session) => !session.current).length ?? 0;
 
   return (
@@ -79,7 +82,9 @@ export function SecurityPanel() {
           </p>
         ) : null}
       </section>
+      <DangerZone onDelete={() => setDeleteOpen(true)} />
       <ChangePasswordSheet open={passwordOpen} onClose={() => setPasswordOpen(false)} />
+      <DeleteAccountSheet open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </div>
   );
 }

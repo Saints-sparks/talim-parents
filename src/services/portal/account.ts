@@ -1,5 +1,7 @@
 import { api } from '../../lib/apiClient';
 import type {
+  AccountDeletionBody,
+  AccountDeletionScheduled,
   AuthSession,
   ChatPrivacy,
   ParentProfilePayload,
@@ -119,6 +121,20 @@ export function revokeOtherSessions(): Promise<RevokeOthersResult> {
  */
 export function getPasswordPolicy(): Promise<PasswordPolicy> {
   return api.get<PasswordPolicy>('/auth/password-policy', { skipAuth: true });
+}
+
+/**
+ * Schedules the parent's account for deletion in 30 days (v1.5). The server
+ * ends every session at once, so the caller signs out here with
+ * `logout({ sessionEnded: true })`.
+ *
+ * @param body - The account's password and an optional reason.
+ * @returns `{ status: 'scheduled', requestedAt, scheduledFor }`.
+ * @throws {ApiError} 400 `VALIDATION_FAILED` with a `password` field error for a wrong password;
+ *   `reasonCode` `ADMIN_ACCOUNT` (403), `LAST_SCHOOL_ADMIN` or `DELETION_SCHEDULED` (409).
+ */
+export function requestAccountDeletion(body: AccountDeletionBody): Promise<AccountDeletionScheduled> {
+  return api.post<AccountDeletionScheduled>('/auth/account/deletion', body);
 }
 
 /**

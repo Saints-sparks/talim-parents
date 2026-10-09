@@ -10,3 +10,15 @@ export const SUPPORT_EMAIL = 'support@mytalim.com';
 export function mailtoHref(email?: string | null): string {
   return `mailto:${email?.trim() || SUPPORT_EMAIL}`;
 }
+
+/** Talim's privacy policy on the public site. */
+export const PRIVACY_POLICY_URL = 'https://www.mytalim.com/privacy';
+
+/** Talim's terms of service on the public site. */
+export const TERMS_OF_SERVICE_URL = 'https://www.mytalim.com/terms';
+
+/** How to get help with Talim, on the public site. */
+export const SUPPORT_URL = 'https://www.mytalim.com/support';
+
+/** What deleting an account does, and what to do without access, on the public site. */
+export const DELETE_ACCOUNT_INFO_URL = 'https://www.mytalim.com/delete-account';

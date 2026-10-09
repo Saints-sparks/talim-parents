@@ -719,7 +719,12 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
     { method: 'POST', pattern: '/auth/login', handler: (request) =>
       body(request).password === 'wrong-password'
         ? fail(401, 'UNAUTHENTICATED', 'Invalid credentials')
-        : raw({ access_token: 'fixture-access-token', refresh_token: 'fixture-refresh-token' }) },
+        : raw({
+            access_token: 'fixture-access-token',
+            refresh_token: 'fixture-refresh-token',
+            // v1.5: signing in within the 30 days cancels a scheduled deletion.
+            ...(body(request).password === 'returning-password' ? { deletionCancelled: true } : {}),
+          }) },
     { method: 'POST', pattern: '/auth/introspect', handler: () => raw({ active: true, user: userView(db) }) },
     { method: 'POST', pattern: '/auth/refresh', handler: () => raw({ access_token: 'fixture-access-token' }) },
     { method: 'POST', pattern: '/auth/logout', handler: () => ok({ message: 'Signed out' }) },
@@ -730,6 +735,17 @@ export function buildRoutes(db: FixtureDb): FixtureRoute[] {
     { method: 'GET', pattern: '/auth/password-policy', handler: () =>
       ok({ minLength: 8, maxLength: 128, requireUppercase: true, requireLowercase: true, requireNumber: true, requireSymbol: true, symbols: '!@#$%^&*()_+-=[]{};:,.?', historyCount: 1 }) },
     { method: 'GET', pattern: '/auth/sessions', handler: () => ok(db.sessions) },
+    // v1.5 delete account: a wrong password is a 400 naming the field; 'already-scheduled' answers the 409.
+    { method: 'POST', pattern: '/auth/account/deletion', handler: (request) => {
+      const password = body(request).password;
+      if (password === 'wrong-password') {
+        return fail(400, 'VALIDATION_FAILED', 'Your password is incorrect.', [{ field: 'password', reason: 'Password is incorrect' }]);
+      }
+      if (password === 'already-scheduled') {
+        return raw({ success: false, code: 'DELETION_SCHEDULED', error: { code: 'CONFLICT', message: 'Your account is already scheduled for deletion.' } }, 409);
+      }
+      return ok({ status: 'scheduled', requestedAt: '2026-10-09T10:00:00.000Z', scheduledFor: '2026-11-08T10:00:00.000Z' });
+    } },
     { method: 'POST', pattern: '/auth/sessions/revoke-others', handler: () => {
       const revoked = db.sessions.filter((s) => !s.current).length;
       db.sessions = db.sessions.filter((s) => s.current);
