@@ -56,7 +56,7 @@ test.describe('mobile', () => {
       await dismissGuide(page, 2_000);
       await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
       await page.waitForTimeout(600);
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, window.innerWidth) - 390);
       expect(overflow, `${route.path} scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(1);
       await page.screenshot({ path: `e2e/screenshots/mobile/${route.slug}.png`, fullPage: true });
     }

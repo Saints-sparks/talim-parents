@@ -14,7 +14,9 @@ import { dismissGuide } from './support/ui';
  * - My tickets: raise a ticket to the school, see the reply as new, reply.
  */
 const RUN = Date.now().toString(36).slice(-5);
-const ALLOW: readonly Allowed[] = [];
+const ALLOW: readonly Allowed[] = [
+  { kind: 'external', match: /fonts\.googleapis\.com|fonts\.gstatic\.com/, reason: 'Google Fonts are blocked by the harness; the system font is used.' },
+];
 
 test.use({ storageState: authFile('parent') });
 
@@ -25,9 +27,26 @@ async function open(page: Page, path: string): Promise<void> {
   await dismissGuide(page, 2_000);
 }
 
+/**
+ * Finds Ada's published term through the API, so the test opens a report the
+ * parent can sign (the current term is only partly published in the seed).
+ * @returns The id of the newest term whose results are published.
+ */
+async function publishedTermId(): Promise<string> {
+  const token = await apiLogin(ACCOUNTS.parent);
+  const listed = await apiCall<{ id: string; name: string }[] | { children?: { id: string; name: string }[] }>(token, 'GET', '/parents/me/children');
+  const children = Array.isArray(listed) ? listed : (listed.children ?? []);
+  const ada = children.find((child) => child.name.startsWith('Ada'));
+  if (!ada) throw new Error('The seed has no child called Ada for the parent');
+  const terms = await apiCall<{ id: string; status: string }[]>(token, 'GET', `/parents/me/children/${ada.id}/report-card/terms`);
+  const published = terms.find((term) => term.status === 'published');
+  if (!published) throw new Error('The seed has no published term for Ada');
+  return published.id;
+}
+
 test('Results: sign as parent', async ({ page, monitor }) => {
   monitor.clear();
-  await open(page, '/results');
+  await open(page, `/results?termId=${await publishedTermId()}`);
   const sign = page.getByRole('button', { name: 'Sign as parent' });
   const download = page.getByRole('button', { name: 'Download term report' });
   await expect(sign.or(download)).toBeVisible();
@@ -52,8 +71,8 @@ test('Leave: send a request, then withdraw it', async ({ page, monitor }) => {
   const day = new Date(Date.now() + 14 * 86_400_000);
   while ([0, 6].includes(day.getDay())) day.setDate(day.getDate() + 1);
   const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-  await form.getByLabel('From').fill(ymd);
-  await form.getByLabel('To').fill(ymd);
+  await form.getByLabel('From', { exact: true }).fill(ymd);
+  await form.getByLabel('To', { exact: true }).fill(ymd);
   await form.getByLabel(/Note to the teacher/).fill(note);
   const sent = page.waitForResponse((r) => /\/leave$/.test(r.url()) && r.request().method() === 'POST');
   await form.getByRole('button', { name: 'Send request' }).click();
