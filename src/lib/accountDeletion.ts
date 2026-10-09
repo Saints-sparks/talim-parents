@@ -66,17 +66,30 @@ export function rememberDeletionNotice(scheduledFor: string): void {
 }
 
 /**
- * Takes the remembered scheduled date (once) as the sign-in notice.
+ * The remembered scheduled date as the sign-in notice. Pure (React may call a
+ * state initializer twice); {@link forgetDeletionNotice} clears it.
  *
  * @returns The notice, or null when nothing (or nothing readable) was remembered.
  */
-export function takeRememberedDeletionNotice(): string | null {
+export function rememberedDeletionNotice(): string | null {
   try {
     const value = window.sessionStorage.getItem(PENDING_NOTICE_KEY);
-    window.sessionStorage.removeItem(PENDING_NOTICE_KEY);
     return value ? deletionNoticeFromSearch(`?${new URLSearchParams({ [DELETION_NOTICE_PARAM]: value }).toString()}`) : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Clears the remembered scheduled date once the sign-in page has shown it.
+ *
+ * @returns Nothing.
+ */
+export function forgetDeletionNotice(): void {
+  try {
+    window.sessionStorage.removeItem(PENDING_NOTICE_KEY);
+  } catch {
+    /* storage blocked: nothing was kept */
   }
 }
 

@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../../services/auth.services';
 import { SUPPORT_EMAIL } from '../../lib/support';
 import { toast } from '../../Components/CustomToast';
-import { DELETION_CANCELLED_MESSAGE, deletionNoticeFromSearch } from '../../lib/accountDeletion';
+import { DELETION_CANCELLED_MESSAGE, deletionNoticeFromSearch, forgetDeletionNotice, rememberedDeletionNotice } from '../../lib/accountDeletion';
 import { PARENT_PANEL, failureOf, type Failure } from './signInCopy';
 
 /**
@@ -43,7 +43,10 @@ export function ParentIllustration() {
 export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
-  const deletionNotice = useMemo(() => deletionNoticeFromSearch(location.search), [location.search]);
+  // The URL's date, else the one remembered when the route guard got here first.
+  const [rememberedNotice] = useState(rememberedDeletionNotice);
+  useEffect(forgetDeletionNotice, []);
+  const deletionNotice = useMemo(() => deletionNoticeFromSearch(location.search) ?? rememberedNotice, [location.search, rememberedNotice]);
   const { login, loading, authToken, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

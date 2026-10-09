@@ -8,7 +8,7 @@ import SignIn from '../auth/SignIn';
 import { toast } from '../../Components/CustomToast';
 import { STORAGE_KEYS } from '../../lib/session';
 import { useClearCacheOnSignOut } from '../../providers/QueryProvider';
-import { DELETION_CANCELLED_MESSAGE, deletionErrorMessage, deletionNoticeFromSearch } from '../../lib/accountDeletion';
+import { DELETION_CANCELLED_MESSAGE, deletionErrorMessage, deletionNoticeFromSearch, rememberDeletionNotice } from '../../lib/accountDeletion';
 import { ApiError } from '../../lib/apiError';
 
 vi.setConfig({ testTimeout: 20_000 });
@@ -136,6 +136,14 @@ describe('About and sign-in (fixtures)', () => {
     expect(within(nav).getByRole('link', { name: /Terms/ })).toHaveAttribute('href', 'https://www.mytalim.com/terms');
     expect(within(nav).getByRole('link', { name: /Support/ })).toHaveAttribute('href', 'https://www.mytalim.com/support');
     expect(deletionNoticeFromSearch('?deletionScheduledFor=nope')).toBeNull();
+  });
+
+  it('still says when, on plain sign-in, when the route guard got there before the dated route', async () => {
+    rememberDeletionNotice('2026-11-08T10:00:00.000Z');
+    renderPortal(<SignIn />, { path: '/', signedOut: true });
+    expect(await screen.findByText('Your account will be deleted on 8 November 2026. Sign in before then to cancel.')).toBeInTheDocument();
+    // Shown once: the remembered date is cleared.
+    expect(window.sessionStorage.getItem('talim_parent_deletion_notice')).toBeNull();
   });
 
   it('toasts the cancelled notice when login answers deletionCancelled: true', async () => {

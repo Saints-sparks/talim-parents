@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/auth.services';
-import { deletionScheduledRoute } from '../../lib/accountDeletion';
+import { deletionScheduledRoute, rememberDeletionNotice } from '../../lib/accountDeletion';
 import {
   requestAccountDeletion,
   getChatPrivacy,
@@ -237,6 +237,7 @@ export function useRequestAccountDeletion() {
   return useMutation<AccountDeletionScheduled, unknown, AccountDeletionBody>({
     mutationFn: (body) => requestAccountDeletion(body),
     onSuccess: async ({ scheduledFor }) => {
+      if (scheduledFor) rememberDeletionNotice(scheduledFor);
       await logout({ sessionEnded: true });
       navigate(deletionScheduledRoute(scheduledFor), { replace: true });
     },
